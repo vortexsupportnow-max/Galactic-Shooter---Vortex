@@ -20,8 +20,7 @@ async function initDB() {
   // Here we just verify connectivity on startup.
   const { error } = await supabase.from('users').select('id').limit(1);
   if (error) {
-    console.error('Supabase connectivity check failed:', error.message);
-    process.exit(1);
+    throw new Error(`Supabase connectivity check failed: ${error.message}`);
   }
   console.log('Supabase database connected');
 }

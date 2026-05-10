@@ -141,13 +141,18 @@ router.post('/upgrade-ability', async (req, res) => {
 
     if (user.coins < cost) return res.json({ success: false, error: 'Not enough coins' });
 
-    const [deductResult, upgradeResult] = await Promise.all([
-      supabase.from('users').update({ coins: user.coins - cost }).eq('id', userId),
-      supabase.from('user_abilities').update({ level: currentLevel + 1 }).eq('user_id', userId).eq('ability_id', abilityId)
-    ]);
+    const { error: deductResult } = await supabase
+      .from('users')
+      .update({ coins: user.coins - cost })
+      .eq('id', userId);
+    if (deductResult) throw new Error(deductResult.message);
 
-    if (deductResult.error) throw new Error(deductResult.error.message);
-    if (upgradeResult.error) throw new Error(upgradeResult.error.message);
+    const { error: upgradeResult } = await supabase
+      .from('user_abilities')
+      .update({ level: currentLevel + 1 })
+      .eq('user_id', userId)
+      .eq('ability_id', abilityId);
+    if (upgradeResult) throw new Error(upgradeResult.message);
 
     res.json({ success: true, data: { newLevel: currentLevel + 1, coinsSpent: cost } });
   } catch (err) {
