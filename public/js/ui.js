@@ -378,8 +378,8 @@ async function openCrate() {
       resultEl.removeEventListener('click', dismiss);
       resolve();
     };
-    document.addEventListener('keydown', dismiss, { once: true });
-    resultEl.addEventListener('click', dismiss, { once: true });
+    document.addEventListener('keydown', dismiss);
+    resultEl.addEventListener('click', dismiss);
   });
 
   btn.textContent = 'OPEN CRATE';
