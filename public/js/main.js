@@ -17,6 +17,39 @@ function showScreen(name) {
   }
 }
 
+// ===== INTRO ANIMATION =====
+function showIntro() {
+  return new Promise(resolve => {
+    const introEl = document.getElementById('screen-intro');
+    if (!introEl) { resolve(); return; }
+
+    // Populate intro starfield
+    initStarField('introStars');
+
+    // Make sure intro is visible
+    introEl.style.display = 'flex';
+    introEl.classList.add('active');
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      introEl.classList.add('intro-exit');
+      setTimeout(() => {
+        introEl.style.display = 'none';
+        introEl.classList.remove('active', 'intro-exit');
+        resolve();
+      }, 600);
+    };
+
+    // Auto-advance after 3.5 seconds
+    const timer = setTimeout(finish, 3500);
+
+    // Skip on tap/click
+    introEl.addEventListener('click', () => { clearTimeout(timer); finish(); }, { once: true });
+  });
+}
+
 async function init() {
   // Init all handlers
   initAuthHandlers();
@@ -25,9 +58,13 @@ async function init() {
   initCrateHandlers();
   initLeaderboardHandlers();
   initCollectionHandlers();
+  initSettingsHandlers();
 
   // Init login starfield
   initStarField('loginStars');
+
+  // Show intro animation first
+  await showIntro();
 
   // Check existing token
   const token = getToken();

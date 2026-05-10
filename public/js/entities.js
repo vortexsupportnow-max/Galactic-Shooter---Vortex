@@ -387,11 +387,15 @@ class Enemy {
 
     const waveMult = 1 + (wave - 1) * 0.12;
 
+    // Shooting capability – only 'shooter' type fires bullets
+    this.canShoot = false;
+    this.fireRate = 99999;
+    this.lastShot = 0;
+
     switch (type) {
       case 'basic':
         this.hp = this.maxHp = Math.floor(30 * waveMult);
         this.speed = 0.9 + wave * 0.04;
-        this.fireRate = 2800;
         this.damage = 15;
         this.score = 100;
         this.coinDrop = 2;
@@ -401,7 +405,6 @@ class Enemy {
       case 'medium':
         this.hp = this.maxHp = Math.floor(70 * waveMult);
         this.speed = 0.75 + wave * 0.035;
-        this.fireRate = 2200;
         this.damage = 25;
         this.score = 250;
         this.coinDrop = 5;
@@ -411,17 +414,28 @@ class Enemy {
       case 'heavy':
         this.hp = this.maxHp = Math.floor(150 * waveMult);
         this.speed = 0.55 + wave * 0.025;
-        this.fireRate = 2000;
         this.damage = 35;
         this.score = 500;
         this.coinDrop = 10;
         this.width = 32; this.height = 32;
         this.sprite = GameAssets.enemyHeavy;
         break;
+      case 'shooter':
+        this.hp = this.maxHp = Math.floor(50 * waveMult);
+        this.speed = 1.4 + wave * 0.04;
+        this.damage = 18;
+        this.score = 200;
+        this.coinDrop = 4;
+        this.width = 28; this.height = 28;
+        this.sprite = GameAssets.enemyMedium;
+        this.canShoot = true;
+        this.fireRate = Math.max(1000, 1800 - wave * 30);
+        this.lastShot = Math.random() * this.fireRate;
+        this.targetY = 90 + Math.random() * 120; // fixed firing position
+        break;
     }
 
     this.gemDropChance = 0.005;
-    this.lastShot = Math.random() * this.fireRate;
     this.zigzagTimer = 0;
     this.zigzagDir = Math.random() > 0.5 ? 1 : -1;
     this.bounceDir = Math.random() > 0.5 ? 1 : -1;
@@ -451,21 +465,33 @@ class Enemy {
         this.x += spd * this.bounceDir * dtF;
         if (this.x > 450 || this.x < 30) this.bounceDir *= -1;
         break;
+      case 'shooter':
+        if (this.y < this.targetY) {
+          this.y += spd * dtF;
+        } else {
+          // Hover in place with a slow side-to-side drift
+          this.zigzagTimer += dt;
+          this.x += Math.sin(this.zigzagTimer * 0.0008) * 0.6 * dtF;
+          this.x = Math.max(30, Math.min(450, this.x));
+        }
+        break;
     }
 
-    this.lastShot += dt;
-    if (this.lastShot >= this.fireRate) {
-      this.lastShot = 0;
-      // Aim at player when possible; bullet always travels at least slightly downward
-      let vx = 0, vy = 5;
-      if (player) {
-        const dx = player.x - this.x;
-        const dy = player.y - this.y;
-        const d = Math.sqrt(dx * dx + dy * dy) || 1;
-        vx = (dx / d) * 5;
-        vy = Math.max(1, (dy / d) * 5);
+    // Only shooter type fires bullets
+    if (this.canShoot) {
+      this.lastShot += dt;
+      if (this.lastShot >= this.fireRate) {
+        this.lastShot = 0;
+        let vx = 0, vy = 5;
+        if (player) {
+          const dx = player.x - this.x;
+          const dy = player.y - this.y;
+          const d = Math.sqrt(dx * dx + dy * dy) || 1;
+          vx = (dx / d) * 5;
+          vy = Math.max(1, (dy / d) * 5);
+        }
+        bullets.push(new Bullet(this.x, this.y + this.height / 2, vx, vy, this.damage, 'enemy'));
       }
-      bullets.push(new Bullet(this.x, this.y + this.height / 2, vx, vy, this.damage, 'enemy'));
     }
 
     if (this.y > 750) this.dead = true;
@@ -481,6 +507,27 @@ class Enemy {
     }
 
     ctx.drawImage(this.sprite, this.x - this.width/2, this.y - this.height/2);
+
+    // Shooter type: red targeting reticle to distinguish from advancing enemies
+    if (this.type === 'shooter') {
+      ctx.save();
+      ctx.strokeStyle = '#ff2244';
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.7 + Math.sin(Date.now() * 0.004) * 0.3;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.width * 0.8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(this.x - this.width, this.y);
+      ctx.lineTo(this.x - this.width * 0.4, this.y);
+      ctx.moveTo(this.x + this.width * 0.4, this.y);
+      ctx.lineTo(this.x + this.width, this.y);
+      ctx.moveTo(this.x, this.y - this.height);
+      ctx.lineTo(this.x, this.y - this.height * 0.4);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // HP bar
     if (this.hp < this.maxHp) {
