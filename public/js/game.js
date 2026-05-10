@@ -127,7 +127,7 @@ class GalacticGame {
     zone.addEventListener('touchend', onEnd);
   }
 
-  start(abilitySlots = [null, null, null]) {
+  start(abilitySlots = [null, null, null], unlockedAbilityIds = []) {
     if (this.animId) cancelAnimationFrame(this.animId);
 
     const player = new Player(480, 700);
@@ -144,6 +144,7 @@ class GalacticGame {
       powerUps: [],
       boss: null,
       abilitySlots: abilitySlots.map(a => a ? { ...a } : null),
+      unlockedAbilityIds: unlockedAbilityIds,
       paused: false,
       gameOver: false,
       waveComplete: false,
@@ -521,10 +522,9 @@ class GalacticGame {
     // Gem drop
     if (Math.random() < enemy.gemDropChance) gs.gemsCollected++;
 
-    // Power-up drop (5% chance)
-    if (Math.random() < 0.05) {
-      const abilityIds = Object.keys(ABILITIES);
-      const abilityId = abilityIds[Math.floor(Math.random() * abilityIds.length)];
+    // Power-up drop – only abilities the user has unlocked
+    if (Math.random() < 0.05 && gs.unlockedAbilityIds && gs.unlockedAbilityIds.length > 0) {
+      const abilityId = gs.unlockedAbilityIds[Math.floor(Math.random() * gs.unlockedAbilityIds.length)];
       gs.powerUps.push(new PowerUp(enemy.x, enemy.y, abilityId));
     }
   }
@@ -541,11 +541,12 @@ class GalacticGame {
     gs.bossWave = false;
     gs.enemiesKilled++;
 
-    // Drop gems (5)
-    for (let i = 0; i < 5; i++) {
-      const abilityIds = Object.keys(ABILITIES);
-      const abilityId = abilityIds[Math.floor(Math.random() * abilityIds.length)];
-      gs.powerUps.push(new PowerUp(240 + (Math.random()-0.5)*100, 150 + i*20, abilityId));
+    // Drop power-ups only from abilities the user has unlocked
+    if (gs.unlockedAbilityIds && gs.unlockedAbilityIds.length > 0) {
+      for (let i = 0; i < 5; i++) {
+        const abilityId = gs.unlockedAbilityIds[Math.floor(Math.random() * gs.unlockedAbilityIds.length)];
+        gs.powerUps.push(new PowerUp(240 + (Math.random()-0.5)*100, 150 + i*20, abilityId));
+      }
     }
 
     gs.waveComplete = true;
@@ -608,7 +609,16 @@ class GalacticGame {
         spawned++;
       }
     }
-    gs.waveTotal = spawned;
+
+    // Add shooter enemies – fewer in number, they stay back and fire
+    const shooterCount = Math.min(1 + Math.floor((wave - 1) / 2), 3);
+    for (let i = 0; i < shooterCount; i++) {
+      const sx = 60 + Math.random() * 360;
+      const sy = -40 - i * 35;
+      gs.enemies.push(new Enemy('shooter', sx, sy, wave));
+    }
+
+    gs.waveTotal = gs.enemies.length;
     gs.bossWave = false;
   }
 
@@ -842,9 +852,9 @@ class GalacticGame {
 // Global instance
 let gameInstance = null;
 
-function startGame(abilitySlots) {
+function startGame(abilitySlots, unlockedAbilityIds) {
   if (!gameInstance) gameInstance = new GalacticGame();
-  gameInstance.start(abilitySlots || [null, null, null]);
+  gameInstance.start(abilitySlots || [null, null, null], unlockedAbilityIds || []);
 }
 
 function stopGame() {

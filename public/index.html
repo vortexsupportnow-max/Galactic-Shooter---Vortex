@@ -12,8 +12,19 @@
 <body>
   <div id="app">
 
+    <!-- Intro Screen -->
+    <div id="screen-intro" class="screen active">
+      <div class="intro-stars" id="introStars"></div>
+      <div class="intro-content">
+        <div class="intro-title-large">GALACTIC</div>
+        <div class="intro-title-sub">SHOOTER</div>
+        <div class="intro-tagline">VORTEX EDITION</div>
+        <div class="intro-skip">TAP TO START</div>
+      </div>
+    </div>
+
     <!-- Login Screen -->
-    <div id="screen-login" class="screen active">
+    <div id="screen-login" class="screen">
       <div class="stars-bg" id="loginStars"></div>
       <div class="auth-container">
         <div class="game-title">
@@ -77,6 +88,7 @@
           <button class="btn btn-yellow" id="btn-crates">📦 CRATES</button>
           <button class="btn btn-blue" id="btn-leaderboard">🏆 LEADERBOARD</button>
           <button class="btn btn-green" id="btn-profile">👤 PROFILE</button>
+          <button class="btn btn-gray" id="btn-settings">⚙ SETTINGS</button>
           <button class="btn btn-ghost" id="btn-logout">LOGOUT</button>
         </div>
       </div>
@@ -203,6 +215,22 @@
           <button class="btn btn-yellow" data-slot="2">SLOT E</button>
         </div>
         <button class="btn btn-ghost" id="slot-cancel">CANCEL</button>
+      </div>
+    </div>
+
+    <!-- Settings Overlay -->
+    <div id="settings-overlay" class="overlay hidden">
+      <div class="overlay-box">
+        <h3>⚙ AUDIO SETTINGS</h3>
+        <div class="settings-row">
+          <span class="settings-label">VOLUME</span>
+          <div class="settings-slider-wrap">
+            <input type="range" id="settings-volume" class="settings-slider" min="0" max="100" value="100">
+            <span id="settings-volume-val" class="settings-vol-val">100%</span>
+          </div>
+        </div>
+        <button class="btn btn-red" id="settings-mute-btn">🔊 MUTE</button>
+        <button class="btn btn-ghost" id="settings-close">CLOSE</button>
       </div>
     </div>
 

@@ -153,16 +153,6 @@ function renderAbilityGrid(profile) {
         maxEl.textContent = 'MAX LEVEL';
         card.appendChild(maxEl);
       }
-
-      // Assign to slot button
-      const assignBtn = document.createElement('button');
-      assignBtn.className = 'slot-assign-btn';
-      assignBtn.textContent = 'EQUIP';
-      assignBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        openSlotSelect(ability, owned);
-      });
-      card.appendChild(assignBtn);
     }
 
     grid.appendChild(card);
@@ -363,15 +353,18 @@ function initCollectionHandlers() {
 }
 
 function initMenuHandlers() {
-  document.getElementById('btn-play').addEventListener('click', () => {
-    const slots = window._pendingSlots || [null, null, null];
+  document.getElementById('btn-play').addEventListener('click', async () => {
+    // Fetch unlocked abilities first so in-game powerups only use those
+    const res = await apiFetch('/game/profile');
+    const ownedAbilityIds = res.success ? (res.data.abilities || []).map(a => a.ability_id) : [];
     showScreen('game');
-    startGame(slots);
+    startGame([null, null, null], ownedAbilityIds);
   });
   document.getElementById('btn-collection').addEventListener('click', showCollection);
   document.getElementById('btn-crates').addEventListener('click', showCrateShop);
   document.getElementById('btn-leaderboard').addEventListener('click', showLeaderboard);
   document.getElementById('btn-profile').addEventListener('click', showProfile);
+  document.getElementById('btn-settings').addEventListener('click', openSettings);
   document.getElementById('btn-logout').addEventListener('click', () => {
     clearToken();
     setNickname('');
@@ -382,6 +375,45 @@ function initMenuHandlers() {
   document.getElementById('collection-back').addEventListener('click', showMainMenu);
   document.getElementById('crates-back').addEventListener('click', showMainMenu);
   document.getElementById('lb-back').addEventListener('click', showMainMenu);
+}
+
+// ===== SETTINGS =====
+function openSettings() {
+  document.getElementById('settings-overlay').classList.remove('hidden');
+  const vol = Math.round((window.audioVolume ?? 1) * 100);
+  document.getElementById('settings-volume').value = vol;
+  const valEl = document.getElementById('settings-volume-val');
+  if (valEl) valEl.textContent = `${vol}%`;
+  _updateMuteBtn();
+}
+
+function _updateMuteBtn() {
+  const btn = document.getElementById('settings-mute-btn');
+  if (btn) btn.textContent = window.audioMuted ? '🔇 UNMUTE' : '🔊 MUTE';
+}
+
+function initSettingsHandlers() {
+  document.getElementById('settings-close').addEventListener('click', () => {
+    document.getElementById('settings-overlay').classList.add('hidden');
+  });
+
+  document.getElementById('settings-volume').addEventListener('input', e => {
+    window.audioVolume = parseInt(e.target.value) / 100;
+    localStorage.setItem('gs_audio_volume', window.audioVolume);
+    const valEl = document.getElementById('settings-volume-val');
+    if (valEl) valEl.textContent = `${e.target.value}%`;
+    if (window.audioVolume > 0 && window.audioMuted) {
+      window.audioMuted = false;
+      localStorage.setItem('gs_audio_muted', 'false');
+      _updateMuteBtn();
+    }
+  });
+
+  document.getElementById('settings-mute-btn').addEventListener('click', () => {
+    window.audioMuted = !window.audioMuted;
+    localStorage.setItem('gs_audio_muted', window.audioMuted);
+    _updateMuteBtn();
+  });
 }
 
 // Animated starfield for menu screens

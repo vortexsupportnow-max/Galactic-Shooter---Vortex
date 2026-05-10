@@ -7,6 +7,10 @@ function clearToken()  { localStorage.removeItem('gs_token'); }
 function getNickname() { return localStorage.getItem('gs_nickname'); }
 function setNickname(n) { localStorage.setItem('gs_nickname', n); }
 
+// ===== AUDIO SETTINGS =====
+window.audioVolume = parseFloat(localStorage.getItem('gs_audio_volume') || '1.0');
+window.audioMuted  = localStorage.getItem('gs_audio_muted') === 'true';
+
 async function apiFetch(path, options = {}) {
   const token = getToken();
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
@@ -88,6 +92,9 @@ function getAudioCtx() {
 }
 
 function playTone(freq, type, duration, volume = 0.3, detune = 0) {
+  if (window.audioMuted) return;
+  const effectiveVolume = volume * (window.audioVolume ?? 1);
+  if (effectiveVolume <= 0) return;
   try {
     const ctx = getAudioCtx();
     const osc = ctx.createOscillator();
@@ -97,7 +104,7 @@ function playTone(freq, type, duration, volume = 0.3, detune = 0) {
     osc.type = type;
     osc.frequency.setValueAtTime(freq, ctx.currentTime);
     osc.detune.setValueAtTime(detune, ctx.currentTime);
-    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    gain.gain.setValueAtTime(effectiveVolume, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + duration);
@@ -107,6 +114,8 @@ function playTone(freq, type, duration, volume = 0.3, detune = 0) {
 const Sounds = {
   shoot() { playTone(880, 'square', 0.07, 0.15); },
   explosion(big = false) {
+    if (window.audioMuted) return;
+    const vol = (window.audioVolume ?? 1);
     const ctx = getAudioCtx();
     try {
       const noise = ctx.createOscillator();
@@ -114,7 +123,7 @@ const Sounds = {
       noise.type = 'sawtooth';
       noise.frequency.setValueAtTime(big ? 80 : 200, ctx.currentTime);
       noise.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + (big ? 0.6 : 0.25));
-      gain.gain.setValueAtTime(big ? 0.5 : 0.3, ctx.currentTime);
+      gain.gain.setValueAtTime(big ? 0.5 * vol : 0.3 * vol, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (big ? 0.6 : 0.25));
       noise.connect(gain);
       gain.connect(ctx.destination);
