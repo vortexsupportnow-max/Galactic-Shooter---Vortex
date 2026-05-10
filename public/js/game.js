@@ -14,6 +14,20 @@ class GalacticGame {
 
     this._boundLoop = this._loop.bind(this);
     this._setupInput();
+
+    // Scale canvas to fill the screen while keeping 480×700 aspect ratio
+    this._resizeCanvas = this._resizeCanvas.bind(this);
+    this._resizeCanvas();
+    window.addEventListener('resize', this._resizeCanvas);
+  }
+
+  _resizeCanvas() {
+    const wrapper = this.canvas.parentElement;
+    const availW = wrapper ? wrapper.clientWidth  || window.innerWidth  : window.innerWidth;
+    const availH = wrapper ? wrapper.clientHeight || window.innerHeight : window.innerHeight;
+    const scale  = Math.min(availW / 480, availH / 700);
+    this.canvas.style.width  = `${Math.floor(480 * scale)}px`;
+    this.canvas.style.height = `${Math.floor(700 * scale)}px`;
   }
 
   _initStars() {
@@ -98,7 +112,7 @@ class GalacticGame {
       stick.style.transform = `translate(${dx}px,${dy}px)`;
       if (this.gs) {
         this.gs.player.joystickVX = dx / maxR;
-        this.gs.player.joystickVY = dy / maxR;
+        this.gs.player.joystickVY = 0; // vertical movement disabled
       }
       e.preventDefault();
     };
@@ -137,6 +151,7 @@ class GalacticGame {
       bossWave: false,
       enemiesKilled: 0,
       coinsCollected: 0,
+      gemsCollected: 0,
       waveTotal: 0,
       timeSlow: false, timeSlowTimer: 0,
       freezeActive: false, freezeTimer: 0,
@@ -176,6 +191,7 @@ class GalacticGame {
   }
 
   _update(dt, now) {
+    const dtF = dt / 16.667;
     const gs = this.gs;
 
     // Auto-fire with touch
@@ -205,8 +221,8 @@ class GalacticGame {
       for (const e of gs.enemies) {
         const dx = gs.blackHole.x - e.x, dy = gs.blackHole.y - e.y;
         const d = Math.sqrt(dx*dx + dy*dy) || 1;
-        e.x += (dx / d) * 2;
-        e.y += (dy / d) * 2;
+        e.x += (dx / d) * 2 * dtF;
+        e.y += (dy / d) * 2 * dtF;
         e.hp -= gs.blackHole.damage * (dt / 16);
       }
       if (gs.blackHole.timer <= 0) gs.blackHole = null;
@@ -249,7 +265,7 @@ class GalacticGame {
         const dx = gs.singularity.x - e.x, dy = gs.singularity.y - e.y;
         const d = Math.sqrt(dx*dx + dy*dy);
         if (d < gs.singularity.radius) { e.hp = 0; }
-        else { e.x += (dx/d) * 1.5; e.y += (dy/d) * 1.5; }
+        else { e.x += (dx/d) * 1.5 * dtF; e.y += (dy/d) * 1.5 * dtF; }
       }
       if (gs.singularity.timer <= 0) gs.singularity = null;
     }
@@ -400,7 +416,7 @@ class GalacticGame {
 
     // Update enemies
     for (let i = gs.enemies.length - 1; i >= 0; i--) {
-      gs.enemies[i].update(dt, gs.bullets, gs.timeSlow);
+      gs.enemies[i].update(dt, gs.bullets, gs.timeSlow, gs.player);
       if (gs.enemies[i].dead) gs.enemies.splice(i, 1);
     }
 
@@ -471,7 +487,7 @@ class GalacticGame {
 
     // Update stars
     for (const s of this.stars) {
-      s.y += s.speed;
+      s.y += s.speed * dtF;
       if (s.y > 700) { s.y = -5; s.x = Math.random() * 480; }
     }
   }
@@ -503,7 +519,7 @@ class GalacticGame {
     Sounds.explosion(false);
 
     // Gem drop
-    if (Math.random() < enemy.gemDropChance) gs.coinsCollected += 1; // simplified: give 1 gem
+    if (Math.random() < enemy.gemDropChance) gs.gemsCollected++;
 
     // Power-up drop (5% chance)
     if (Math.random() < 0.05) {
@@ -757,21 +773,30 @@ class GalacticGame {
 
       ctx.font = '8px "Press Start 2P"';
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(`SCORE: ${formatNumber(gs.score)}`, 240, 290);
-      ctx.fillText(`WAVE: ${gs.wave}`, 240, 315);
-      ctx.fillText(`KILLS: ${gs.enemiesKilled}`, 240, 340);
+      ctx.fillText(`SCORE: ${formatNumber(gs.score)}`, 240, 285);
+      ctx.fillText(`WAVE: ${gs.wave}`, 240, 308);
+      ctx.fillText(`KILLS: ${gs.enemiesKilled}`, 240, 331);
+
+      if (gs.coinsEarned !== undefined) {
+        ctx.fillStyle = '#ffff00';
+        ctx.fillText(`+${formatNumber(gs.coinsEarned)} COINS`, 240, 355);
+      }
+      if (gs.gemsEarned !== undefined && gs.gemsEarned > 0) {
+        ctx.fillStyle = '#00ffff';
+        ctx.fillText(`+${gs.gemsEarned} GEMS`, 240, 375);
+      }
 
       if (gs.newRecord) {
         ctx.font = '10px "Press Start 2P"';
         ctx.fillStyle = '#ffff00';
         ctx.shadowColor = '#ffff00'; ctx.shadowBlur = 12;
-        ctx.fillText('NEW RECORD!', 240, 375);
+        ctx.fillText('NEW RECORD!', 240, 402);
         ctx.shadowBlur = 0;
       }
 
       ctx.font = '8px "Press Start 2P"';
       ctx.fillStyle = '#00ffff';
-      ctx.fillText('TAP/PRESS TO RETURN', 240, 420);
+      ctx.fillText('TAP/PRESS TO RETURN', 240, 435);
       ctx.restore();
     }
   }
@@ -784,9 +809,18 @@ class GalacticGame {
     if (token) {
       const res = await apiFetch('/game/save-score', {
         method: 'POST',
-        body: JSON.stringify({ score: gs.score, wave: gs.wave, enemiesKilled: gs.enemiesKilled })
+        body: JSON.stringify({
+          score: gs.score,
+          wave: gs.wave,
+          enemiesKilled: gs.enemiesKilled,
+          gemsCollected: gs.gemsCollected
+        })
       });
-      if (res.success && res.data.newMaxScore > 0) gs.newRecord = true;
+      if (res.success) {
+        if (res.data.newMaxScore >= gs.score && gs.score > 0) gs.newRecord = true;
+        gs.coinsEarned = res.data.coinsEarned;
+        gs.gemsEarned  = res.data.gemsEarned;
+      }
     }
 
     // Listen for any input to return to menu

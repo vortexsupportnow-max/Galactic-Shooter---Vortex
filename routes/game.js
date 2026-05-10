@@ -19,7 +19,7 @@ const ABILITIES_BY_RARITY = {
 
 router.post('/save-score', async (req, res) => {
   try {
-    const { score, wave, enemiesKilled } = req.body;
+    const { score, wave, enemiesKilled, gemsCollected = 0 } = req.body;
     const supabase = getDB();
     const userId = req.user.userId;
 
@@ -41,7 +41,7 @@ router.post('/save-score', async (req, res) => {
     const newMaxWave = Math.max(user.max_wave, wave);
     const coinsEarned = Math.floor(score / 100);
 
-    let gemsEarned = 0;
+    let gemsEarned = Math.max(0, Math.floor(gemsCollected));
     const milestoneWaves = [20, 50, 100];
     for (const mw of milestoneWaves) {
       if (wave >= mw && user.max_wave < mw) {
