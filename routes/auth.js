@@ -3,12 +3,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { getDB } = require('../db/database');
+const { JWT_SECRET } = require('../config');
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'galactic-shooter-secret-2024';
-if (!process.env.JWT_SECRET) {
-  console.warn('WARNING: JWT_SECRET not set. Using default secret — set JWT_SECRET in production.');
-}
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
 router.use(authLimiter);

@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'galactic-shooter-secret-2024';
+const { JWT_SECRET } = require('../config');
 
 module.exports = function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
