@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Galactic Shooter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Login Screen -->
+    <div id="screen-login" class="screen active">
+      <div class="stars-bg" id="loginStars"></div>
+      <div class="auth-container">
+        <div class="game-title">
+          <div class="title-line1">GALACTIC</div>
+          <div class="title-line2">SHOOTER</div>
+        </div>
+        <div class="auth-form">
+          <h2 class="form-title">LOGIN</h2>
+          <div class="input-group">
+            <input type="text" id="login-nickname" placeholder="NICKNAME" maxlength="20" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <input type="password" id="login-password" placeholder="PASSWORD" maxlength="50">
+          </div>
+          <div id="login-error" class="error-msg"></div>
+          <button class="btn btn-cyan" id="login-btn">ENTER</button>
+          <button class="btn btn-ghost" id="goto-register">NEW PILOT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register Screen -->
+    <div id="screen-register" class="screen">
+      <div class="stars-bg"></div>
+      <div class="auth-container">
+        <div class="game-title">
+          <div class="title-line1">GALACTIC</div>
+          <div class="title-line2">SHOOTER</div>
+        </div>
+        <div class="auth-form">
+          <h2 class="form-title">NEW PILOT</h2>
+          <div class="input-group">
+            <input type="text" id="reg-nickname" placeholder="NICKNAME (3-20)" maxlength="20" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <input type="password" id="reg-password" placeholder="PASSWORD (4+)" maxlength="50">
+          </div>
+          <div id="reg-error" class="error-msg"></div>
+          <button class="btn btn-purple" id="register-btn">CREATE</button>
+          <button class="btn btn-ghost" id="goto-login">BACK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="screen-menu" class="screen">
+      <div class="stars-bg" id="menuStars"></div>
+      <div class="menu-container">
+        <div class="game-title">
+          <div class="title-line1">GALACTIC</div>
+          <div class="title-line2">SHOOTER</div>
+        </div>
+        <div class="currency-bar">
+          <span class="coin-display">🪙 <span id="menu-coins">0</span></span>
+          <span class="gem-display">💎 <span id="menu-gems">0</span></span>
+        </div>
+        <div class="pilot-name">PILOT: <span id="menu-nickname">-</span></div>
+        <div class="menu-buttons">
+          <button class="btn btn-cyan btn-large" id="btn-play">▶ PLAY</button>
+          <button class="btn btn-purple" id="btn-collection">⚡ COLLECTION</button>
+          <button class="btn btn-yellow" id="btn-crates">📦 CRATES</button>
+          <button class="btn btn-blue" id="btn-leaderboard">🏆 LEADERBOARD</button>
+          <button class="btn btn-green" id="btn-profile">👤 PROFILE</button>
+          <button class="btn btn-ghost" id="btn-logout">LOGOUT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="screen-game" class="screen">
+      <div class="game-wrapper">
+        <canvas id="gameCanvas" width="480" height="700"></canvas>
+        <!-- Touch controls -->
+        <div id="touch-controls">
+          <div id="joystick-zone">
+            <div id="joystick-base">
+              <div id="joystick-stick"></div>
+            </div>
+          </div>
+          <div id="touch-right">
+            <button class="touch-ability-btn" data-slot="0">Q</button>
+            <button class="touch-ability-btn" data-slot="1">W</button>
+            <button class="touch-ability-btn" data-slot="2">E</button>
+            <button id="fire-btn" class="touch-fire-btn">🔥</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Screen -->
+    <div id="screen-profile" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="profile-back">← BACK</button>
+        <h2 class="screen-title">PROFILE</h2>
+      </div>
+      <div class="profile-content" id="profile-content">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- Collection Screen -->
+    <div id="screen-collection" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="collection-back">← BACK</button>
+        <h2 class="screen-title">COLLECTION</h2>
+        <div class="header-currency">
+          🪙 <span id="coll-coins">0</span>
+        </div>
+      </div>
+      <div class="ability-filters">
+        <button class="filter-btn active" data-rarity="all">ALL</button>
+        <button class="filter-btn common" data-rarity="common">COMMON</button>
+        <button class="filter-btn rare" data-rarity="rare">RARE</button>
+        <button class="filter-btn epic" data-rarity="epic">EPIC</button>
+        <button class="filter-btn legendary" data-rarity="legendary">LEGENDARY</button>
+      </div>
+      <div class="ability-grid" id="ability-grid">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- Crates Screen -->
+    <div id="screen-crates" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="crates-back">← BACK</button>
+        <h2 class="screen-title">CRATES</h2>
+        <div class="header-currency">
+          💎 <span id="crates-gems">0</span>
+        </div>
+      </div>
+      <div class="crates-content">
+        <div class="crate-box" id="crate-box">
+          <div class="crate-icon">📦</div>
+          <div class="crate-label">MYSTERY CRATE</div>
+          <div class="crate-cost">10 💎</div>
+        </div>
+        <button class="btn btn-yellow btn-large" id="open-crate-btn">OPEN CRATE</button>
+        <div id="crate-result" class="crate-result hidden"></div>
+        <div class="crate-info">
+          <div class="rarity-chance common">■ COMMON: 50%</div>
+          <div class="rarity-chance rare">■ RARE: 30%</div>
+          <div class="rarity-chance epic">■ EPIC: 15%</div>
+          <div class="rarity-chance legendary">■ LEGENDARY: 5%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard Screen -->
+    <div id="screen-leaderboard" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="lb-back">← BACK</button>
+        <h2 class="screen-title">LEADERBOARD</h2>
+      </div>
+      <div class="lb-tabs">
+        <button class="lb-tab active" data-type="scores">SCORE</button>
+        <button class="lb-tab" data-type="waves">WAVE</button>
+      </div>
+      <div class="lb-filters">
+        <button class="lb-filter active" data-filter="all">ALL TIME</button>
+        <button class="lb-filter" data-filter="weekly">WEEKLY</button>
+        <button class="lb-filter" data-filter="daily">DAILY</button>
+      </div>
+      <div class="lb-table-wrapper">
+        <table class="lb-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>PILOT</th>
+              <th id="lb-value-header">SCORE</th>
+              <th>WAVE</th>
+            </tr>
+          </thead>
+          <tbody id="lb-tbody">
+            <tr><td colspan="4" class="loading">LOADING...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Ability Slot Selection Overlay -->
+    <div id="slot-select-overlay" class="overlay hidden">
+      <div class="overlay-box">
+        <h3>ASSIGN TO SLOT</h3>
+        <div class="slot-buttons">
+          <button class="btn btn-cyan" data-slot="0">SLOT Q</button>
+          <button class="btn btn-purple" data-slot="1">SLOT W</button>
+          <button class="btn btn-yellow" data-slot="2">SLOT E</button>
+        </div>
+        <button class="btn btn-ghost" id="slot-cancel">CANCEL</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/assets.js"></script>
+  <script src="/js/abilities.js"></script>
+  <script src="/js/entities.js"></script>
+  <script src="/js/hud.js"></script>
+  <script src="/js/game.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
