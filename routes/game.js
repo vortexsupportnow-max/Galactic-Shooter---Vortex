@@ -89,7 +89,8 @@ router.post('/save-score', async (req, res) => {
     await checkAchievements(supabase, userId, { score, wave, enemiesKilled: enemiesKilled || 0 });
 
     // Keep only the top 10 scores per user to limit database storage usage
-    await supabase.rpc('trim_user_scores', { p_user_id: userId, p_keep: 10 });
+    const { error: trimErr } = await supabase.rpc('trim_user_scores', { p_user_id: userId, p_keep: 10 });
+    if (trimErr) console.warn('trim_user_scores failed (non-fatal):', trimErr.message);
 
     res.json({ success: true, data: { coinsEarned, gemsEarned, newMaxScore, newMaxWave } });
   } catch (err) {

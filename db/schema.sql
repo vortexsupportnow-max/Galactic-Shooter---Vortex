@@ -136,12 +136,14 @@ CREATE OR REPLACE FUNCTION trim_user_scores(p_user_id BIGINT, p_keep INTEGER DEF
 RETURNS VOID LANGUAGE sql AS $$
   DELETE FROM scores
   WHERE user_id = p_user_id
-    AND id NOT IN (
+    AND id IN (
       SELECT id
-      FROM scores
-      WHERE user_id = p_user_id
-      ORDER BY score DESC
-      LIMIT p_keep
+      FROM (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY score DESC) AS rn
+        FROM scores
+        WHERE user_id = p_user_id
+      ) ranked
+      WHERE rn > p_keep
     );
 $$;
 
@@ -154,13 +156,16 @@ RETURNS INTEGER LANGUAGE plpgsql AS $$
 DECLARE
   deleted_count INTEGER;
 BEGIN
+  -- Materialise the protected IDs (one best score per user) once
+  -- to avoid repeating a full table scan for every candidate row.
+  WITH protected AS (
+    SELECT DISTINCT ON (user_id) id
+    FROM scores
+    ORDER BY user_id, score DESC
+  )
   DELETE FROM scores
   WHERE created_at < NOW() - (older_than_days || ' days')::INTERVAL
-    AND id NOT IN (
-      SELECT DISTINCT ON (user_id) id
-      FROM scores
-      ORDER BY user_id, score DESC
-    );
+    AND id NOT IN (SELECT id FROM protected);
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RETURN deleted_count;
 END;
