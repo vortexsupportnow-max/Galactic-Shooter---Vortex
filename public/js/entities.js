@@ -482,15 +482,7 @@ class Enemy {
       this.lastShot += dt;
       if (this.lastShot >= this.fireRate) {
         this.lastShot = 0;
-        let vx = 0, vy = 5;
-        if (player) {
-          const dx = player.x - this.x;
-          const dy = player.y - this.y;
-          const d = Math.sqrt(dx * dx + dy * dy) || 1;
-          vx = (dx / d) * 5;
-          vy = Math.max(1, (dy / d) * 5);
-        }
-        bullets.push(new Bullet(this.x, this.y + this.height / 2, vx, vy, this.damage, 'enemy'));
+        bullets.push(new Bullet(this.x, this.y + this.height / 2, 0, 5, this.damage, 'enemy'));
       }
     }
 
@@ -628,12 +620,11 @@ class Boss {
   }
 
   aimedPattern(bullets) {
-    // Homing missiles
     const count = this.isPhase2 ? 4 : 2;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 0.5 - Math.PI * 0.25 + Math.PI / 2;
       bullets.push(new Bullet(this.x + (i - count/2) * 20, this.y + 30,
-        Math.cos(angle) * 2, Math.sin(angle) * 2, 25, 'enemy', { homing: true }));
+        Math.cos(angle) * 2, Math.sin(angle) * 2, 25, 'enemy'));
     }
   }
 
