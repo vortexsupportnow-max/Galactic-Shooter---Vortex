@@ -155,6 +155,9 @@ function renderAbilityGrid(profile) {
       }
     }
 
+    // Click anywhere on card opens ability info popup
+    card.addEventListener('click', () => openAbilityInfo(ability, owned || null));
+
     grid.appendChild(card);
   }
 }
@@ -536,3 +539,148 @@ function initStarField(containerId) {
 }
 
 window.showMainMenu = showMainMenu;
+
+// ===== TUTORIAL =====
+
+const TUTORIAL_SLIDES = [
+  {
+    emoji: '🚀',
+    title: 'WELCOME, PILOT!',
+    body: 'Welcome to Galactic Shooter — Vortex Edition!\nYou are the last defender of the galaxy.\nSurvive endless waves of alien enemies\nand become a legend!'
+  },
+  {
+    emoji: '🕹️',
+    title: 'CONTROLS',
+    body: 'MOVE: joystick (bottom-left) or arrow keys\nSHOOT: automatic — just move!\nFIRE BUTTON: hold for rapid fire\nQ / W / E: activate equipped abilities\nOn desktop, use WASD or arrows to move.'
+  },
+  {
+    emoji: '👾',
+    title: 'ENEMIES & WAVES',
+    body: 'Enemies spawn every few seconds.\nEach wave is stronger than the last.\nEvery 10 waves a BOSS appears!\nKill enemies to earn score and currency.\nSurvive as many waves as you can!'
+  },
+  {
+    emoji: '⚡',
+    title: 'ABILITIES & CRATES',
+    body: 'Open CRATES with 💎 Gems to unlock abilities.\nAssign abilities to slots Q / W / E\nfrom your COLLECTION.\nUse abilities in battle for massive power!\nUpgrade abilities with 🪙 Coins.'
+  },
+  {
+    emoji: '💰',
+    title: 'CURRENCY',
+    body: '🪙 COINS: earned from score — upgrade abilities.\n💎 GEMS: dropped by enemies & bosses.\n   Earn more by reaching higher waves!\n   Use gems to open crates and unlock\n   powerful new abilities.'
+  },
+  {
+    emoji: '🎁',
+    title: 'STARTER GIFT!',
+    body: "You're ready to fight!\nAs a welcome gift, here's your starter pack:",
+    reward: '🪙 1,000 COINS\n💎 10 GEMS'
+  }
+];
+
+let _tutorialSlide = 0;
+
+function initTutorialHandlers() {
+  document.getElementById('tutorial-next').addEventListener('click', () => {
+    if (_tutorialSlide < TUTORIAL_SLIDES.length - 1) {
+      _tutorialSlide++;
+      renderTutorialSlide();
+    } else {
+      completeTutorial();
+    }
+  });
+
+  document.getElementById('tutorial-prev').addEventListener('click', () => {
+    if (_tutorialSlide > 0) {
+      _tutorialSlide--;
+      renderTutorialSlide();
+    }
+  });
+
+  document.getElementById('tutorial-skip').addEventListener('click', completeTutorial);
+}
+
+function renderTutorialSlide() {
+  const slide = TUTORIAL_SLIDES[_tutorialSlide];
+  const area = document.getElementById('tutorial-slide-area');
+  const isLast = _tutorialSlide === TUTORIAL_SLIDES.length - 1;
+
+  area.innerHTML = `
+    <div class="tutorial-slide-emoji">${slide.emoji}</div>
+    <div class="tutorial-slide-title">${slide.title}</div>
+    <div class="tutorial-slide-body">${slide.body.replace(/\n/g, '<br>')}</div>
+    ${slide.reward ? `<div class="tutorial-slide-reward">${slide.reward.replace(/\n/g, '<br>')}</div>` : ''}
+  `;
+
+  // Update dots
+  const dotsEl = document.getElementById('tutorial-dots');
+  dotsEl.innerHTML = TUTORIAL_SLIDES.map((_, i) =>
+    `<div class="tutorial-dot ${i === _tutorialSlide ? 'active' : ''}"></div>`
+  ).join('');
+
+  // Update buttons
+  document.getElementById('tutorial-prev').style.visibility = _tutorialSlide === 0 ? 'hidden' : '';
+  const nextBtn = document.getElementById('tutorial-next');
+  nextBtn.textContent = isLast ? 'CLAIM REWARD ★' : 'NEXT ▶';
+  nextBtn.className = isLast ? 'btn btn-yellow tutorial-nav-btn' : 'btn btn-cyan tutorial-nav-btn';
+}
+
+async function completeTutorial() {
+  document.getElementById('tutorial-overlay').classList.add('hidden');
+
+  // Mark locally so tutorial won't show again on this device
+  const key = `gs_tutorial_done_${getNickname()}`;
+  localStorage.setItem(key, '1');
+
+  // Claim reward from server (idempotent — server guards against double-claim)
+  const res = await apiFetch('/game/claim-tutorial-reward', { method: 'POST', body: '{}' });
+  if (res.success) {
+    updateCurrency();
+    alert('🎉 WELCOME GIFT RECEIVED!\n🪙 +1,000 COINS\n💎 +10 GEMS\n\nGood luck, pilot!');
+  }
+}
+
+async function maybeShowTutorial() {
+  const key = `gs_tutorial_done_${getNickname()}`;
+  if (localStorage.getItem(key)) return;
+
+  // Show tutorial from the first slide
+  _tutorialSlide = 0;
+  renderTutorialSlide();
+  document.getElementById('tutorial-overlay').classList.remove('hidden');
+}
+
+// ===== ABILITY INFO POPUP =====
+
+function openAbilityInfo(ability, ownedLevel) {
+  const box = document.getElementById('ability-info-box');
+  if (box) {
+    box.className = `ability-info-box ${ability.rarity}`;
+  }
+
+  document.getElementById('ability-info-rarity').textContent = ability.rarity.toUpperCase();
+  document.getElementById('ability-info-rarity').className = `ability-info-rarity ${ability.rarity}`;
+  document.getElementById('ability-info-name').textContent = ability.name;
+  document.getElementById('ability-info-desc').textContent = ability.description;
+
+  const levelEl = document.getElementById('ability-info-level');
+  levelEl.textContent = ownedLevel ? `LEVEL ${ownedLevel} / 10` : '🔒 LOCKED — OPEN CRATES TO UNLOCK';
+  levelEl.style.color = ownedLevel ? 'var(--yellow)' : '#555577';
+
+  const iconWrap = document.getElementById('ability-info-icon-wrap');
+  iconWrap.innerHTML = '';
+  const icon = GameAssets.drawAbilityIcon(ability.id, ability.rarity);
+  icon.style.width = '56px'; icon.style.height = '56px';
+  iconWrap.appendChild(icon);
+
+  document.getElementById('ability-info-overlay').classList.remove('hidden');
+}
+
+function initAbilityInfoHandlers() {
+  document.getElementById('ability-info-close').addEventListener('click', () => {
+    document.getElementById('ability-info-overlay').classList.add('hidden');
+  });
+  document.getElementById('ability-info-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('ability-info-overlay')) {
+      document.getElementById('ability-info-overlay').classList.add('hidden');
+    }
+  });
+}

@@ -64,7 +64,9 @@ router.post('/save-score', async (req, res) => {
     const coinsEarned = Math.floor(score / 100);
 
     let gemsEarned = Math.max(0, Math.floor(gemsCollected));
-    const milestoneWaves = [20, 50, 100];
+    // Base per-game gem bonus: 1 gem per 5 waves completed (e.g. wave 10 = 2 gems)
+    gemsEarned += Math.floor(wave / 5);
+    const milestoneWaves = [3, 5, 10, 20];
     for (const mw of milestoneWaves) {
       if (wave >= mw && user.max_wave < mw) {
         gemsEarned += 5;
@@ -87,6 +89,43 @@ router.post('/save-score', async (req, res) => {
     await checkAchievements(supabase, userId, { score, wave, enemiesKilled: enemiesKilled || 0 });
 
     res.json({ success: true, data: { coinsEarned, gemsEarned, newMaxScore, newMaxWave } });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+router.post('/claim-tutorial-reward', async (req, res) => {
+  try {
+    const supabase = getDB();
+    const userId = req.user.userId;
+
+    // Check if reward was already claimed (stored as a special achievement)
+    const { data: existing } = await supabase
+      .from('achievements')
+      .select('achievement_id')
+      .eq('user_id', userId)
+      .eq('achievement_id', 'tutorial_done')
+      .maybeSingle();
+
+    if (existing) return res.json({ success: false, error: 'ALREADY CLAIMED' });
+
+    // Award coins and gems
+    const { data: user } = await supabase
+      .from('users')
+      .select('coins, gems')
+      .eq('id', userId)
+      .single();
+
+    await supabase
+      .from('users')
+      .update({ coins: user.coins + 1000, gems: user.gems + 10 })
+      .eq('id', userId);
+
+    await supabase
+      .from('achievements')
+      .insert({ user_id: userId, achievement_id: 'tutorial_done' });
+
+    res.json({ success: true, data: { coinsEarned: 1000, gemsEarned: 10 } });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

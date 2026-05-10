@@ -59,6 +59,8 @@ async function init() {
   initLeaderboardHandlers();
   initCollectionHandlers();
   initSettingsHandlers();
+  initTutorialHandlers();
+  initAbilityInfoHandlers();
 
   // Init login starfield
   initStarField('loginStars');
@@ -73,6 +75,7 @@ async function init() {
     if (res.success) {
       setNickname(res.data.nickname);
       showMainMenu();
+      maybeShowTutorial();
       return;
     } else {
       clearToken();
