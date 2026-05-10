@@ -3,12 +3,34 @@ const { getDB } = require('../db/database');
 
 const router = express.Router();
 
-const RARITY_POOL = [
-  ...Array(50).fill('common'),
-  ...Array(30).fill('rare'),
-  ...Array(15).fill('epic'),
-  ...Array(5).fill('legendary')
-];
+const CRATE_TYPES = {
+  mystery: {
+    cost: 10,
+    pool: [
+      ...Array(50).fill('common'),
+      ...Array(30).fill('rare'),
+      ...Array(15).fill('epic'),
+      ...Array(5).fill('legendary')
+    ]
+  },
+  galactic: {
+    cost: 50,
+    pool: [
+      ...Array(20).fill('common'),
+      ...Array(40).fill('rare'),
+      ...Array(30).fill('epic'),
+      ...Array(10).fill('legendary')
+    ]
+  },
+  void: {
+    cost: 150,
+    pool: [
+      ...Array(10).fill('rare'),
+      ...Array(50).fill('epic'),
+      ...Array(40).fill('legendary')
+    ]
+  }
+};
 
 const ABILITIES_BY_RARITY = {
   common: ['shield', 'speed_boost', 'triple_shot', 'frag_bomb', 'rapid_fire', 'heal', 'spread_shot', 'homing'],
@@ -42,7 +64,9 @@ router.post('/save-score', async (req, res) => {
     const coinsEarned = Math.floor(score / 100);
 
     let gemsEarned = Math.max(0, Math.floor(gemsCollected));
-    const milestoneWaves = [20, 50, 100];
+    // Base per-game gem bonus: 1 gem per 5 waves completed (e.g. wave 10 = 2 gems)
+    gemsEarned += Math.floor(wave / 5);
+    const milestoneWaves = [3, 5, 10, 20];
     for (const mw of milestoneWaves) {
       if (wave >= mw && user.max_wave < mw) {
         gemsEarned += 5;
@@ -65,6 +89,43 @@ router.post('/save-score', async (req, res) => {
     await checkAchievements(supabase, userId, { score, wave, enemiesKilled: enemiesKilled || 0 });
 
     res.json({ success: true, data: { coinsEarned, gemsEarned, newMaxScore, newMaxWave } });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+router.post('/claim-tutorial-reward', async (req, res) => {
+  try {
+    const supabase = getDB();
+    const userId = req.user.userId;
+
+    // Check if reward was already claimed (stored as a special achievement)
+    const { data: existing } = await supabase
+      .from('achievements')
+      .select('achievement_id')
+      .eq('user_id', userId)
+      .eq('achievement_id', 'tutorial_done')
+      .maybeSingle();
+
+    if (existing) return res.json({ success: false, error: 'Tutorial reward already claimed' });
+
+    // Award coins and gems
+    const { data: user } = await supabase
+      .from('users')
+      .select('coins, gems')
+      .eq('id', userId)
+      .single();
+
+    await supabase
+      .from('users')
+      .update({ coins: user.coins + 1000, gems: user.gems + 10 })
+      .eq('id', userId);
+
+    await supabase
+      .from('achievements')
+      .insert({ user_id: userId, achievement_id: 'tutorial_done' });
+
+    res.json({ success: true, data: { coinsEarned: 1000, gemsEarned: 10 } });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -165,17 +226,21 @@ router.post('/open-crate', async (req, res) => {
     const supabase = getDB();
     const userId = req.user.userId;
 
+    const crateType = req.body.crateType || 'mystery';
+    const crate = CRATE_TYPES[crateType];
+    if (!crate) return res.json({ success: false, error: 'Invalid crate type' });
+
     const { data: user } = await supabase
       .from('users')
       .select('gems')
       .eq('id', userId)
       .single();
 
-    if (user.gems < 10) return res.json({ success: false, error: 'Not enough gems (need 10)' });
+    if (user.gems < crate.cost) return res.json({ success: false, error: `Not enough gems (need ${crate.cost})` });
 
-    await supabase.from('users').update({ gems: user.gems - 10 }).eq('id', userId);
+    await supabase.from('users').update({ gems: user.gems - crate.cost }).eq('id', userId);
 
-    const rarity = RARITY_POOL[Math.floor(Math.random() * RARITY_POOL.length)];
+    const rarity = crate.pool[Math.floor(Math.random() * crate.pool.length)];
     const pool = ABILITIES_BY_RARITY[rarity];
     const abilityId = pool[Math.floor(Math.random() * pool.length)];
 
@@ -196,8 +261,8 @@ router.post('/open-crate', async (req, res) => {
           .eq('ability_id', abilityId);
         newLevel = existing.level + 1;
       } else {
-        // Already max level – refund 5 gems
-        await supabase.from('users').update({ gems: user.gems - 10 + 5 }).eq('id', userId);
+        // Already max level – refund half the cost
+        await supabase.from('users').update({ gems: user.gems - crate.cost + Math.floor(crate.cost / 2) }).eq('id', userId);
         newLevel = existing.level;
       }
     } else {

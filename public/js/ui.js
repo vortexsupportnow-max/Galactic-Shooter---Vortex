@@ -155,6 +155,9 @@ function renderAbilityGrid(profile) {
       }
     }
 
+    // Click anywhere on card opens ability info popup
+    card.addEventListener('click', () => openAbilityInfo(ability, owned || null));
+
     grid.appendChild(card);
   }
 }
@@ -228,37 +231,132 @@ async function loadCrateShop() {
   document.getElementById('crate-result').classList.add('hidden');
 }
 
+const CRATE_DEFS = {
+  mystery: {
+    icon: '📦', name: 'MYSTERY CRATE', cost: 10,
+    odds: [
+      { cls: 'common',    label: '■ COMMON: 50%' },
+      { cls: 'rare',      label: '■ RARE: 30%' },
+      { cls: 'epic',      label: '■ EPIC: 15%' },
+      { cls: 'legendary', label: '■ LEGENDARY: 5%' }
+    ]
+  },
+  galactic: {
+    icon: '🌌', name: 'GALACTIC CRATE', cost: 50,
+    odds: [
+      { cls: 'common',    label: '■ COMMON: 20%' },
+      { cls: 'rare',      label: '■ RARE: 40%' },
+      { cls: 'epic',      label: '■ EPIC: 30%' },
+      { cls: 'legendary', label: '■ LEGENDARY: 10%' }
+    ]
+  },
+  void: {
+    icon: '🕳️', name: 'VOID CRATE', cost: 150,
+    odds: [
+      { cls: 'rare',      label: '■ RARE: 10%' },
+      { cls: 'epic',      label: '■ EPIC: 50%' },
+      { cls: 'legendary', label: '■ LEGENDARY: 40%' }
+    ]
+  }
+};
+
+let _selectedCrate = 'mystery';
+
 function initCrateHandlers() {
   document.getElementById('open-crate-btn').addEventListener('click', openCrate);
+
+  document.querySelectorAll('.crate-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.crate-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      _selectedCrate = card.dataset.crate;
+      updateCrateDisplay(_selectedCrate);
+    });
+  });
+
+  updateCrateDisplay(_selectedCrate);
+}
+
+function updateCrateDisplay(type) {
+  const def = CRATE_DEFS[type];
+  const box = document.getElementById('crate-box');
+  box.className = `crate-box type-${type}`;
+
+  document.getElementById('selected-crate-icon').textContent = def.icon;
+  document.getElementById('selected-crate-name').textContent = def.name;
+  document.getElementById('selected-crate-cost').textContent = `${def.cost} 💎`;
+
+  const info = document.getElementById('crate-info');
+  info.innerHTML = def.odds.map(o => `<div class="rarity-chance ${o.cls}">${o.label}</div>`).join('');
+
+  document.getElementById('crate-result').classList.add('hidden');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function animateCrateOpening(rarity) {
+  const box = document.getElementById('crate-box');
+  const flash = document.getElementById('crate-flash-overlay');
+
+  // Store base class so we can restore it
+  const baseClass = `crate-box type-${_selectedCrate}`;
+
+  // Phase 1: gentle shake + increasing glow (1.2s suspense)
+  box.className = `${baseClass} phase-shake1`;
+  await sleep(600);
+  box.className = `${baseClass} phase-shake1 phase-glow`;
+  await sleep(700);
+
+  // Phase 2: intense shake (1.0s)
+  box.className = `${baseClass} phase-shake2 phase-glow`;
+  await sleep(1000);
+
+  // Phase 3: burst + screen flash
+  box.className = `${baseClass} phase-burst`;
+  flash.className = `crate-flash-overlay flash-${rarity}`;
+  await sleep(500);
+
+  // Hide crate, reset
+  box.style.opacity = '0';
+  await sleep(200);
+  box.className = baseClass;
+  box.style.opacity = '';
 }
 
 async function openCrate() {
   const btn = document.getElementById('open-crate-btn');
-  btn.textContent = '...';
+  btn.textContent = 'OPENING...';
   btn.disabled = true;
 
-  const res = await apiFetch('/game/open-crate', { method: 'POST', body: '{}' });
+  // Fire API immediately so result is ready; animation runs after response arrives
+  const resPromise = apiFetch('/game/open-crate', {
+    method: 'POST',
+    body: JSON.stringify({ crateType: _selectedCrate })
+  });
 
-  btn.textContent = 'OPEN CRATE';
-  btn.disabled = false;
+  // Run suspense animation while request is in-flight (or wait for it to finish first)
+  const res = await resPromise;
 
   if (!res.success) {
+    btn.textContent = 'OPEN CRATE';
+    btn.disabled = false;
     alert(res.error || 'Failed to open crate');
     return;
   }
 
   const { abilityId, rarity, level, alreadyOwned } = res.data;
+
+  // Run the suspense animation now that we know the rarity
+  await animateCrateOpening(rarity);
+
+  // Reveal result
   const ability = ABILITIES[abilityId];
   const resultEl = document.getElementById('crate-result');
-  resultEl.className = `crate-result ${rarity}`;
-  resultEl.classList.remove('hidden');
 
   const icon = GameAssets.drawAbilityIcon(abilityId, rarity);
   icon.style.width = '40px'; icon.style.height = '40px';
 
-  resultEl.innerHTML = `
-    <div style="font-size:0.5rem;margin-bottom:0.5rem">${rarity.toUpperCase()}</div>
-  `;
+  resultEl.innerHTML = `<div style="font-size:0.5rem;margin-bottom:0.5rem">${rarity.toUpperCase()}</div>`;
   resultEl.appendChild(icon);
   resultEl.innerHTML += `
     <div style="font-size:0.6rem;margin-top:0.5rem">${ability ? ability.name : abilityId}</div>
@@ -267,11 +365,13 @@ async function openCrate() {
     </div>
   `;
 
-  // Animate crate
-  const crateBox = document.getElementById('crate-box');
-  crateBox.style.animation = 'none';
-  crateBox.style.transform = 'scale(1.15)';
-  setTimeout(() => { crateBox.style.transform = ''; crateBox.style.animation = ''; }, 400);
+  // Force browser reflow to restart CSS animation
+  resultEl.className = 'crate-result hidden';
+  void resultEl.offsetWidth;
+  resultEl.className = `crate-result ${rarity}`;
+
+  btn.textContent = 'OPEN CRATE';
+  btn.disabled = false;
 
   // Update gem display
   loadCrateShop();
@@ -439,3 +539,148 @@ function initStarField(containerId) {
 }
 
 window.showMainMenu = showMainMenu;
+
+// ===== TUTORIAL =====
+
+const TUTORIAL_SLIDES = [
+  {
+    emoji: '🚀',
+    title: 'WELCOME, PILOT!',
+    body: 'Welcome to Galactic Shooter — Vortex Edition!\nYou are the last defender of the galaxy.\nSurvive endless waves of alien enemies\nand become a legend!'
+  },
+  {
+    emoji: '🕹️',
+    title: 'CONTROLS',
+    body: 'MOVE: joystick (bottom-left) or arrow keys\nSHOOT: automatic — just move!\nFIRE BUTTON: hold for rapid fire\nQ / W / E: activate equipped abilities\nOn desktop, use WASD or arrows to move.'
+  },
+  {
+    emoji: '👾',
+    title: 'ENEMIES & WAVES',
+    body: 'Enemies spawn every few seconds.\nEach wave is stronger than the last.\nEvery 10 waves a BOSS appears!\nKill enemies to earn score and currency.\nSurvive as many waves as you can!'
+  },
+  {
+    emoji: '⚡',
+    title: 'ABILITIES & CRATES',
+    body: 'Open CRATES with 💎 Gems to unlock abilities.\nAssign abilities to slots Q / W / E\nfrom your COLLECTION.\nUse abilities in battle for massive power!\nUpgrade abilities with 🪙 Coins.'
+  },
+  {
+    emoji: '💰',
+    title: 'CURRENCY',
+    body: '🪙 COINS: earned from score — upgrade abilities.\n💎 GEMS: dropped by enemies & bosses.\n   Earn more by reaching higher waves!\n   Use gems to open crates and unlock\n   powerful new abilities.'
+  },
+  {
+    emoji: '🎁',
+    title: 'STARTER GIFT!',
+    body: "You're ready to fight!\nAs a welcome gift, here's your starter pack:",
+    reward: '🪙 1,000 COINS\n💎 10 GEMS'
+  }
+];
+
+let _tutorialSlide = 0;
+
+function initTutorialHandlers() {
+  document.getElementById('tutorial-next').addEventListener('click', () => {
+    if (_tutorialSlide < TUTORIAL_SLIDES.length - 1) {
+      _tutorialSlide++;
+      renderTutorialSlide();
+    } else {
+      completeTutorial();
+    }
+  });
+
+  document.getElementById('tutorial-prev').addEventListener('click', () => {
+    if (_tutorialSlide > 0) {
+      _tutorialSlide--;
+      renderTutorialSlide();
+    }
+  });
+
+  document.getElementById('tutorial-skip').addEventListener('click', completeTutorial);
+}
+
+function renderTutorialSlide() {
+  const slide = TUTORIAL_SLIDES[_tutorialSlide];
+  const area = document.getElementById('tutorial-slide-area');
+  const isLast = _tutorialSlide === TUTORIAL_SLIDES.length - 1;
+
+  area.innerHTML = `
+    <div class="tutorial-slide-emoji">${slide.emoji}</div>
+    <div class="tutorial-slide-title">${slide.title}</div>
+    <div class="tutorial-slide-body">${slide.body.replace(/\n/g, '<br>')}</div>
+    ${slide.reward ? `<div class="tutorial-slide-reward">${slide.reward.replace(/\n/g, '<br>')}</div>` : ''}
+  `;
+
+  // Update dots
+  const dotsEl = document.getElementById('tutorial-dots');
+  dotsEl.innerHTML = TUTORIAL_SLIDES.map((_, i) =>
+    `<div class="tutorial-dot ${i === _tutorialSlide ? 'active' : ''}"></div>`
+  ).join('');
+
+  // Update buttons
+  document.getElementById('tutorial-prev').style.visibility = _tutorialSlide === 0 ? 'hidden' : '';
+  const nextBtn = document.getElementById('tutorial-next');
+  nextBtn.textContent = isLast ? 'CLAIM REWARD ★' : 'NEXT ▶';
+  nextBtn.className = isLast ? 'btn btn-yellow tutorial-nav-btn' : 'btn btn-cyan tutorial-nav-btn';
+}
+
+async function completeTutorial() {
+  document.getElementById('tutorial-overlay').classList.add('hidden');
+
+  // Mark locally so tutorial won't show again on this device
+  const key = `gs_tutorial_done_${getNickname()}`;
+  localStorage.setItem(key, '1');
+
+  // Claim reward from server (idempotent — server guards against double-claim)
+  const res = await apiFetch('/game/claim-tutorial-reward', { method: 'POST', body: '{}' });
+  if (res.success) {
+    updateCurrency();
+    alert('🎉 WELCOME GIFT RECEIVED!\n🪙 +1,000 COINS\n💎 +10 GEMS\n\nGood luck, pilot!');
+  }
+}
+
+async function maybeShowTutorial() {
+  const key = `gs_tutorial_done_${getNickname()}`;
+  if (localStorage.getItem(key)) return;
+
+  // Show tutorial from the first slide
+  _tutorialSlide = 0;
+  renderTutorialSlide();
+  document.getElementById('tutorial-overlay').classList.remove('hidden');
+}
+
+// ===== ABILITY INFO POPUP =====
+
+function openAbilityInfo(ability, ownedLevel) {
+  const box = document.getElementById('ability-info-box');
+  if (box) {
+    box.className = `ability-info-box ${ability.rarity}`;
+  }
+
+  document.getElementById('ability-info-rarity').textContent = ability.rarity.toUpperCase();
+  document.getElementById('ability-info-rarity').className = `ability-info-rarity ${ability.rarity}`;
+  document.getElementById('ability-info-name').textContent = ability.name;
+  document.getElementById('ability-info-desc').textContent = ability.description;
+
+  const levelEl = document.getElementById('ability-info-level');
+  levelEl.textContent = ownedLevel ? `LEVEL ${ownedLevel} / 10` : '🔒 LOCKED — OPEN CRATES TO UNLOCK';
+  levelEl.style.color = ownedLevel ? 'var(--yellow)' : '#555577';
+
+  const iconWrap = document.getElementById('ability-info-icon-wrap');
+  iconWrap.innerHTML = '';
+  const icon = GameAssets.drawAbilityIcon(ability.id, ability.rarity);
+  icon.style.width = '56px'; icon.style.height = '56px';
+  iconWrap.appendChild(icon);
+
+  document.getElementById('ability-info-overlay').classList.remove('hidden');
+}
+
+function initAbilityInfoHandlers() {
+  document.getElementById('ability-info-close').addEventListener('click', () => {
+    document.getElementById('ability-info-overlay').classList.add('hidden');
+  });
+  document.getElementById('ability-info-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('ability-info-overlay')) {
+      document.getElementById('ability-info-overlay').classList.add('hidden');
+    }
+  });
+}

@@ -435,7 +435,7 @@ class Enemy {
         break;
     }
 
-    this.gemDropChance = 0.005;
+    this.gemDropChance = 0.05;
     this.zigzagTimer = 0;
     this.zigzagDir = Math.random() > 0.5 ? 1 : -1;
     this.bounceDir = Math.random() > 0.5 ? 1 : -1;
