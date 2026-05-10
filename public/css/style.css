@@ -440,6 +440,18 @@ html, body {
 .rarity-chance.epic      { color: var(--epic); }
 .rarity-chance.legendary { color: var(--legendary); }
 
+.crate-continue-hint {
+  font-size: 0.38rem;
+  margin-top: 0.8rem;
+  opacity: 0.55;
+  animation: blinkHint 1.2s step-start infinite;
+  cursor: pointer;
+}
+@keyframes blinkHint {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 0.15; }
+}
+
 /* ===== LEADERBOARD ===== */
 .lb-tabs {
   display: flex; width: 100%; max-width: 480px; flex-shrink: 0;

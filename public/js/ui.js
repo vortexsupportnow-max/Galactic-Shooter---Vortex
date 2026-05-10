@@ -363,6 +363,7 @@ async function openCrate() {
     <div style="font-size:0.45rem;margin-top:0.3rem;color:#aaa">
       ${alreadyOwned ? `UPGRADED TO LV ${level}` : 'NEW ABILITY!'}
     </div>
+    <div class="crate-continue-hint">[ PREMI UN TASTO O CLICCA PER CONTINUARE ]</div>
   `;
 
   // Force browser reflow to restart CSS animation
@@ -370,10 +371,21 @@ async function openCrate() {
   void resultEl.offsetWidth;
   resultEl.className = `crate-result ${rarity}`;
 
+  // Wait for the user to acknowledge the result before continuing
+  await new Promise(resolve => {
+    const dismiss = () => {
+      document.removeEventListener('keydown', dismiss);
+      resultEl.removeEventListener('click', dismiss);
+      resolve();
+    };
+    document.addEventListener('keydown', dismiss, { once: true });
+    resultEl.addEventListener('click', dismiss, { once: true });
+  });
+
   btn.textContent = 'OPEN CRATE';
   btn.disabled = false;
 
-  // Update gem display
+  // Update gem display (also hides the result)
   loadCrateShop();
 }
 
