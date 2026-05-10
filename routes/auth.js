@@ -6,6 +6,9 @@ const { getDB } = require('../db/database');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'galactic-shooter-secret-2024';
+if (!process.env.JWT_SECRET) {
+  console.warn('WARNING: JWT_SECRET not set. Using default secret — set JWT_SECRET in production.');
+}
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
 router.use(authLimiter);
@@ -19,8 +22,8 @@ router.post('/register', async (req, res) => {
     if (nickname.length < 3 || nickname.length > 20) {
       return res.json({ success: false, error: 'Nickname must be 3-20 characters' });
     }
-    if (password.length < 4) {
-      return res.json({ success: false, error: 'Password must be at least 4 characters' });
+    if (password.length < 8) {
+      return res.json({ success: false, error: 'Password must be at least 8 characters' });
     }
     const db = getDB();
     const existing = db.prepare('SELECT id FROM users WHERE nickname = ?').get(nickname);

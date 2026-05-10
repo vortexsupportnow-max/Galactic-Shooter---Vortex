@@ -18,8 +18,8 @@ app.use(cors());
 app.use(express.json());
 app.use(staticLimiter, express.static(path.join(__dirname, 'public')));
 
-// Public auth routes
-app.use('/api/auth', authRoutes);
+// Public auth routes (authLimiter applied within router)
+app.use('/api/auth', apiLimiter, authRoutes);
 
 // Protected game routes
 app.use('/api/game', apiLimiter, authMiddleware, gameRoutes);

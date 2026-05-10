@@ -62,7 +62,7 @@ async function handleRegister() {
 
   if (!nickname || !password) { errEl.textContent = 'FILL ALL FIELDS'; return; }
   if (nickname.length < 3) { errEl.textContent = 'NICKNAME TOO SHORT'; return; }
-  if (password.length < 4) { errEl.textContent = 'PASSWORD TOO SHORT'; return; }
+  if (password.length < 8) { errEl.textContent = 'PASSWORD MIN 8 CHARS'; return; }
 
   const btn = document.getElementById('register-btn');
   btn.textContent = '...';
