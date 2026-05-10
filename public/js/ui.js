@@ -325,7 +325,7 @@ async function openCrate() {
   btn.textContent = 'OPENING...';
   btn.disabled = true;
 
-  // Fire API immediately so result is ready
+  // Fire API immediately so result is ready; animation runs after response arrives
   const resPromise = apiFetch('/game/open-crate', {
     method: 'POST',
     body: JSON.stringify({ crateType: _selectedCrate })
