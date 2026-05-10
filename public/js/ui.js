@@ -365,9 +365,9 @@ async function openCrate() {
     </div>
   `;
 
-  // Force animation restart by removing then adding class
+  // Force browser reflow to restart CSS animation
   resultEl.className = 'crate-result hidden';
-  void resultEl.offsetWidth; // reflow
+  void resultEl.offsetWidth;
   resultEl.className = `crate-result ${rarity}`;
 
   btn.textContent = 'OPEN CRATE';

@@ -107,7 +107,7 @@ router.post('/claim-tutorial-reward', async (req, res) => {
       .eq('achievement_id', 'tutorial_done')
       .maybeSingle();
 
-    if (existing) return res.json({ success: false, error: 'ALREADY CLAIMED' });
+    if (existing) return res.json({ success: false, error: 'Tutorial reward already claimed' });
 
     // Award coins and gems
     const { data: user } = await supabase
