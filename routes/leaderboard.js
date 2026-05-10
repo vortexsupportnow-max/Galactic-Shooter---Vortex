@@ -3,50 +3,31 @@ const { getDB } = require('../db/database');
 
 const router = express.Router();
 
-// Returns { clause, params } for safe parameterized date filtering
-function buildDateFilter(filter) {
-  if (filter === 'daily') {
-    return { clause: 'AND s.created_at >= ?', params: [new Date(Date.now() - 86400000).toISOString()] };
-  }
-  if (filter === 'weekly') {
-    return { clause: 'AND s.created_at >= ?', params: [new Date(Date.now() - 7 * 86400000).toISOString()] };
-  }
-  return { clause: '', params: [] };
+function filterDate(filter) {
+  if (filter === 'daily') return new Date(Date.now() - 86400000).toISOString();
+  if (filter === 'weekly') return new Date(Date.now() - 7 * 86400000).toISOString();
+  return null;
 }
 
-router.get('/scores', (req, res) => {
+router.get('/scores', async (req, res) => {
   try {
-    const filter = req.query.filter || 'all';
-    const { clause, params } = buildDateFilter(filter);
-    const db = getDB();
-    const rows = db.prepare(
-      `SELECT s.nickname, MAX(s.score) as score, s.wave, s.enemies_killed, s.created_at, s.user_id
-       FROM scores s
-       WHERE 1=1 ${clause}
-       GROUP BY s.user_id
-       ORDER BY score DESC
-       LIMIT 100`
-    ).all(...params);
-    res.json({ success: true, data: rows });
+    const supabase = getDB();
+    const date = filterDate(req.query.filter || 'all');
+    const { data, error } = await supabase.rpc('get_score_leaderboard', { filter_date: date });
+    if (error) throw new Error(error.message);
+    res.json({ success: true, data });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-router.get('/waves', (req, res) => {
+router.get('/waves', async (req, res) => {
   try {
-    const filter = req.query.filter || 'all';
-    const { clause, params } = buildDateFilter(filter);
-    const db = getDB();
-    const rows = db.prepare(
-      `SELECT s.nickname, MAX(s.wave) as wave, s.score, s.enemies_killed, s.created_at, s.user_id
-       FROM scores s
-       WHERE 1=1 ${clause}
-       GROUP BY s.user_id
-       ORDER BY wave DESC
-       LIMIT 100`
-    ).all(...params);
-    res.json({ success: true, data: rows });
+    const supabase = getDB();
+    const date = filterDate(req.query.filter || 'all');
+    const { data, error } = await supabase.rpc('get_wave_leaderboard', { filter_date: date });
+    if (error) throw new Error(error.message);
+    res.json({ success: true, data });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

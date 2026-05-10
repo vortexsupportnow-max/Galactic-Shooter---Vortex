@@ -32,10 +32,13 @@ app.get('*', staticLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-initDB();
-
-app.listen(PORT, () => {
-  console.log(`Galactic Shooter server running on port ${PORT}`);
+initDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Galactic Shooter server running on port ${PORT}`);
+  });
+}).catch(err => {
+  console.error('Failed to initialise database:', err.message);
+  process.exit(1);
 });
 
 module.exports = app;

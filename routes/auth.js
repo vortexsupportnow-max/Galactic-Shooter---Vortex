@@ -22,16 +22,30 @@ router.post('/register', async (req, res) => {
     if (password.length < 8) {
       return res.json({ success: false, error: 'Password must be at least 8 characters' });
     }
-    const db = getDB();
-    const existing = db.prepare('SELECT id FROM users WHERE nickname = ?').get(nickname);
+
+    const supabase = getDB();
+
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('nickname', nickname)
+      .maybeSingle();
+
     if (existing) {
       return res.json({ success: false, error: 'Nickname already taken' });
     }
+
     const hash = await bcrypt.hash(password, 10);
-    const result = db.prepare(
-      'INSERT INTO users (nickname, password_hash) VALUES (?, ?)'
-    ).run(nickname, hash);
-    const token = jwt.sign({ userId: result.lastInsertRowid, nickname }, JWT_SECRET, { expiresIn: '7d' });
+
+    const { data: newUser, error: insertErr } = await supabase
+      .from('users')
+      .insert({ nickname, password_hash: hash })
+      .select('id')
+      .single();
+
+    if (insertErr) throw new Error(insertErr.message);
+
+    const token = jwt.sign({ userId: newUser.id, nickname }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ success: true, data: { token, nickname } });
   } catch (err) {
     res.json({ success: false, error: err.message });
@@ -44,15 +58,24 @@ router.post('/login', async (req, res) => {
     if (!nickname || !password) {
       return res.json({ success: false, error: 'Nickname and password required' });
     }
-    const db = getDB();
-    const user = db.prepare('SELECT * FROM users WHERE nickname = ?').get(nickname);
+
+    const supabase = getDB();
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, nickname, password_hash')
+      .eq('nickname', nickname)
+      .maybeSingle();
+
     if (!user) {
       return res.json({ success: false, error: 'Invalid nickname or password' });
     }
+
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       return res.json({ success: false, error: 'Invalid nickname or password' });
     }
+
     const token = jwt.sign({ userId: user.id, nickname: user.nickname }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ success: true, data: { token, nickname: user.nickname } });
   } catch (err) {
@@ -60,17 +83,25 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.json({ success: false, error: 'No token' });
+
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
-    const db = getDB();
-    const user = db.prepare(
-      'SELECT id, nickname, coins, gems, games_played, max_score, max_wave, created_at FROM users WHERE id = ?'
-    ).get(decoded.userId);
+
+    const supabase = getDB();
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at')
+      .eq('id', decoded.userId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
     if (!user) return res.json({ success: false, error: 'User not found' });
+
     res.json({ success: true, data: user });
   } catch (err) {
     res.json({ success: false, error: 'Invalid token' });

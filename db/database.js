@@ -1,31 +1,28 @@
-const Database = require('better-sqlite3');
-const fs = require('fs');
-const path = require('path');
+'use strict';
 
-const DB_PATH = path.join(__dirname, 'game.db');
-const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
+const { createClient } = require('@supabase/supabase-js');
 
-let db;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-function getDB() {
-  if (!db) {
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-  }
-  return db;
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY environment variables are required');
 }
 
-function initDB() {
-  const database = getDB();
-  const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
-  const statements = schema.split(';').filter(s => s.trim());
-  for (const stmt of statements) {
-    if (stmt.trim()) {
-      database.prepare(stmt).run();
-    }
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function getDB() {
+  return supabase;
+}
+
+async function initDB() {
+  // Schema is managed via the Supabase SQL Editor (see db/schema.sql).
+  // Here we just verify connectivity on startup.
+  const { error } = await supabase.from('users').select('id').limit(1);
+  if (error) {
+    throw new Error(`Supabase connectivity check failed: ${error.message}`);
   }
-  console.log('Database initialized');
+  console.log('Supabase database connected');
 }
 
 module.exports = { getDB, initDB };
