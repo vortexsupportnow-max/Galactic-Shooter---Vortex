@@ -402,9 +402,6 @@ html, body {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  max-height: 100vh;
-  max-width: 100vw;
-  object-fit: contain;
   touch-action: none;
 }
 

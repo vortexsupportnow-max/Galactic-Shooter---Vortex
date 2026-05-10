@@ -19,6 +19,7 @@ class Bullet {
   }
 
   update(dt, enemies, boss) {
+    const dtF = dt / 16.667;
     if (this.homing && (enemies.length > 0 || boss)) {
       // Find nearest target
       let nearest = null, nearDist = Infinity;
@@ -40,8 +41,8 @@ class Bullet {
       }
     }
 
-    this.x += this.vx;
-    this.y += this.vy;
+    this.x += this.vx * dtF;
+    this.y += this.vy * dtF;
 
     if (this.ricochet) {
       if ((this.x < 0 || this.x > 480) && this.bounces < this.maxBounces) {
@@ -171,6 +172,7 @@ class Player {
   }
 
   update(keys, dt, now) {
+    const dtF = dt / 16.667;
     // Movement
     let dx = 0, dy = 0;
     if (keys['ArrowLeft']  || keys['a'] || keys['A']) dx -= 1;
@@ -186,8 +188,8 @@ class Player {
     if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
 
     const spd = this.effectiveSpeed;
-    this.x = Math.max(this.width/2, Math.min(this.canvasW - this.width/2, this.x + dx * spd));
-    this.y = Math.max(this.canvasH * 0.5, Math.min(this.canvasH - this.height/2, this.y + dy * spd));
+    this.x = Math.max(this.width/2, Math.min(this.canvasW - this.width/2, this.x + dx * spd * dtF));
+    this.y = Math.max(this.canvasH * 0.35, Math.min(this.canvasH - this.height/2, this.y + dy * spd * dtF));
 
     // Update ability timers
     if (this.shieldTimer > 0)       { this.shieldTimer       -= dt; if (this.shieldTimer <= 0) this.shielded = false; }
@@ -351,6 +353,24 @@ class Player {
     // Player ship
     ctx.drawImage(GameAssets.player, this.x - 20, this.y - 20);
 
+    // Engine thrust exhaust
+    ctx.save();
+    const thrustLen = 8 + Math.random() * 10;
+    const thrustAlpha = 0.5 + Math.random() * 0.4;
+    const thrustGrad = ctx.createLinearGradient(this.x, this.y + 18, this.x, this.y + 18 + thrustLen);
+    thrustGrad.addColorStop(0, `rgba(0,200,255,${thrustAlpha})`);
+    thrustGrad.addColorStop(0.5, `rgba(255,100,0,${thrustAlpha * 0.7})`);
+    thrustGrad.addColorStop(1, 'rgba(255,50,0,0)');
+    ctx.fillStyle = thrustGrad;
+    ctx.beginPath();
+    ctx.moveTo(this.x - 6, this.y + 18);
+    ctx.lineTo(this.x + 6, this.y + 18);
+    ctx.lineTo(this.x + 3, this.y + 18 + thrustLen);
+    ctx.lineTo(this.x - 3, this.y + 18 + thrustLen);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
     // Overcharge glow
     if (this.overcharge) {
       ctx.save();
@@ -377,8 +397,8 @@ class Enemy {
     switch (type) {
       case 'basic':
         this.hp = this.maxHp = Math.floor(30 * waveMult);
-        this.speed = 1.2 + wave * 0.05;
-        this.fireRate = 2500;
+        this.speed = 0.9 + wave * 0.04;
+        this.fireRate = 2800;
         this.damage = 15;
         this.score = 100;
         this.coinDrop = 2;
@@ -387,8 +407,8 @@ class Enemy {
         break;
       case 'medium':
         this.hp = this.maxHp = Math.floor(70 * waveMult);
-        this.speed = 1.0 + wave * 0.04;
-        this.fireRate = 2000;
+        this.speed = 0.75 + wave * 0.035;
+        this.fireRate = 2200;
         this.damage = 25;
         this.score = 250;
         this.coinDrop = 5;
@@ -397,8 +417,8 @@ class Enemy {
         break;
       case 'heavy':
         this.hp = this.maxHp = Math.floor(150 * waveMult);
-        this.speed = 0.8 + wave * 0.03;
-        this.fireRate = 1800;
+        this.speed = 0.55 + wave * 0.025;
+        this.fireRate = 2000;
         this.damage = 35;
         this.score = 500;
         this.coinDrop = 10;
@@ -414,7 +434,8 @@ class Enemy {
     this.bounceDir = Math.random() > 0.5 ? 1 : -1;
   }
 
-  update(dt, bullets, timeSlow) {
+  update(dt, bullets, timeSlow, player) {
+    const dtF = dt / 16.667;
     if (this.stunned || this.frozen) {
       if (this.stunTimer > 0) { this.stunTimer -= dt; if (this.stunTimer <= 0) { this.stunned = false; this.frozen = false; } }
       return;
@@ -425,16 +446,16 @@ class Enemy {
 
     switch (this.type) {
       case 'basic':
-        this.y += spd;
+        this.y += spd * dtF;
         break;
       case 'medium':
-        this.y += spd;
+        this.y += spd * dtF;
         this.zigzagTimer += dt;
-        this.x += Math.sin(this.zigzagTimer * 0.002) * 1.5;
+        this.x += Math.sin(this.zigzagTimer * 0.002) * 1.5 * dtF;
         break;
       case 'heavy':
-        this.y += spd * 0.7;
-        this.x += spd * this.bounceDir;
+        this.y += spd * 0.7 * dtF;
+        this.x += spd * this.bounceDir * dtF;
         if (this.x > 450 || this.x < 30) this.bounceDir *= -1;
         break;
     }
@@ -442,8 +463,16 @@ class Enemy {
     this.lastShot += dt;
     if (this.lastShot >= this.fireRate) {
       this.lastShot = 0;
-      const angle = Math.atan2(0, -1); // straight down for now
-      bullets.push(new Bullet(this.x, this.y + this.height/2, 0, 4, this.damage, 'enemy'));
+      // Aim at player when possible; bullet always travels at least slightly downward
+      let vx = 0, vy = 5;
+      if (player) {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        vx = (dx / d) * 5;
+        vy = Math.max(1, (dy / d) * 5);
+      }
+      bullets.push(new Bullet(this.x, this.y + this.height / 2, vx, vy, this.damage, 'enemy'));
     }
 
     if (this.y > 750) this.dead = true;
@@ -501,8 +530,9 @@ class Boss {
   get isPhase2() { return this.hp / this.maxHp < 0.5; }
 
   update(dt, bullets, timeSlow) {
+    const dtF = dt / 16.667;
     if (!this.arrived) {
-      this.y += 2;
+      this.y += 2 * dtF;
       if (this.y >= this.targetY) { this.y = this.targetY; this.arrived = true; }
       return;
     }
@@ -512,7 +542,7 @@ class Boss {
     const speedMult = timeSlow ? 0.5 : 1;
     const spd = this.speed * speedMult * (this.isPhase2 ? 1.5 : 1);
 
-    this.x += spd * this.moveDir;
+    this.x += spd * this.moveDir * dtF;
     if (this.x > 430 || this.x < 50) this.moveDir *= -1;
 
     if (!this.enraged && this.isPhase2) {
