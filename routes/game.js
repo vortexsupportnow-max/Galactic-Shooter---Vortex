@@ -3,12 +3,34 @@ const { getDB } = require('../db/database');
 
 const router = express.Router();
 
-const RARITY_POOL = [
-  ...Array(50).fill('common'),
-  ...Array(30).fill('rare'),
-  ...Array(15).fill('epic'),
-  ...Array(5).fill('legendary')
-];
+const CRATE_TYPES = {
+  mystery: {
+    cost: 10,
+    pool: [
+      ...Array(50).fill('common'),
+      ...Array(30).fill('rare'),
+      ...Array(15).fill('epic'),
+      ...Array(5).fill('legendary')
+    ]
+  },
+  galactic: {
+    cost: 50,
+    pool: [
+      ...Array(20).fill('common'),
+      ...Array(40).fill('rare'),
+      ...Array(30).fill('epic'),
+      ...Array(10).fill('legendary')
+    ]
+  },
+  void: {
+    cost: 150,
+    pool: [
+      ...Array(10).fill('rare'),
+      ...Array(50).fill('epic'),
+      ...Array(40).fill('legendary')
+    ]
+  }
+};
 
 const ABILITIES_BY_RARITY = {
   common: ['shield', 'speed_boost', 'triple_shot', 'frag_bomb', 'rapid_fire', 'heal', 'spread_shot', 'homing'],
@@ -165,17 +187,21 @@ router.post('/open-crate', async (req, res) => {
     const supabase = getDB();
     const userId = req.user.userId;
 
+    const crateType = req.body.crateType || 'mystery';
+    const crate = CRATE_TYPES[crateType];
+    if (!crate) return res.json({ success: false, error: 'Invalid crate type' });
+
     const { data: user } = await supabase
       .from('users')
       .select('gems')
       .eq('id', userId)
       .single();
 
-    if (user.gems < 10) return res.json({ success: false, error: 'Not enough gems (need 10)' });
+    if (user.gems < crate.cost) return res.json({ success: false, error: `Not enough gems (need ${crate.cost})` });
 
-    await supabase.from('users').update({ gems: user.gems - 10 }).eq('id', userId);
+    await supabase.from('users').update({ gems: user.gems - crate.cost }).eq('id', userId);
 
-    const rarity = RARITY_POOL[Math.floor(Math.random() * RARITY_POOL.length)];
+    const rarity = crate.pool[Math.floor(Math.random() * crate.pool.length)];
     const pool = ABILITIES_BY_RARITY[rarity];
     const abilityId = pool[Math.floor(Math.random() * pool.length)];
 
@@ -196,8 +222,8 @@ router.post('/open-crate', async (req, res) => {
           .eq('ability_id', abilityId);
         newLevel = existing.level + 1;
       } else {
-        // Already max level – refund 5 gems
-        await supabase.from('users').update({ gems: user.gems - 10 + 5 }).eq('id', userId);
+        // Already max level – refund half the cost
+        await supabase.from('users').update({ gems: user.gems - crate.cost + Math.floor(crate.cost / 2) }).eq('id', userId);
         newLevel = existing.level;
       }
     } else {

@@ -157,14 +157,38 @@
         </div>
       </div>
       <div class="crates-content">
-        <div class="crate-box" id="crate-box">
-          <div class="crate-icon">📦</div>
-          <div class="crate-label">MYSTERY CRATE</div>
-          <div class="crate-cost">10 💎</div>
+        <!-- Crate type selector -->
+        <div class="crate-selector">
+          <div class="crate-card active" data-crate="mystery">
+            <div class="crate-card-icon">📦</div>
+            <div class="crate-card-label">MYSTERY</div>
+            <div class="crate-card-cost">10 💎</div>
+          </div>
+          <div class="crate-card" data-crate="galactic">
+            <div class="crate-card-icon">🌌</div>
+            <div class="crate-card-label">GALACTIC</div>
+            <div class="crate-card-cost">50 💎</div>
+          </div>
+          <div class="crate-card" data-crate="void">
+            <div class="crate-card-icon">🕳️</div>
+            <div class="crate-card-label">VOID</div>
+            <div class="crate-card-cost">150 💎</div>
+          </div>
         </div>
+
+        <!-- Animated crate display -->
+        <div class="crate-box" id="crate-box">
+          <div class="crate-icon" id="selected-crate-icon">📦</div>
+          <div class="crate-label" id="selected-crate-name">MYSTERY CRATE</div>
+          <div class="crate-cost" id="selected-crate-cost">10 💎</div>
+        </div>
+
+        <!-- Flash overlay for opening effect -->
+        <div id="crate-flash-overlay" class="crate-flash-overlay hidden"></div>
+
         <button class="btn btn-yellow btn-large" id="open-crate-btn">OPEN CRATE</button>
         <div id="crate-result" class="crate-result hidden"></div>
-        <div class="crate-info">
+        <div class="crate-info" id="crate-info">
           <div class="rarity-chance common">■ COMMON: 50%</div>
           <div class="rarity-chance rare">■ RARE: 30%</div>
           <div class="rarity-chance epic">■ EPIC: 15%</div>

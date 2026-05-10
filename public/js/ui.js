@@ -228,37 +228,132 @@ async function loadCrateShop() {
   document.getElementById('crate-result').classList.add('hidden');
 }
 
+const CRATE_DEFS = {
+  mystery: {
+    icon: '📦', name: 'MYSTERY CRATE', cost: 10,
+    odds: [
+      { cls: 'common',    label: '■ COMMON: 50%' },
+      { cls: 'rare',      label: '■ RARE: 30%' },
+      { cls: 'epic',      label: '■ EPIC: 15%' },
+      { cls: 'legendary', label: '■ LEGENDARY: 5%' }
+    ]
+  },
+  galactic: {
+    icon: '🌌', name: 'GALACTIC CRATE', cost: 50,
+    odds: [
+      { cls: 'common',    label: '■ COMMON: 20%' },
+      { cls: 'rare',      label: '■ RARE: 40%' },
+      { cls: 'epic',      label: '■ EPIC: 30%' },
+      { cls: 'legendary', label: '■ LEGENDARY: 10%' }
+    ]
+  },
+  void: {
+    icon: '🕳️', name: 'VOID CRATE', cost: 150,
+    odds: [
+      { cls: 'rare',      label: '■ RARE: 10%' },
+      { cls: 'epic',      label: '■ EPIC: 50%' },
+      { cls: 'legendary', label: '■ LEGENDARY: 40%' }
+    ]
+  }
+};
+
+let _selectedCrate = 'mystery';
+
 function initCrateHandlers() {
   document.getElementById('open-crate-btn').addEventListener('click', openCrate);
+
+  document.querySelectorAll('.crate-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.crate-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      _selectedCrate = card.dataset.crate;
+      updateCrateDisplay(_selectedCrate);
+    });
+  });
+
+  updateCrateDisplay(_selectedCrate);
+}
+
+function updateCrateDisplay(type) {
+  const def = CRATE_DEFS[type];
+  const box = document.getElementById('crate-box');
+  box.className = `crate-box type-${type}`;
+
+  document.getElementById('selected-crate-icon').textContent = def.icon;
+  document.getElementById('selected-crate-name').textContent = def.name;
+  document.getElementById('selected-crate-cost').textContent = `${def.cost} 💎`;
+
+  const info = document.getElementById('crate-info');
+  info.innerHTML = def.odds.map(o => `<div class="rarity-chance ${o.cls}">${o.label}</div>`).join('');
+
+  document.getElementById('crate-result').classList.add('hidden');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function animateCrateOpening(rarity) {
+  const box = document.getElementById('crate-box');
+  const flash = document.getElementById('crate-flash-overlay');
+
+  // Store base class so we can restore it
+  const baseClass = `crate-box type-${_selectedCrate}`;
+
+  // Phase 1: gentle shake + increasing glow (1.2s suspense)
+  box.className = `${baseClass} phase-shake1`;
+  await sleep(600);
+  box.className = `${baseClass} phase-shake1 phase-glow`;
+  await sleep(700);
+
+  // Phase 2: intense shake (1.0s)
+  box.className = `${baseClass} phase-shake2 phase-glow`;
+  await sleep(1000);
+
+  // Phase 3: burst + screen flash
+  box.className = `${baseClass} phase-burst`;
+  flash.className = `crate-flash-overlay flash-${rarity}`;
+  await sleep(500);
+
+  // Hide crate, reset
+  box.style.opacity = '0';
+  await sleep(200);
+  box.className = baseClass;
+  box.style.opacity = '';
 }
 
 async function openCrate() {
   const btn = document.getElementById('open-crate-btn');
-  btn.textContent = '...';
+  btn.textContent = 'OPENING...';
   btn.disabled = true;
 
-  const res = await apiFetch('/game/open-crate', { method: 'POST', body: '{}' });
+  // Fire API immediately so result is ready
+  const resPromise = apiFetch('/game/open-crate', {
+    method: 'POST',
+    body: JSON.stringify({ crateType: _selectedCrate })
+  });
 
-  btn.textContent = 'OPEN CRATE';
-  btn.disabled = false;
+  // Run suspense animation while request is in-flight (or wait for it to finish first)
+  const res = await resPromise;
 
   if (!res.success) {
+    btn.textContent = 'OPEN CRATE';
+    btn.disabled = false;
     alert(res.error || 'Failed to open crate');
     return;
   }
 
   const { abilityId, rarity, level, alreadyOwned } = res.data;
+
+  // Run the suspense animation now that we know the rarity
+  await animateCrateOpening(rarity);
+
+  // Reveal result
   const ability = ABILITIES[abilityId];
   const resultEl = document.getElementById('crate-result');
-  resultEl.className = `crate-result ${rarity}`;
-  resultEl.classList.remove('hidden');
 
   const icon = GameAssets.drawAbilityIcon(abilityId, rarity);
   icon.style.width = '40px'; icon.style.height = '40px';
 
-  resultEl.innerHTML = `
-    <div style="font-size:0.5rem;margin-bottom:0.5rem">${rarity.toUpperCase()}</div>
-  `;
+  resultEl.innerHTML = `<div style="font-size:0.5rem;margin-bottom:0.5rem">${rarity.toUpperCase()}</div>`;
   resultEl.appendChild(icon);
   resultEl.innerHTML += `
     <div style="font-size:0.6rem;margin-top:0.5rem">${ability ? ability.name : abilityId}</div>
@@ -267,11 +362,13 @@ async function openCrate() {
     </div>
   `;
 
-  // Animate crate
-  const crateBox = document.getElementById('crate-box');
-  crateBox.style.animation = 'none';
-  crateBox.style.transform = 'scale(1.15)';
-  setTimeout(() => { crateBox.style.transform = ''; crateBox.style.animation = ''; }, 400);
+  // Force animation restart by removing then adding class
+  resultEl.className = 'crate-result hidden';
+  void resultEl.offsetWidth; // reflow
+  resultEl.className = `crate-result ${rarity}`;
+
+  btn.textContent = 'OPEN CRATE';
+  btn.disabled = false;
 
   // Update gem display
   loadCrateShop();
