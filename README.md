@@ -108,3 +108,60 @@ Open that URL in your browser to play the game.
 | POST | `/game/open-crate` | Open a loot crate (costs gems) |
 | GET | `/leaderboard/scores` | Top scores leaderboard |
 | GET | `/leaderboard/waves` | Top waves leaderboard |
+
+---
+
+## Supabase admin – database cleanup
+
+### What you need to do once (update the schema)
+
+The `db/schema.sql` file now includes two helper functions for storage management.  
+Run the **full** `db/schema.sql` again in **Supabase → SQL Editor → New query** to create them (the script is fully idempotent – safe to run multiple times).
+
+### How storage is kept under control
+
+| Mechanism | When it runs | What it does |
+|-----------|-------------|--------------|
+| `trim_user_scores(user_id, 10)` | After **every** game save (automatic) | Keeps only the top 10 scores per player; deletes the rest immediately |
+| `cleanup_old_scores(60)` | **Manually** or via a scheduled job | Deletes score rows older than 60 days, always preserving each player's all-time best |
+
+### Run the global cleanup manually
+
+Open **Supabase → SQL Editor** and run:
+
+```sql
+-- Delete scores older than 60 days (keeps each user's best score).
+-- Returns the number of rows deleted.
+SELECT cleanup_old_scores(60);
+
+-- After a large deletion, reclaim disk space immediately:
+VACUUM ANALYZE scores;
+```
+
+You can change `60` to any number of days that suits you (e.g. `30` for a stricter policy).
+
+### Schedule automatic cleanup (recommended)
+
+Supabase exposes **pg_cron** on paid plans.  
+If your project is on a paid plan, run this once in the SQL Editor to schedule weekly cleanup:
+
+```sql
+-- Enable pg_cron (run once)
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+-- Schedule cleanup_old_scores every Sunday at 03:00 UTC
+SELECT cron.schedule(
+  'weekly-score-cleanup',
+  '0 3 * * 0',
+  $$ SELECT cleanup_old_scores(60); $$
+);
+```
+
+On the **free tier**, pg_cron is not available.  
+Instead, use **Supabase Edge Functions** with a cron trigger, or simply run the manual SQL above once a week from the dashboard.
+
+### Tips to keep storage low
+
+- **Don't increase `p_keep`** in `trim_user_scores` beyond what you need. 10 scores per player is plenty for history; setting it lower (e.g. 5) saves even more space.
+- If you add new tables that accumulate rows over time, remember to add a similar trim/cleanup function for them.
+- Monitor storage in **Supabase → Project Settings → Usage**.

@@ -127,3 +127,41 @@ RETURNS VOID LANGUAGE sql AS $$
   VALUES (p_user_id, p_achievement_id)
   ON CONFLICT (user_id, achievement_id) DO NOTHING;
 $$;
+
+-- ── Database Cleanup & Optimization ─────────────────────────────────────────
+-- Trim scores: keep only the top `p_keep` scores (by score DESC) per user.
+-- Called automatically after every game save from the Node.js backend
+-- so that each user's row count in the scores table stays capped.
+CREATE OR REPLACE FUNCTION trim_user_scores(p_user_id BIGINT, p_keep INTEGER DEFAULT 10)
+RETURNS VOID LANGUAGE sql AS $$
+  DELETE FROM scores
+  WHERE user_id = p_user_id
+    AND id NOT IN (
+      SELECT id
+      FROM scores
+      WHERE user_id = p_user_id
+      ORDER BY score DESC
+      LIMIT p_keep
+    );
+$$;
+
+-- Global cleanup: delete score rows older than `older_than_days` days while
+-- always preserving each user's single all-time best score.
+-- Run this periodically (e.g. weekly) via Supabase Cron or pg_cron.
+-- Returns the number of rows deleted.
+CREATE OR REPLACE FUNCTION cleanup_old_scores(older_than_days INTEGER DEFAULT 60)
+RETURNS INTEGER LANGUAGE plpgsql AS $$
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  DELETE FROM scores
+  WHERE created_at < NOW() - (older_than_days || ' days')::INTERVAL
+    AND id NOT IN (
+      SELECT DISTINCT ON (user_id) id
+      FROM scores
+      ORDER BY user_id, score DESC
+    );
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$;
