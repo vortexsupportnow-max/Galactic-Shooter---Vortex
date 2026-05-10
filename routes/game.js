@@ -17,17 +17,26 @@ const ABILITIES_BY_RARITY = {
   legendary: ['god_mode', 'nuke', 'time_warp', 'phoenix', 'singularity', 'storm']
 };
 
-router.post('/save-score', (req, res) => {
+router.post('/save-score', async (req, res) => {
   try {
     const { score, wave, enemiesKilled } = req.body;
-    const db = getDB();
+    const supabase = getDB();
     const userId = req.user.userId;
 
-    db.prepare(
-      'INSERT INTO scores (user_id, nickname, score, wave, enemies_killed) VALUES (?, (SELECT nickname FROM users WHERE id=?), ?, ?, ?)'
-    ).run(userId, userId, score, wave, enemiesKilled || 0);
+    // Fetch user nickname + current stats
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('nickname, max_score, max_wave, games_played, coins, gems')
+      .eq('id', userId)
+      .single();
+    if (userErr) throw new Error(userErr.message);
 
-    const user = db.prepare('SELECT max_score, max_wave, games_played FROM users WHERE id=?').get(userId);
+    // Insert score entry
+    const { error: scoreErr } = await supabase
+      .from('scores')
+      .insert({ user_id: userId, nickname: user.nickname, score, wave, enemies_killed: enemiesKilled || 0 });
+    if (scoreErr) throw new Error(scoreErr.message);
+
     const newMaxScore = Math.max(user.max_score, score);
     const newMaxWave = Math.max(user.max_wave, wave);
     const coinsEarned = Math.floor(score / 100);
@@ -40,12 +49,20 @@ router.post('/save-score', (req, res) => {
       }
     }
 
-    db.prepare(
-      'UPDATE users SET max_score=?, max_wave=?, games_played=games_played+1, coins=coins+?, gems=gems+? WHERE id=?'
-    ).run(newMaxScore, newMaxWave, coinsEarned, gemsEarned, userId);
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({
+        max_score: newMaxScore,
+        max_wave: newMaxWave,
+        games_played: user.games_played + 1,
+        coins: user.coins + coinsEarned,
+        gems: user.gems + gemsEarned
+      })
+      .eq('id', userId);
+    if (updateErr) throw new Error(updateErr.message);
 
     // Check achievements
-    checkAchievements(db, userId, { score, wave, enemiesKilled: enemiesKilled || 0 });
+    await checkAchievements(supabase, userId, { score, wave, enemiesKilled: enemiesKilled || 0 });
 
     res.json({ success: true, data: { coinsEarned, gemsEarned, newMaxScore, newMaxWave } });
   } catch (err) {
@@ -53,38 +70,55 @@ router.post('/save-score', (req, res) => {
   }
 });
 
-router.get('/profile', (req, res) => {
+router.get('/profile', async (req, res) => {
   try {
-    const db = getDB();
+    const supabase = getDB();
     const userId = req.user.userId;
-    const user = db.prepare(
-      'SELECT id, nickname, coins, gems, games_played, max_score, max_wave, created_at FROM users WHERE id=?'
-    ).get(userId);
-    if (!user) return res.json({ success: false, error: 'User not found' });
 
-    const abilities = db.prepare(
-      'SELECT ability_id, level FROM user_abilities WHERE user_id=?'
-    ).all(userId);
+    const [userResult, abilitiesResult, achievementsResult] = await Promise.all([
+      supabase
+        .from('users')
+        .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at')
+        .eq('id', userId)
+        .maybeSingle(),
+      supabase
+        .from('user_abilities')
+        .select('ability_id, level')
+        .eq('user_id', userId),
+      supabase
+        .from('achievements')
+        .select('achievement_id, unlocked_at')
+        .eq('user_id', userId)
+    ]);
 
-    const achievements = db.prepare(
-      'SELECT achievement_id, unlocked_at FROM achievements WHERE user_id=?'
-    ).all(userId);
+    if (userResult.error) throw new Error(userResult.error.message);
+    if (!userResult.data) return res.json({ success: false, error: 'User not found' });
 
-    res.json({ success: true, data: { ...user, abilities, achievements } });
+    res.json({
+      success: true,
+      data: {
+        ...userResult.data,
+        abilities: abilitiesResult.data || [],
+        achievements: achievementsResult.data || []
+      }
+    });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-router.post('/upgrade-ability', (req, res) => {
+router.post('/upgrade-ability', async (req, res) => {
   try {
     const { abilityId } = req.body;
-    const db = getDB();
+    const supabase = getDB();
     const userId = req.user.userId;
 
-    const existing = db.prepare(
-      'SELECT level FROM user_abilities WHERE user_id=? AND ability_id=?'
-    ).get(userId, abilityId);
+    const { data: existing } = await supabase
+      .from('user_abilities')
+      .select('level')
+      .eq('user_id', userId)
+      .eq('ability_id', abilityId)
+      .maybeSingle();
 
     if (!existing) return res.json({ success: false, error: 'Ability not unlocked' });
 
@@ -99,49 +133,70 @@ router.post('/upgrade-ability', (req, res) => {
     }
     const cost = (currentLevel + 1) * 500 * rarityMultipliers[rarity];
 
-    const user = db.prepare('SELECT coins FROM users WHERE id=?').get(userId);
+    const { data: user } = await supabase
+      .from('users')
+      .select('coins')
+      .eq('id', userId)
+      .single();
+
     if (user.coins < cost) return res.json({ success: false, error: 'Not enough coins' });
 
-    db.prepare('UPDATE users SET coins=coins-? WHERE id=?').run(cost, userId);
-    db.prepare('UPDATE user_abilities SET level=level+1 WHERE user_id=? AND ability_id=?').run(userId, abilityId);
+    const [deductResult, upgradeResult] = await Promise.all([
+      supabase.from('users').update({ coins: user.coins - cost }).eq('id', userId),
+      supabase.from('user_abilities').update({ level: currentLevel + 1 }).eq('user_id', userId).eq('ability_id', abilityId)
+    ]);
 
-    const newLevel = currentLevel + 1;
-    res.json({ success: true, data: { newLevel, coinsSpent: cost } });
+    if (deductResult.error) throw new Error(deductResult.error.message);
+    if (upgradeResult.error) throw new Error(upgradeResult.error.message);
+
+    res.json({ success: true, data: { newLevel: currentLevel + 1, coinsSpent: cost } });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-router.post('/open-crate', (req, res) => {
+router.post('/open-crate', async (req, res) => {
   try {
-    const db = getDB();
+    const supabase = getDB();
     const userId = req.user.userId;
 
-    const user = db.prepare('SELECT gems FROM users WHERE id=?').get(userId);
+    const { data: user } = await supabase
+      .from('users')
+      .select('gems')
+      .eq('id', userId)
+      .single();
+
     if (user.gems < 10) return res.json({ success: false, error: 'Not enough gems (need 10)' });
 
-    db.prepare('UPDATE users SET gems=gems-10 WHERE id=?').run(userId);
+    await supabase.from('users').update({ gems: user.gems - 10 }).eq('id', userId);
 
     const rarity = RARITY_POOL[Math.floor(Math.random() * RARITY_POOL.length)];
     const pool = ABILITIES_BY_RARITY[rarity];
     const abilityId = pool[Math.floor(Math.random() * pool.length)];
 
-    const existing = db.prepare(
-      'SELECT level FROM user_abilities WHERE user_id=? AND ability_id=?'
-    ).get(userId, abilityId);
+    const { data: existing } = await supabase
+      .from('user_abilities')
+      .select('level')
+      .eq('user_id', userId)
+      .eq('ability_id', abilityId)
+      .maybeSingle();
 
     let newLevel = 1;
     if (existing) {
       if (existing.level < 10) {
-        db.prepare('UPDATE user_abilities SET level=level+1 WHERE user_id=? AND ability_id=?').run(userId, abilityId);
+        await supabase
+          .from('user_abilities')
+          .update({ level: existing.level + 1 })
+          .eq('user_id', userId)
+          .eq('ability_id', abilityId);
         newLevel = existing.level + 1;
       } else {
-        // Already max level - refund 5 gems
-        db.prepare('UPDATE users SET gems=gems+5 WHERE id=?').run(userId);
+        // Already max level – refund 5 gems
+        await supabase.from('users').update({ gems: user.gems - 10 + 5 }).eq('id', userId);
         newLevel = existing.level;
       }
     } else {
-      db.prepare('INSERT INTO user_abilities (user_id, ability_id, level) VALUES (?,?,1)').run(userId, abilityId);
+      await supabase.from('user_abilities').insert({ user_id: userId, ability_id: abilityId, level: 1 });
     }
 
     res.json({ success: true, data: { abilityId, rarity, level: newLevel, alreadyOwned: !!existing } });
@@ -150,20 +205,22 @@ router.post('/open-crate', (req, res) => {
   }
 });
 
-router.get('/achievements', (req, res) => {
+router.get('/achievements', async (req, res) => {
   try {
-    const db = getDB();
+    const supabase = getDB();
     const userId = req.user.userId;
-    const achievements = db.prepare(
-      'SELECT achievement_id, unlocked_at FROM achievements WHERE user_id=?'
-    ).all(userId);
+    const { data: achievements, error } = await supabase
+      .from('achievements')
+      .select('achievement_id, unlocked_at')
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
     res.json({ success: true, data: achievements });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-function checkAchievements(db, userId, { score, wave, enemiesKilled }) {
+async function checkAchievements(supabase, userId, { score, wave, enemiesKilled }) {
   const toUnlock = [];
   if (score >= 1000) toUnlock.push('score_1k');
   if (score >= 10000) toUnlock.push('score_10k');
@@ -175,13 +232,12 @@ function checkAchievements(db, userId, { score, wave, enemiesKilled }) {
   if (enemiesKilled >= 100) toUnlock.push('kills_100');
   if (enemiesKilled >= 500) toUnlock.push('kills_500');
 
-  for (const achId of toUnlock) {
-    try {
-      db.prepare(
-        'INSERT OR IGNORE INTO achievements (user_id, achievement_id) VALUES (?,?)'
-      ).run(userId, achId);
-    } catch (e) { /* ignore duplicate */ }
-  }
+  await Promise.all(
+    toUnlock.map(achId =>
+      supabase.rpc('unlock_achievement', { p_user_id: userId, p_achievement_id: achId })
+    )
+  );
 }
 
 module.exports = router;
+
