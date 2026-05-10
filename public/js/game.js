@@ -112,7 +112,7 @@ class GalacticGame {
       stick.style.transform = `translate(${dx}px,${dy}px)`;
       if (this.gs) {
         this.gs.player.joystickVX = dx / maxR;
-        this.gs.player.joystickVY = dy / maxR;
+        this.gs.player.joystickVY = 0; // vertical movement disabled
       }
       e.preventDefault();
     };

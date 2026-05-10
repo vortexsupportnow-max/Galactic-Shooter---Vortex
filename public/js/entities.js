@@ -173,23 +173,16 @@ class Player {
 
   update(keys, dt, now) {
     const dtF = dt / 16.667;
-    // Movement
-    let dx = 0, dy = 0;
+    // Horizontal-only movement (no vertical movement allowed)
+    let dx = 0;
     if (keys['ArrowLeft']  || keys['a'] || keys['A']) dx -= 1;
     if (keys['ArrowRight'] || keys['d'] || keys['D']) dx += 1;
-    if (keys['ArrowUp']    || keys['w'] || keys['W']) dy -= 1;
-    if (keys['ArrowDown']  || keys['s'] || keys['S']) dy += 1;
 
-    // Joystick
+    // Joystick (horizontal axis only)
     dx += this.joystickVX;
-    dy += this.joystickVY;
-
-    // Normalize diagonal
-    if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
 
     const spd = this.effectiveSpeed;
     this.x = Math.max(this.width/2, Math.min(this.canvasW - this.width/2, this.x + dx * spd * dtF));
-    this.y = Math.max(this.canvasH * 0.35, Math.min(this.canvasH - this.height/2, this.y + dy * spd * dtF));
 
     // Update ability timers
     if (this.shieldTimer > 0)       { this.shieldTimer       -= dt; if (this.shieldTimer <= 0) this.shielded = false; }
