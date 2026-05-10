@@ -359,12 +359,14 @@ class GalacticGame {
       let hit = false;
       for (let ei = gs.enemies.length - 1; ei >= 0; ei--) {
         const e = gs.enemies[ei];
+        if (e.y - e.height / 2 > 700) continue; // skip enemies that have scrolled off screen
         if (this._rectOverlap(b, e)) {
+          const prevHp = e.hp;
           e.hp -= b.damage;
           gs.particles.emit(e.x, e.y, 5, '#ff8800', { speed: 3, decay: 0.05 });
           Sounds.hit();
           if (!b.piercing) { b.dead = true; hit = true; }
-          if (e.hp <= 0) {
+          if (e.hp <= 0 && prevHp > 0) {
             this._killEnemy(e, ei);
           }
           if (!b.piercing) break;
@@ -417,8 +419,13 @@ class GalacticGame {
 
     // Update enemies
     for (let i = gs.enemies.length - 1; i >= 0; i--) {
-      gs.enemies[i].update(dt, gs.bullets, gs.timeSlow, gs.player);
-      if (gs.enemies[i].dead) gs.enemies.splice(i, 1);
+      const e = gs.enemies[i];
+      e.update(dt, gs.bullets, gs.timeSlow, gs.player);
+      if (e.dead) {
+        gs.enemies.splice(i, 1); // enemy escaped off-screen – no score
+      } else if (e.hp <= 0) {
+        this._killEnemy(e, i); // killed by ability damage while still on screen
+      }
     }
 
     // Update boss
@@ -534,6 +541,7 @@ class GalacticGame {
     const pts = 5000 * gs.wave;
     gs.score += pts;
     gs.coinsCollected += 100;
+    gs.gemsCollected++;
     gs.explosions.push(new Explosion(gs.boss.x, gs.boss.y, 3));
     gs.particles.emit(gs.boss.x, gs.boss.y, 80, '#ff00aa', { speed: 8, decay: 0.015 });
     Sounds.explosion(true);
