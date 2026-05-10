@@ -513,7 +513,7 @@ class Enemy {
       ctx.save();
       ctx.strokeStyle = '#ff2244';
       ctx.lineWidth = 1.5;
-      ctx.globalAlpha = 0.7 + Math.sin(Date.now() * 0.004) * 0.3;
+      ctx.globalAlpha = 0.6 + Math.sin(this.zigzagTimer * 0.004) * 0.3;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.width * 0.8, 0, Math.PI * 2);
       ctx.stroke();

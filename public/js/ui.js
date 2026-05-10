@@ -354,10 +354,10 @@ function initCollectionHandlers() {
 
 function initMenuHandlers() {
   document.getElementById('btn-play').addEventListener('click', async () => {
-    showScreen('game');
-    // Load the user's unlocked abilities so in-game powerups only use those
+    // Fetch unlocked abilities first so in-game powerups only use those
     const res = await apiFetch('/game/profile');
     const ownedAbilityIds = res.success ? (res.data.abilities || []).map(a => a.ability_id) : [];
+    showScreen('game');
     startGame([null, null, null], ownedAbilityIds);
   });
   document.getElementById('btn-collection').addEventListener('click', showCollection);
