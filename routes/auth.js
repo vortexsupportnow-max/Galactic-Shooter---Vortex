@@ -1,10 +1,14 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const { getDB } = require('../db/database');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'galactic-shooter-secret-2024';
+
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
+router.use(authLimiter);
 
 router.post('/register', async (req, res) => {
   try {

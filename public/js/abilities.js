@@ -63,14 +63,14 @@ const ABILITIES = {
         const dx = e.x - px, dy = e.y - py;
         if (Math.sqrt(dx*dx + dy*dy) < radius) {
           e.hp -= damage;
-          gs.particleSystem.emit(e.x, e.y, 10, '#ff8800', { speed: 4 });
+          gs.particles.emit(e.x, e.y, 10, '#ff8800', { speed: 4 });
         }
       }
       if (gs.boss) {
         const dx = gs.boss.x - px, dy = gs.boss.y - py;
         if (Math.sqrt(dx*dx + dy*dy) < radius) gs.boss.hp -= damage;
       }
-      gs.particleSystem.emit(px, py, 30, '#ff8800', { speed: 6, decay: 0.03 });
+      gs.particles.emit(px, py, 30, '#ff8800', { speed: 6, decay: 0.03 });
       Sounds.explosion(false);
     }
   },
@@ -90,7 +90,7 @@ const ABILITIES = {
     maxLevel: 10,
     apply(gs, level) {
       gs.player.hp = Math.min(gs.player.maxHp, gs.player.hp + 25 + level * 5);
-      gs.particleSystem.emit(gs.player.x, gs.player.y, 15, '#00ff88', { speed: 2, decay: 0.02 });
+      gs.particles.emit(gs.player.x, gs.player.y, 15, '#00ff88', { speed: 2, decay: 0.02 });
       Sounds.powerup();
     }
   },
@@ -221,7 +221,7 @@ const ABILITIES = {
       gs.empTimer = (4 + level * 0.5) * 1000;
       for (const e of gs.enemies) e.stunned = true;
       if (gs.boss) gs.boss.stunned = true;
-      gs.particleSystem.emit(240, 350, 50, '#88ffff', { speed: 8, decay: 0.015 });
+      gs.particles.emit(240, 350, 50, '#88ffff', { speed: 8, decay: 0.015 });
       Sounds.abilityUse();
     }
   },
@@ -246,7 +246,7 @@ const ABILITIES = {
       targets = targets.sort(() => Math.random() - 0.5).slice(0, chains);
       for (const t of targets) {
         t.hp -= damage;
-        gs.particleSystem.emit(t.x, t.y, 15, '#ffff44', { speed: 5 });
+        gs.particles.emit(t.x, t.y, 15, '#ffff44', { speed: 5 });
       }
       if (gs.boss && targets.includes(gs.boss)) {
         // already damaged
@@ -300,7 +300,7 @@ const ABILITIES = {
       gs.freezeTimer = (3 + level * 0.5) * 1000;
       for (const e of gs.enemies) e.frozen = true;
       if (gs.boss) gs.boss.frozen = true;
-      gs.particleSystem.emit(240, 350, 40, '#44aaff', { speed: 6, decay: 0.01 });
+      gs.particles.emit(240, 350, 40, '#44aaff', { speed: 6, decay: 0.01 });
       Sounds.abilityUse();
     }
   },
@@ -316,7 +316,7 @@ const ABILITIES = {
       gs.player.overcharge = true;
       gs.player.overchargeMultiplier = 5;
       gs.player.overchargeTimer = (3 + level * 0.3) * 1000;
-      gs.particleSystem.emit(gs.player.x, gs.player.y, 50, '#ffff00', { speed: 6, decay: 0.01 });
+      gs.particles.emit(gs.player.x, gs.player.y, 50, '#ffff00', { speed: 6, decay: 0.01 });
       Sounds.levelup();
     }
   },
@@ -328,13 +328,13 @@ const ABILITIES = {
       const damage = 9999 + level * 1000;
       for (const e of [...gs.enemies]) {
         e.hp = 0;
-        gs.particleSystem.emit(e.x, e.y, 20, '#ff8800', { speed: 5 });
+        gs.particles.emit(e.x, e.y, 20, '#ff8800', { speed: 5 });
       }
       if (gs.boss) {
         gs.boss.hp -= damage;
-        gs.particleSystem.emit(gs.boss.x, gs.boss.y, 50, '#ff4400', { speed: 8 });
+        gs.particles.emit(gs.boss.x, gs.boss.y, 50, '#ff4400', { speed: 8 });
       }
-      gs.particleSystem.emit(240, 350, 100, '#ffffff', { speed: 10, decay: 0.008 });
+      gs.particles.emit(240, 350, 100, '#ffffff', { speed: 10, decay: 0.008 });
       Sounds.explosion(true);
     }
   },
@@ -347,7 +347,7 @@ const ABILITIES = {
         e.y = -20;
         e.x = 40 + Math.random() * 400;
       }
-      gs.particleSystem.emit(240, 350, 60, '#aa44ff', { speed: 7, decay: 0.01 });
+      gs.particles.emit(240, 350, 60, '#aa44ff', { speed: 7, decay: 0.01 });
       Sounds.abilityUse();
     }
   },
@@ -358,7 +358,7 @@ const ABILITIES = {
     apply(gs, level) {
       gs.player.phoenixReady = true;
       gs.player.phoenixHeal = 50 + level * 5;
-      gs.particleSystem.emit(gs.player.x, gs.player.y, 30, '#ff8800', { speed: 3, decay: 0.015 });
+      gs.particles.emit(gs.player.x, gs.player.y, 30, '#ff8800', { speed: 3, decay: 0.015 });
       Sounds.powerup();
     }
   },
