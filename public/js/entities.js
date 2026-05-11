@@ -346,6 +346,25 @@ class Player {
     // Player ship
     ctx.drawImage(GameAssets.player, this.x - 20, this.y - 20);
 
+    // Skin color glow overlay
+    if (this.skinColor) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = this.skinColor;
+      ctx.fillRect(this.x - 20, this.y - 20, 40, 40);
+      ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = this.skinColor;
+      const grad = ctx.createRadialGradient(this.x, this.y, 10, this.x, this.y, 28);
+      grad.addColorStop(0, this.skinColor);
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(this.x, this.y, 28, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
     // Engine thrust exhaust
     ctx.save();
     const thrustLen = 8 + Math.random() * 10;

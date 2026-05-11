@@ -58,6 +58,7 @@ async function init() {
   initCrateHandlers();
   initLeaderboardHandlers();
   initCollectionHandlers();
+  initSkinHandlers();
   initSettingsHandlers();
   initTutorialHandlers();
   initWheelHandlers();

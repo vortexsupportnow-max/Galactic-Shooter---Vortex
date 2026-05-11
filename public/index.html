@@ -85,6 +85,7 @@
         <div class="menu-buttons">
           <button class="btn btn-cyan btn-large" id="btn-play">▶ PLAY</button>
           <button class="btn btn-purple" id="btn-collection">⚡ COLLECTION</button>
+          <button class="btn btn-pink" id="btn-skins">🎨 SKINS</button>
           <button class="btn btn-yellow" id="btn-crates">📦 CRATES</button>
           <button class="btn btn-green" id="btn-wheel">&#127922; FORTUNE WHEEL<span class="menu-btn-subtitle" id="wheel-button-status">LOADING...</span></button>
           <button class="btn btn-blue" id="btn-leaderboard">&#127942; LEADERBOARD</button>
@@ -145,6 +146,60 @@
       </div>
       <div class="ability-grid" id="ability-grid">
         <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- Skins Screen -->
+    <div id="screen-skins" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="skins-back">← BACK</button>
+        <h2 class="screen-title">🎨 SKINS</h2>
+        <div class="header-currency">
+          🪙 <span id="skins-coins">0</span> &nbsp; 💎 <span id="skins-gems">0</span>
+        </div>
+      </div>
+
+      <!-- Skin crate tabs -->
+      <div class="skin-tabs">
+        <button class="skin-tab active" data-tab="collection">COLLECTION</button>
+        <button class="skin-tab" data-tab="shop">SKIN CRATES</button>
+      </div>
+
+      <!-- Collection tab -->
+      <div id="skin-tab-collection" class="skin-tab-content">
+        <div class="skin-grid" id="skin-grid">
+          <div class="loading">LOADING...</div>
+        </div>
+      </div>
+
+      <!-- Shop tab -->
+      <div id="skin-tab-shop" class="skin-tab-content hidden">
+        <div class="skins-shop-content">
+          <div class="skin-crate-selector">
+            <div class="skin-crate-card active" data-crate="stellar">
+              <div class="skin-crate-icon">✨</div>
+              <div class="skin-crate-label">STELLAR</div>
+              <div class="skin-crate-cost">200🪙 + 5💎</div>
+            </div>
+            <div class="skin-crate-card" data-crate="nova">
+              <div class="skin-crate-icon">🌠</div>
+              <div class="skin-crate-label">NOVA</div>
+              <div class="skin-crate-cost">1000🪙 + 20💎</div>
+            </div>
+          </div>
+
+          <div class="skin-crate-box" id="skin-crate-box">
+            <div class="skin-crate-box-icon" id="skin-crate-box-icon">✨</div>
+            <div class="skin-crate-box-label" id="skin-crate-box-label">STELLAR CRATE</div>
+            <div class="skin-crate-box-cost" id="skin-crate-box-cost">200🪙 + 5💎</div>
+          </div>
+
+          <div id="skin-crate-flash" class="crate-flash-overlay hidden"></div>
+
+          <button class="btn btn-pink btn-large" id="open-skin-crate-btn">OPEN SKIN CRATE</button>
+          <div id="skin-crate-result" class="skin-crate-result hidden"></div>
+          <div class="crate-info" id="skin-crate-info"></div>
+        </div>
       </div>
     </div>
 
@@ -306,6 +361,7 @@
   <script src="/js/utils.js"></script>
   <script src="/js/assets.js"></script>
   <script src="/js/abilities.js"></script>
+  <script src="/js/skins.js"></script>
   <script src="/js/entities.js"></script>
   <script src="/js/hud.js"></script>
   <script src="/js/game.js"></script>

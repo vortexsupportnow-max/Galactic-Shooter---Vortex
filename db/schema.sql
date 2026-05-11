@@ -46,12 +46,22 @@ CREATE TABLE IF NOT EXISTS achievements (
   UNIQUE(user_id, achievement_id)
 );
 
+CREATE TABLE IF NOT EXISTS user_skins (
+  id         BIGSERIAL PRIMARY KEY,
+  user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  skin_id    TEXT NOT NULL,
+  UNIQUE(user_id, skin_id)
+);
+
 -- UPDATE PERSISTENTE PER DATABASE GIA' ESISTENTI ------------------------------
 -- Esegui anche queste ALTER TABLE se il database esisteva gia' prima della ruota
 -- della fortuna, cosi' i nuovi campi vengono aggiunti senza ricreare la tabella.
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS last_wheel_spin_at TIMESTAMPTZ;
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS free_mystery_crates INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS free_void_crates INTEGER NOT NULL DEFAULT 0;
+-- Skin system columns (run once on existing databases)
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS equipped_skin TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS free_skin_crates INTEGER NOT NULL DEFAULT 0;
 
 -- ── Indexes ──────────────────────────────────────────────────
 
@@ -62,6 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_scores_wave_desc        ON scores(wave DESC);
 CREATE INDEX IF NOT EXISTS idx_scores_created_at       ON scores(created_at);
 CREATE INDEX IF NOT EXISTS idx_user_abilities_user_id  ON user_abilities(user_id);
 CREATE INDEX IF NOT EXISTS idx_achievements_user_id    ON achievements(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_skins_user_id      ON user_skins(user_id);
 
 -- ── Row-Level Security ────────────────────────────────────────
 -- The Node.js backend is the only caller (server-side, trusted).
@@ -72,17 +83,20 @@ ALTER TABLE users          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_abilities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scores         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE achievements   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_skins     ENABLE ROW LEVEL SECURITY;
 
 -- Drop policies first so this script is idempotent
 DROP POLICY IF EXISTS "backend_all" ON users;
 DROP POLICY IF EXISTS "backend_all" ON user_abilities;
 DROP POLICY IF EXISTS "backend_all" ON scores;
 DROP POLICY IF EXISTS "backend_all" ON achievements;
+DROP POLICY IF EXISTS "backend_all" ON user_skins;
 
 CREATE POLICY "backend_all" ON users          FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "backend_all" ON user_abilities FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "backend_all" ON scores         FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "backend_all" ON achievements   FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "backend_all" ON user_skins     FOR ALL USING (true) WITH CHECK (true);
 
 -- ── Helper Functions (called via supabase.rpc) ────────────────
 

@@ -127,10 +127,20 @@ class GalacticGame {
     zone.addEventListener('touchend', onEnd);
   }
 
-  start(abilitySlots = [null, null, null], unlockedAbilityIds = []) {
+  start(abilitySlots = [null, null, null], unlockedAbilityIds = [], skinBoosts = null, skinColor = null) {
     if (this.animId) cancelAnimationFrame(this.animId);
 
     const player = new Player(480, 700);
+
+    // Apply skin boosts to player
+    const boosts = skinBoosts || {};
+    if (boosts.extra_lives > 0) player.lives += boosts.extra_lives;
+    if (boosts.starting_shield) {
+      player.shielded    = true;
+      player.shieldTimer = 5000;
+    }
+    player.skinColor = skinColor || null;
+
     this.gs = {
       wave: 1,
       score: 0,
@@ -145,6 +155,7 @@ class GalacticGame {
       boss: null,
       abilitySlots: abilitySlots.map(a => a ? { ...a } : null),
       unlockedAbilityIds: unlockedAbilityIds,
+      skinBoosts: boosts,
       paused: false,
       gameOver: false,
       waveComplete: false,
@@ -511,8 +522,9 @@ class GalacticGame {
     gs.enemies.splice(index, 1);
     gs.enemiesKilled++;
 
-    // Score with combo
-    const pts = enemy.score * gs.combo;
+    // Score with combo + skin boost
+    const scoreMult = gs.skinBoosts?.score_mult || 1;
+    const pts = Math.round(enemy.score * gs.combo * scoreMult);
     gs.score += pts;
     gs.coinsCollected += enemy.coinDrop;
 
@@ -538,7 +550,8 @@ class GalacticGame {
 
   _killBoss() {
     const gs = this.gs;
-    const pts = 5000 * gs.wave;
+    const scoreMult = gs.skinBoosts?.score_mult || 1;
+    const pts = Math.round(5000 * gs.wave * scoreMult);
     gs.score += pts;
     gs.coinsCollected += 100;
     gs.gemsCollected++;
@@ -860,9 +873,9 @@ class GalacticGame {
 // Global instance
 let gameInstance = null;
 
-function startGame(abilitySlots, unlockedAbilityIds) {
+function startGame(abilitySlots, unlockedAbilityIds, skinBoosts, skinColor) {
   if (!gameInstance) gameInstance = new GalacticGame();
-  gameInstance.start(abilitySlots || [null, null, null], unlockedAbilityIds || []);
+  gameInstance.start(abilitySlots || [null, null, null], unlockedAbilityIds || [], skinBoosts || null, skinColor || null);
 }
 
 function stopGame() {

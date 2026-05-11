@@ -61,6 +61,11 @@ async function loadProfile() {
   const aCount = (d.abilities || []).length;
   const total = Object.keys(ABILITIES).length;
 
+  const equippedSkin = d.equipped_skin || 'default';
+  const skinObj = SKINS[equippedSkin];
+  const skinLabel = skinObj ? `${skinObj.emoji} ${skinObj.name}` : '🚀 DEFAULT';
+  const skinsOwned = (d.skins || []).length;
+
   content.innerHTML = `
     <div class="profile-card">
       <h3>PILOT INFO</h3>
@@ -80,6 +85,12 @@ async function loadProfile() {
       <div class="stat-row"><span>MAX WAVE</span><span class="val">${d.max_wave}</span></div>
       <div class="stat-row"><span>ABILITIES</span><span class="val">${aCount}/${total}</span></div>
       <div class="stat-row"><span>FREE CRATES</span><span class="val">${(d.free_mystery_crates || 0) + (d.free_void_crates || 0)}</span></div>
+      <div class="stat-row"><span>SKINS OWNED</span><span class="val">${skinsOwned}/${Object.keys(SKINS).length}</span></div>
+    </div>
+    <div class="profile-card">
+      <h3>🎨 EQUIPPED SKIN</h3>
+      <div class="stat-row"><span>SKIN</span><span class="val" style="color:#ff66cc">${skinLabel}</span></div>
+      ${skinObj ? `<div class="stat-row"><span>BOOST</span><span class="val" style="font-size:0.38rem;color:var(--yellow)">${skinObj.description}</span></div>` : ''}
     </div>
     <div class="profile-card">
       <h3>ACHIEVEMENTS</h3>
@@ -502,11 +513,14 @@ function initCollectionHandlers() {
 
 function initMenuHandlers() {
   document.getElementById('btn-play').addEventListener('click', async () => {
-    // Fetch unlocked abilities first so in-game powerups only use those
+    // Fetch unlocked abilities + equipped skin first
     const res = await apiFetch('/game/profile');
     const ownedAbilityIds = res.success ? (res.data.abilities || []).map(a => a.ability_id) : [];
+    const equippedSkin    = res.success ? (res.data.equipped_skin || 'default') : 'default';
+    const skinBoosts      = getEquippedSkinBoosts(equippedSkin);
+    const skinColor       = SKINS[equippedSkin]?.color || null;
     showScreen('game');
-    startGame([null, null, null], ownedAbilityIds);
+    startGame([null, null, null], ownedAbilityIds, skinBoosts, skinColor);
   });
   document.getElementById('btn-collection').addEventListener('click', showCollection);
   document.getElementById('btn-crates').addEventListener('click', showCrateShop);
@@ -917,4 +931,229 @@ function initAbilityInfoHandlers() {
       document.getElementById('ability-info-overlay').classList.add('hidden');
     }
   });
+}
+
+// ===== SKINS =====
+
+let _selectedSkinCrate = 'stellar';
+
+function showSkins() {
+  showScreen('skins');
+  _activeSkinTab('collection');
+  loadSkins();
+}
+
+function _activeSkinTab(tab) {
+  document.querySelectorAll('.skin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.skin-tab-content').forEach(c => c.classList.add('hidden'));
+  const btn = document.querySelector(`.skin-tab[data-tab="${tab}"]`);
+  const content = document.getElementById(`skin-tab-${tab}`);
+  if (btn) btn.classList.add('active');
+  if (content) content.classList.remove('hidden');
+}
+
+async function loadSkins() {
+  const res = await apiFetch('/game/profile');
+  if (res.success) {
+    _profileData = res.data;
+    document.getElementById('skins-coins').textContent = formatNumber(res.data.coins || 0);
+    document.getElementById('skins-gems').textContent  = formatNumber(res.data.gems  || 0);
+  }
+  renderSkinGrid();
+  updateSkinCrateDisplay(_selectedSkinCrate);
+}
+
+function renderSkinGrid() {
+  const grid = document.getElementById('skin-grid');
+  if (!grid) return;
+  const owned     = new Set(_profileData?.skins || []);
+  const equipped  = _profileData?.equipped_skin || 'default';
+
+  const all = Object.values(SKINS);
+  grid.innerHTML = '';
+
+  // Default skin card
+  const defCard = document.createElement('div');
+  defCard.className = `skin-card common ${equipped === 'default' ? 'equipped' : ''}`;
+  defCard.innerHTML = `
+    <div class="skin-rarity-tag">DEFAULT</div>
+    <div class="skin-emoji">🚀</div>
+    <div class="skin-name">DEFAULT</div>
+    <div class="skin-desc" style="color:#555">No boost</div>
+    ${equipped === 'default'
+      ? '<div class="skin-equipped-label">✓ EQUIPPED</div>'
+      : '<button class="skin-equip-btn" data-skin="default">EQUIP</button>'}
+  `;
+  if (equipped !== 'default') {
+    defCard.querySelector('.skin-equip-btn').addEventListener('click', e => {
+      e.stopPropagation(); equipSkin('default');
+    });
+  }
+  grid.appendChild(defCard);
+
+  for (const skin of all) {
+    const isOwned    = owned.has(skin.id);
+    const isEquipped = equipped === skin.id;
+    const card = document.createElement('div');
+    card.className = `skin-card ${skin.rarity} ${isOwned ? '' : 'locked'} ${isEquipped ? 'equipped' : ''}`;
+
+    const boostLines = [];
+    if (skin.boost.coins_mult > 1)      boostLines.push(`🪙 ×${skin.boost.coins_mult.toFixed(2)}`);
+    if (skin.boost.gems_mult  > 1)      boostLines.push(`💎 ×${skin.boost.gems_mult.toFixed(2)}`);
+    if (skin.boost.score_mult > 1)      boostLines.push(`⭐ ×${skin.boost.score_mult.toFixed(2)}`);
+    if (skin.boost.extra_lives > 0)     boostLines.push(`❤️ +${skin.boost.extra_lives} ${skin.boost.extra_lives === 1 ? 'life' : 'lives'}`);
+    if (skin.boost.starting_shield)     boostLines.push(`🛡️ Start shielded`);
+
+    card.innerHTML = `
+      <div class="skin-rarity-tag">${skin.rarity.toUpperCase()}</div>
+      <div class="skin-emoji">${skin.emoji}</div>
+      <div class="skin-name">${skin.name}</div>
+      <div class="skin-desc">${skin.description}</div>
+      <div class="skin-boosts">${boostLines.join(' · ')}</div>
+      ${isOwned
+        ? isEquipped
+          ? '<div class="skin-equipped-label">✓ EQUIPPED</div>'
+          : `<button class="skin-equip-btn" data-skin="${skin.id}">EQUIP</button>`
+        : '<div class="skin-locked-label">🔒 LOCKED</div>'}
+    `;
+
+    if (isOwned && !isEquipped) {
+      card.querySelector('.skin-equip-btn').addEventListener('click', e => {
+        e.stopPropagation(); equipSkin(skin.id);
+      });
+    }
+    grid.appendChild(card);
+  }
+}
+
+async function equipSkin(skinId) {
+  const res = await apiFetch('/game/equip-skin', {
+    method: 'POST',
+    body: JSON.stringify({ skinId })
+  });
+  if (res.success) {
+    if (_profileData) _profileData.equipped_skin = res.data.equipped_skin;
+    renderSkinGrid();
+    updateCurrency();
+  } else {
+    alert(res.error || 'Failed to equip skin');
+  }
+}
+
+function updateSkinCrateDisplay(type) {
+  const def = SKIN_CRATE_DEFS[type];
+  if (!def) return;
+
+  const box = document.getElementById('skin-crate-box');
+  if (box) box.className = `skin-crate-box type-${type}`;
+
+  const iconEl  = document.getElementById('skin-crate-box-icon');
+  const labelEl = document.getElementById('skin-crate-box-label');
+  const costEl  = document.getElementById('skin-crate-box-cost');
+
+  if (iconEl)  iconEl.textContent  = def.icon;
+  if (labelEl) labelEl.textContent = def.name;
+
+  const freeCrates = Number(_profileData?.free_skin_crates || 0);
+  if (costEl) {
+    costEl.textContent = freeCrates > 0
+      ? `FREE x${freeCrates} · ${def.costCoins}🪙 + ${def.costGems}💎`
+      : `${def.costCoins}🪙 + ${def.costGems}💎`;
+  }
+
+  const openBtn = document.getElementById('open-skin-crate-btn');
+  if (openBtn) openBtn.textContent = freeCrates > 0 ? 'OPEN FREE SKIN CRATE' : 'OPEN SKIN CRATE';
+
+  const info = document.getElementById('skin-crate-info');
+  if (info) {
+    const freeLine = freeCrates > 0 ? `<div class="rarity-chance legendary">★ FREE SKIN CRATES: ${freeCrates}</div>` : '';
+    info.innerHTML = freeLine + def.odds.map(o => `<div class="rarity-chance ${o.cls}">${o.label}</div>`).join('');
+  }
+
+  const resultEl = document.getElementById('skin-crate-result');
+  if (resultEl) resultEl.classList.add('hidden');
+}
+
+async function openSkinCrate() {
+  const btn = document.getElementById('open-skin-crate-btn');
+  btn.textContent = 'OPENING...';
+  btn.disabled = true;
+
+  const res = await apiFetch('/game/open-skin-crate', {
+    method: 'POST',
+    body: JSON.stringify({ crateType: _selectedSkinCrate })
+  });
+
+  if (!res.success) {
+    btn.textContent = 'OPEN SKIN CRATE';
+    btn.disabled = false;
+    alert(res.error || 'Failed to open skin crate');
+    return;
+  }
+
+  const { skinId, rarity, skinName, alreadyOwned, coinsCompensation, usedFreeCrate } = res.data;
+
+  // Flash animation
+  const flash = document.getElementById('skin-crate-flash');
+  if (flash) {
+    flash.className = `crate-flash-overlay flash-${rarity}`;
+    await sleep(600);
+    flash.className = 'crate-flash-overlay hidden';
+  }
+
+  const skin = SKINS[skinId];
+  const resultEl = document.getElementById('skin-crate-result');
+
+  resultEl.innerHTML = `
+    <div class="skin-result-rarity ${rarity}">${rarity.toUpperCase()}</div>
+    <div class="skin-result-emoji">${skin?.emoji || '🎨'}</div>
+    <div class="skin-result-name">${skinName}</div>
+    <div class="skin-result-desc">${skin?.description || ''}</div>
+    <div style="font-size:0.4rem;margin-top:0.4rem;color:#aaa">
+      ${alreadyOwned ? `Already owned — +${formatNumber(coinsCompensation)} coins compensation` : '🎉 NEW SKIN UNLOCKED!'}
+      ${usedFreeCrate ? '<br>FREE CRATE USED' : ''}
+    </div>
+    <div class="crate-continue-hint">[ TAP TO CONTINUE ]</div>
+  `;
+
+  resultEl.className = 'skin-crate-result hidden';
+  void resultEl.offsetWidth;
+  resultEl.className = `skin-crate-result ${rarity}`;
+
+  await new Promise(resolve => {
+    const dismiss = () => {
+      document.removeEventListener('keydown', dismiss);
+      resultEl.removeEventListener('click', dismiss);
+      resolve();
+    };
+    document.addEventListener('keydown', dismiss);
+    resultEl.addEventListener('click', dismiss);
+  });
+
+  btn.textContent = 'OPEN SKIN CRATE';
+  btn.disabled = false;
+  loadSkins();
+}
+
+function initSkinHandlers() {
+  document.getElementById('skins-back').addEventListener('click', showMainMenu);
+  document.getElementById('btn-skins').addEventListener('click', showSkins);
+
+  document.querySelectorAll('.skin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      _activeSkinTab(tab.dataset.tab);
+      if (tab.dataset.tab === 'shop') updateSkinCrateDisplay(_selectedSkinCrate);
+    });
+  });
+
+  document.querySelectorAll('.skin-crate-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.skin-crate-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      _selectedSkinCrate = card.dataset.crate;
+      updateSkinCrateDisplay(_selectedSkinCrate);
+    });
+  });
+
+  document.getElementById('open-skin-crate-btn').addEventListener('click', openSkinCrate);
 }
