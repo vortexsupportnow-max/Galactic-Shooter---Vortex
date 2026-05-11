@@ -337,7 +337,7 @@ router.post('/open-crate', async (req, res) => {
 
     const { data: user } = await supabase
       .from('users')
-      .select('gems, free_mystery_crates, free_void_crates')
+      .select('coins, gems, free_mystery_crates, free_void_crates')
       .eq('id', userId)
       .single();
 
@@ -370,6 +370,7 @@ router.post('/open-crate', async (req, res) => {
       .maybeSingle();
 
     let newLevel = 1;
+    let coinsCompensation = 0;
     if (existing) {
       if (existing.level < 10) {
         await supabase
@@ -378,7 +379,11 @@ router.post('/open-crate', async (req, res) => {
           .eq('user_id', userId)
           .eq('ability_id', abilityId);
         newLevel = existing.level + 1;
-      } else if (!usingFreeCrate) {
+      } else if (usingFreeCrate) {
+        coinsCompensation = MAXED_ABILITY_COMPENSATION[rarity] || 1000;
+        await supabase.from('users').update({ coins: (user.coins || 0) + coinsCompensation }).eq('id', userId);
+        newLevel = existing.level;
+      } else {
         await supabase.from('users').update({ gems: user.gems - crate.cost + Math.floor(crate.cost / 2) }).eq('id', userId);
         newLevel = existing.level;
       }
@@ -386,7 +391,7 @@ router.post('/open-crate', async (req, res) => {
       await supabase.from('user_abilities').insert({ user_id: userId, ability_id: abilityId, level: 1 });
     }
 
-    res.json({ success: true, data: { abilityId, rarity, level: newLevel, alreadyOwned: !!existing, usedFreeCrate: usingFreeCrate } });
+    res.json({ success: true, data: { abilityId, rarity, level: newLevel, alreadyOwned: !!existing, usedFreeCrate: usingFreeCrate, coinsCompensation } });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

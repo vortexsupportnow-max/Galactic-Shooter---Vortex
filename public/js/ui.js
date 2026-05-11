@@ -378,7 +378,7 @@ async function openCrate() {
     return;
   }
 
-  const { abilityId, rarity, level, alreadyOwned, usedFreeCrate } = res.data;
+  const { abilityId, rarity, level, alreadyOwned, usedFreeCrate, coinsCompensation } = res.data;
 
   // Run the suspense animation now that we know the rarity
   await animateCrateOpening(rarity);
@@ -397,6 +397,7 @@ async function openCrate() {
     <div style="font-size:0.45rem;margin-top:0.3rem;color:#aaa">
       ${alreadyOwned ? `UPGRADED TO LV ${level}` : 'NEW ABILITY!'}
       ${usedFreeCrate ? '<br>FREE CRATE USED' : ''}
+      ${coinsCompensation ? `<br>COMPENSATION: ${formatNumber(coinsCompensation)} COINS` : ''}
     </div>
     <div class="crate-continue-hint">[ PREMI UN TASTO O CLICCA PER CONTINUARE ]</div>
   `;

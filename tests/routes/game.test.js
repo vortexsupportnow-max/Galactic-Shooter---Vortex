@@ -572,7 +572,7 @@ describe('POST /api/game/open-crate with free crates', () => {
   it('uses a free mystery crate before spending gems', async () => {
     let fromIdx = 0;
     const tables = [
-      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { gems: 0, free_mystery_crates: 1, free_void_crates: 0 }, error: null }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { coins: 0, gems: 0, free_mystery_crates: 1, free_void_crates: 0 }, error: null }) },
       { update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }) },
       { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: null }) },
       { insert: jest.fn().mockResolvedValue({ error: null }) }
@@ -583,6 +583,23 @@ describe('POST /api/game/open-crate with free crates', () => {
     const res = await request(app).post('/api/game/open-crate').send({ crateType: 'mystery' });
     expect(res.body.success).toBe(true);
     expect(res.body.data.usedFreeCrate).toBe(true);
+  });
+
+  it('grants coin compensation when a free crate rolls a maxed ability', async () => {
+    let fromIdx = 0;
+    const tables = [
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { coins: 0, gems: 0, free_mystery_crates: 1, free_void_crates: 0 }, error: null }) },
+      { update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: { level: 10 } }) },
+      { update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }) }
+    ];
+    const supabase = { from: jest.fn(() => tables[fromIdx++] || tables[3]) };
+    getDB.mockReturnValue(supabase);
+
+    const res = await request(app).post('/api/game/open-crate').send({ crateType: 'mystery' });
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.usedFreeCrate).toBe(true);
+    expect(res.body.data.coinsCompensation).toBeGreaterThan(0);
   });
 });
 
