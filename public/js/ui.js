@@ -302,10 +302,9 @@ const CRATE_DEFS = {
 };
 
 let _selectedCrate = 'mystery';
-let _activeCrateTabName = 'abilities';
+let _selectedSkinCrate = 'stellar';
 
 function _activeCrateTab(tab) {
-  _activeCrateTabName = tab;
   document.querySelectorAll('.crate-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.crate-tab-content').forEach(c => c.classList.add('hidden'));
   const btn = document.querySelector(`.crate-tab[data-tab="${tab}"]`);
@@ -971,8 +970,6 @@ function initAbilityInfoHandlers() {
 }
 
 // ===== SKINS =====
-
-let _selectedSkinCrate = 'stellar';
 
 function showSkins() {
   showScreen('skins');

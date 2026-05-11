@@ -114,7 +114,7 @@ class HUD {
       if (ability) {
         const borderColor = RARITY_COLORS[ability.rarity] || '#aaaaaa';
         ctx.strokeStyle = borderColor;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1;
         ctx.strokeRect(slotX, slotY, slotW, slotH);
 
         // Icon
