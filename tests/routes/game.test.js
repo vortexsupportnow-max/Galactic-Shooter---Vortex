@@ -51,7 +51,7 @@ describe('POST /api/game/save-score', () => {
   let app;
   beforeAll(() => { app = buildApp(); });
 
-  it('calculates coins (score/100) and no gems when wave is below milestones', async () => {
+  it('calculates coins and includes wave/milestone gem rewards', async () => {
     const userData = { nickname: 'Tester', max_score: 0, max_wave: 0, games_played: 2, coins: 0, gems: 0 };
     const supabase = {
       from: jest.fn().mockReturnValue({
@@ -73,7 +73,7 @@ describe('POST /api/game/save-score', () => {
 
     expect(res.body.success).toBe(true);
     expect(res.body.data.coinsEarned).toBe(30);
-    expect(res.body.data.gemsEarned).toBe(0);
+    expect(res.body.data.gemsEarned).toBe(11);
     expect(res.body.data.newMaxScore).toBe(3000);
     expect(res.body.data.newMaxWave).toBe(5);
   });
@@ -99,7 +99,7 @@ describe('POST /api/game/save-score', () => {
       .send({ score: 1000, wave: 20, enemiesKilled: 0 });
 
     expect(res.body.success).toBe(true);
-    expect(res.body.data.gemsEarned).toBe(5);
+    expect(res.body.data.gemsEarned).toBe(9);
   });
 
   it('awards 10 gems when wave first crosses milestones 20 and 50 simultaneously', async () => {
@@ -123,10 +123,10 @@ describe('POST /api/game/save-score', () => {
       .send({ score: 5000, wave: 55, enemiesKilled: 0 });
 
     expect(res.body.success).toBe(true);
-    expect(res.body.data.gemsEarned).toBe(10);
+    expect(res.body.data.gemsEarned).toBe(31);
   });
 
-  it('awards 15 gems when all three wave milestones are first crossed', async () => {
+  it('awards all wave and milestone gem rewards when jumping to wave 100', async () => {
     const userData = { nickname: 'Tester', max_score: 0, max_wave: 0, games_played: 0, coins: 0, gems: 0 };
     const supabase = {
       from: jest.fn().mockReturnValue({
@@ -147,7 +147,7 @@ describe('POST /api/game/save-score', () => {
       .send({ score: 5000, wave: 100, enemiesKilled: 0 });
 
     expect(res.body.success).toBe(true);
-    expect(res.body.data.gemsEarned).toBe(15);
+    expect(res.body.data.gemsEarned).toBe(40);
   });
 
   it('does not award milestone gems when wave milestone was already reached', async () => {
@@ -171,7 +171,7 @@ describe('POST /api/game/save-score', () => {
       .send({ score: 2000, wave: 20, enemiesKilled: 0 });
 
     expect(res.body.success).toBe(true);
-    expect(res.body.data.gemsEarned).toBe(0);
+    expect(res.body.data.gemsEarned).toBe(4);
   });
 
   it('treats missing enemiesKilled as 0', async () => {
