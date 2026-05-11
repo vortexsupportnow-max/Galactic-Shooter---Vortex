@@ -51,7 +51,7 @@ describe('POST /api/game/save-score', () => {
   let app;
   beforeAll(() => { app = buildApp(); });
 
-  it('calculates coins (score/100) and no gems when wave is below milestones', async () => {
+  it('calculates coins and includes wave/milestone gem rewards', async () => {
     const userData = { nickname: 'Tester', max_score: 0, max_wave: 0, games_played: 2, coins: 0, gems: 0 };
     const supabase = {
       from: jest.fn().mockReturnValue({
@@ -73,7 +73,7 @@ describe('POST /api/game/save-score', () => {
 
     expect(res.body.success).toBe(true);
     expect(res.body.data.coinsEarned).toBe(30);
-    expect(res.body.data.gemsEarned).toBe(0);
+    expect(res.body.data.gemsEarned).toBe(11);
     expect(res.body.data.newMaxScore).toBe(3000);
     expect(res.body.data.newMaxWave).toBe(5);
   });
@@ -99,7 +99,7 @@ describe('POST /api/game/save-score', () => {
       .send({ score: 1000, wave: 20, enemiesKilled: 0 });
 
     expect(res.body.success).toBe(true);
-    expect(res.body.data.gemsEarned).toBe(5);
+    expect(res.body.data.gemsEarned).toBe(9);
   });
 
   it('awards 10 gems when wave first crosses milestones 20 and 50 simultaneously', async () => {
@@ -123,10 +123,10 @@ describe('POST /api/game/save-score', () => {
       .send({ score: 5000, wave: 55, enemiesKilled: 0 });
 
     expect(res.body.success).toBe(true);
-    expect(res.body.data.gemsEarned).toBe(10);
+    expect(res.body.data.gemsEarned).toBe(31);
   });
 
-  it('awards 15 gems when all three wave milestones are first crossed', async () => {
+  it('awards all wave and milestone gem rewards when jumping to wave 100', async () => {
     const userData = { nickname: 'Tester', max_score: 0, max_wave: 0, games_played: 0, coins: 0, gems: 0 };
     const supabase = {
       from: jest.fn().mockReturnValue({
@@ -147,7 +147,7 @@ describe('POST /api/game/save-score', () => {
       .send({ score: 5000, wave: 100, enemiesKilled: 0 });
 
     expect(res.body.success).toBe(true);
-    expect(res.body.data.gemsEarned).toBe(15);
+    expect(res.body.data.gemsEarned).toBe(40);
   });
 
   it('does not award milestone gems when wave milestone was already reached', async () => {
@@ -171,7 +171,7 @@ describe('POST /api/game/save-score', () => {
       .send({ score: 2000, wave: 20, enemiesKilled: 0 });
 
     expect(res.body.success).toBe(true);
-    expect(res.body.data.gemsEarned).toBe(0);
+    expect(res.body.data.gemsEarned).toBe(4);
   });
 
   it('treats missing enemiesKilled as 0', async () => {
@@ -500,6 +500,106 @@ describe('POST /api/game/open-crate', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.level).toBe(10);
     expect(res.body.data.alreadyOwned).toBe(true);
+  });
+});
+
+describe('POST /api/game/spin-wheel', () => {
+  let app;
+  beforeAll(() => { app = buildApp(); });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('returns cooldown error when the wheel is not ready', async () => {
+    const supabase = {
+      from: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: { coins: 100, gems: 10, last_wheel_spin_at: new Date().toISOString(), free_mystery_crates: 0, free_void_crates: 0 },
+          error: null
+        })
+      })
+    };
+    getDB.mockReturnValue(supabase);
+
+    const res = await request(app).post('/api/game/spin-wheel').send({});
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toBe('Wheel not ready yet');
+  });
+
+  it('awards coins when the wheel lands on the coin segment', async () => {
+    const updateEq = jest.fn().mockResolvedValue({ error: null });
+    const tables = [
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { coins: 100, gems: 5, last_wheel_spin_at: null, free_mystery_crates: 0, free_void_crates: 0 }, error: null }) },
+      { update: jest.fn().mockReturnValue({ eq: updateEq }) }
+    ];
+    let idx = 0;
+    const supabase = { from: jest.fn(() => tables[idx++] || tables[1]) };
+    getDB.mockReturnValue(supabase);
+    jest.spyOn(Math, 'random').mockReturnValue(0.01);
+
+    const res = await request(app).post('/api/game/spin-wheel').send({});
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.reward.kind).toBe('coins');
+    expect(res.body.data.reward.amount).toBe(750);
+    expect(updateEq).toHaveBeenCalled();
+  });
+
+  it('awards a free mystery crate from the wheel', async () => {
+    const updateEq = jest.fn().mockResolvedValue({ error: null });
+    const tables = [
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { coins: 100, gems: 5, last_wheel_spin_at: null, free_mystery_crates: 0, free_void_crates: 0 }, error: null }) },
+      { update: jest.fn().mockReturnValue({ eq: updateEq }) }
+    ];
+    let idx = 0;
+    const supabase = { from: jest.fn(() => tables[idx++] || tables[1]) };
+    getDB.mockReturnValue(supabase);
+    jest.spyOn(Math, 'random').mockReturnValue(0.91);
+
+    const res = await request(app).post('/api/game/spin-wheel').send({});
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.reward.kind).toBe('crate');
+    expect(res.body.data.reward.crateType).toBe('mystery');
+  });
+});
+
+describe('POST /api/game/open-crate with free crates', () => {
+  let app;
+  beforeAll(() => { app = buildApp(); });
+
+  it('uses a free mystery crate before spending gems', async () => {
+    let fromIdx = 0;
+    const tables = [
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { coins: 0, gems: 0, free_mystery_crates: 1, free_void_crates: 0 }, error: null }) },
+      { update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: null }) },
+      { insert: jest.fn().mockResolvedValue({ error: null }) }
+    ];
+    const supabase = { from: jest.fn(() => tables[fromIdx++] || tables[3]) };
+    getDB.mockReturnValue(supabase);
+
+    const res = await request(app).post('/api/game/open-crate').send({ crateType: 'mystery' });
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.usedFreeCrate).toBe(true);
+  });
+
+  it('grants coin compensation when a free crate rolls a maxed ability', async () => {
+    let fromIdx = 0;
+    const tables = [
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { coins: 0, gems: 0, free_mystery_crates: 1, free_void_crates: 0 }, error: null }) },
+      { update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: { level: 10 } }) },
+      { update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }) }
+    ];
+    const supabase = { from: jest.fn(() => tables[fromIdx++] || tables[3]) };
+    getDB.mockReturnValue(supabase);
+
+    const res = await request(app).post('/api/game/open-crate').send({ crateType: 'mystery' });
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.usedFreeCrate).toBe(true);
+    expect(res.body.data.coinsCompensation).toBeGreaterThan(0);
   });
 });
 

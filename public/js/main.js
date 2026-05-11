@@ -60,6 +60,7 @@ async function init() {
   initCollectionHandlers();
   initSettingsHandlers();
   initTutorialHandlers();
+  initWheelHandlers();
   initAbilityInfoHandlers();
 
   // Init login starfield
