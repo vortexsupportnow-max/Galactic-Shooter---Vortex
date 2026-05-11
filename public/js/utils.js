@@ -90,6 +90,9 @@ let soundtrackTimer = null;
 let soundtrackStarted = false;
 let soundtrackStep = 0;
 
+const MIN_AUDIO_GAIN = 0.0001;
+const SOUNDTRACK_VOLUME_MULTIPLIER = 0.16;
+
 const SOUNDTRACK_PATTERN = [
   { lead: [659.25, 783.99, 880, 783.99], bass: [220, 220] },
   { lead: [698.46, 880, 987.77, 880], bass: [233.08, 233.08] },
@@ -144,9 +147,9 @@ function scheduleMusicVoice(freq, startAt, duration, volume, type, detune = 0) {
   osc.frequency.setValueAtTime(freq, startAt);
   osc.detune.setValueAtTime(detune, startAt);
 
-  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.setValueAtTime(MIN_AUDIO_GAIN, startAt);
   gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.04);
-  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+  gain.gain.exponentialRampToValueAtTime(MIN_AUDIO_GAIN, startAt + duration);
 
   osc.connect(gain);
   gain.connect(bus);
@@ -180,7 +183,7 @@ function scheduleNextSoundtrackBar() {
 function syncBackgroundMusic() {
   if (!soundtrackGain || !audioCtx) return;
   const ctx = getAudioCtx();
-  const targetGain = window.audioMuted ? 0.0001 : Math.max(0.0001, (window.audioVolume ?? 1) * 0.16);
+  const targetGain = window.audioMuted ? MIN_AUDIO_GAIN : Math.max(MIN_AUDIO_GAIN, (window.audioVolume ?? 1) * SOUNDTRACK_VOLUME_MULTIPLIER);
   soundtrackGain.gain.cancelScheduledValues(ctx.currentTime);
   soundtrackGain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.12);
 }

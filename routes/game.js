@@ -381,8 +381,6 @@ router.post('/open-crate', async (req, res) => {
       } else if (!usingFreeCrate) {
         await supabase.from('users').update({ gems: user.gems - crate.cost + Math.floor(crate.cost / 2) }).eq('id', userId);
         newLevel = existing.level;
-      } else {
-        newLevel = existing.level;
       }
     } else {
       await supabase.from('user_abilities').insert({ user_id: userId, ability_id: abilityId, level: 1 });

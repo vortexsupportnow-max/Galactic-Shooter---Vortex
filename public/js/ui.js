@@ -9,6 +9,11 @@ let _wheelCountdownTimer = null;
 let _wheelRotation = 0;
 let _wheelSpinning = false;
 
+const MS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+const WHEEL_COOLDOWN_MS = 12 * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MS_PER_SECOND;
+
 const WHEEL_SEGMENTS = [
   { id: 'coins', label: '🪙<br>COINS' },
   { id: 'gems', label: 'GEMS' },
@@ -721,16 +726,16 @@ function getWheelAvailability(profile = _profileData) {
 
   if (!profile?.last_wheel_spin_at) return { canSpin: true, nextSpinAt: null, remainingMs: 0 };
 
-  const nextSpinAt = new Date(new Date(profile.last_wheel_spin_at).getTime() + 12 * 60 * 60 * 1000);
+  const nextSpinAt = new Date(new Date(profile.last_wheel_spin_at).getTime() + WHEEL_COOLDOWN_MS);
   const remainingMs = Math.max(0, nextSpinAt.getTime() - Date.now());
   return { canSpin: remainingMs <= 0, nextSpinAt: nextSpinAt.toISOString(), remainingMs };
 }
 
 function formatWheelCountdown(ms) {
-  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const totalSeconds = Math.max(0, Math.ceil(ms / MS_PER_SECOND));
+  const hours = Math.floor(totalSeconds / (SECONDS_PER_MINUTE * MINUTES_PER_HOUR));
+  const minutes = Math.floor((totalSeconds % (SECONDS_PER_MINUTE * MINUTES_PER_HOUR)) / SECONDS_PER_MINUTE);
+  const seconds = totalSeconds % SECONDS_PER_MINUTE;
   if (hours > 0) return `${hours}H ${String(minutes).padStart(2, '0')}M`;
   return `${minutes}M ${String(seconds).padStart(2, '0')}S`;
 }

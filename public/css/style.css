@@ -17,6 +17,7 @@
   --rare: #4488ff;
   --epic: #aa44ff;
   --legendary: #ffaa00;
+  --subtitle-color: rgba(255,255,255,0.8);
 }
 
 html, body {
@@ -184,7 +185,7 @@ html, body {
   display: block;
   margin-top: 0.45rem;
   font-size: 0.4rem;
-  color: rgba(255,255,255,0.8);
+  color: var(--subtitle-color);
 }
 
 /* ===== SCREEN HEADER ===== */
