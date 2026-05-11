@@ -123,9 +123,12 @@ class HUD {
 
         // Name
         ctx.textAlign = 'center';
-        ctx.font = '4px "Press Start 2P"';
+        ctx.font = '5px "Press Start 2P"';
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
         ctx.fillStyle = '#ffffff';
         const name = ability.name.length > 8 ? ability.name.slice(0, 8) : ability.name;
+        ctx.strokeText(name, slotX + slotW / 2, slotY + slotH - 18);
         ctx.fillText(name, slotX + slotW / 2, slotY + slotH - 18);
 
         // Level

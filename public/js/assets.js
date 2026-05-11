@@ -174,9 +174,11 @@ const GameAssets = (function() {
   function drawEnemyBullet() {
     const c = makeCanvas(4, 10);
     const ctx = c.getContext('2d');
-    ctx.fillStyle = '#ff4444';
+    ctx.fillStyle = '#ff2233';
     ctx.fillRect(1, 0, 2, 10);
-    ctx.fillStyle = '#ffaaaa';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(1, 0, 2, 2);
+    ctx.fillStyle = '#ff99aa';
     ctx.fillRect(1, 7, 2, 3);
     return c;
   }

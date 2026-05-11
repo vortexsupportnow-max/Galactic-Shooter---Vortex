@@ -270,7 +270,12 @@ html, body {
   50%      { box-shadow: 0 0 20px rgba(255,170,0,0.8); }
 }
 .ability-icon-canvas { image-rendering: pixelated; }
-.ability-name { font-size: 0.4rem; text-align: center; line-height: 1.4; }
+.ability-name {
+  font-size: 0.48rem;
+  text-align: center;
+  line-height: 1.5;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.85);
+}
 .ability-level { font-size: 0.45rem; color: var(--yellow); }
 .ability-rarity-tag { font-size: 0.35rem; }
 .ability-card.common .ability-rarity-tag    { color: var(--common); }
@@ -308,6 +313,33 @@ html, body {
   width: 100%; max-width: 420px;
   padding: 1.5rem 1rem;
   display: flex; flex-direction: column; align-items: center; gap: 1.2rem;
+}
+.crate-tabs {
+  display: flex;
+  width: 100%;
+  gap: 0.5rem;
+}
+.crate-tab {
+  flex: 1;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  padding: 0.65rem 0.5rem;
+  border: 1px solid var(--gray);
+  background: transparent;
+  color: var(--gray);
+  cursor: pointer;
+}
+.crate-tab.active {
+  color: var(--yellow);
+  border-color: var(--yellow);
+  box-shadow: 0 0 10px rgba(255,255,0,0.2);
+}
+.crate-tab-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
 }
 
 /* ---- Crate type selector ---- */
