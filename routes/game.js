@@ -52,6 +52,41 @@ const WHEEL_REWARDS = [
 ];
 const MAXED_ABILITY_COMPENSATION = { common: 1000, rare: 2500, epic: 6000, legendary: 15000 };
 
+// ── Skin system ───────────────────────────────────────────────────────────────
+
+const SKINS = {
+  aurora:            { id: 'aurora',            name: 'Aurora Drift',      rarity: 'common',    boost: { coins_mult: 1.10, gems_mult: 1.00, score_mult: 1.00, extra_lives: 0, starting_shield: false } },
+  solar_flare:       { id: 'solar_flare',        name: 'Solar Flare',       rarity: 'common',    boost: { coins_mult: 1.00, gems_mult: 1.00, score_mult: 1.05, extra_lives: 0, starting_shield: false } },
+  ice_storm:         { id: 'ice_storm',          name: 'Ice Storm',         rarity: 'common',    boost: { coins_mult: 1.00, gems_mult: 1.05, score_mult: 1.00, extra_lives: 0, starting_shield: false } },
+  toxic_drift:       { id: 'toxic_drift',        name: 'Toxic Drift',       rarity: 'common',    boost: { coins_mult: 1.05, gems_mult: 1.00, score_mult: 1.00, extra_lives: 0, starting_shield: false } },
+  phantom:           { id: 'phantom',            name: 'Phantom Eclipse',   rarity: 'rare',      boost: { coins_mult: 1.15, gems_mult: 1.00, score_mult: 1.00, extra_lives: 0, starting_shield: false } },
+  crimson_nova:      { id: 'crimson_nova',       name: 'Crimson Nova',      rarity: 'rare',      boost: { coins_mult: 1.00, gems_mult: 1.00, score_mult: 1.10, extra_lives: 0, starting_shield: false } },
+  nebula:            { id: 'nebula',             name: 'Nebula Ghost',      rarity: 'rare',      boost: { coins_mult: 1.00, gems_mult: 1.10, score_mult: 1.00, extra_lives: 0, starting_shield: false } },
+  thunder:           { id: 'thunder',            name: 'Thunder Strike',    rarity: 'rare',      boost: { coins_mult: 1.00, gems_mult: 1.00, score_mult: 1.00, extra_lives: 1, starting_shield: false } },
+  void_wraith:       { id: 'void_wraith',        name: 'Void Wraith',       rarity: 'epic',      boost: { coins_mult: 1.25, gems_mult: 1.10, score_mult: 1.00, extra_lives: 0, starting_shield: false } },
+  celestial:         { id: 'celestial',          name: 'Celestial Dragon',  rarity: 'epic',      boost: { coins_mult: 1.00, gems_mult: 1.00, score_mult: 1.20, extra_lives: 1, starting_shield: false } },
+  quantum_rift:      { id: 'quantum_rift',       name: 'Quantum Rift',      rarity: 'epic',      boost: { coins_mult: 1.15, gems_mult: 1.15, score_mult: 1.00, extra_lives: 0, starting_shield: true  } },
+  galactic_overlord: { id: 'galactic_overlord',  name: 'Galactic Overlord', rarity: 'legendary', boost: { coins_mult: 1.30, gems_mult: 1.30, score_mult: 1.25, extra_lives: 2, starting_shield: false } }
+};
+
+const SKINS_BY_RARITY = {
+  common:    ['aurora', 'solar_flare', 'ice_storm', 'toxic_drift'],
+  rare:      ['phantom', 'crimson_nova', 'nebula', 'thunder'],
+  epic:      ['void_wraith', 'celestial', 'quantum_rift'],
+  legendary: ['galactic_overlord']
+};
+
+const SKIN_CRATE_TYPES = {
+  stellar: {
+    costCoins: 200, costGems: 5,
+    pool: [...Array(50).fill('common'), ...Array(35).fill('rare'), ...Array(12).fill('epic'), ...Array(3).fill('legendary')]
+  },
+  nova: {
+    costCoins: 1000, costGems: 20,
+    pool: [...Array(15).fill('common'), ...Array(40).fill('rare'), ...Array(35).fill('epic'), ...Array(10).fill('legendary')]
+  }
+};
+
 function pickRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
@@ -141,10 +176,10 @@ async function grantAbilityReward(supabase, userId, rarity) {
 }
 
 async function fetchUserProfileData(supabase, userId) {
-  const [userResult, abilitiesResult, achievementsResult] = await Promise.all([
+  const [userResult, abilitiesResult, achievementsResult, skinsResult] = await Promise.all([
     supabase
       .from('users')
-      .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at, last_wheel_spin_at, free_mystery_crates, free_void_crates')
+      .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at, last_wheel_spin_at, free_mystery_crates, free_void_crates, equipped_skin, free_skin_crates')
       .eq('id', userId)
       .maybeSingle(),
     supabase
@@ -154,6 +189,10 @@ async function fetchUserProfileData(supabase, userId) {
     supabase
       .from('achievements')
       .select('achievement_id, unlocked_at')
+      .eq('user_id', userId),
+    supabase
+      .from('user_skins')
+      .select('skin_id')
       .eq('user_id', userId)
   ]);
 
@@ -164,9 +203,12 @@ async function fetchUserProfileData(supabase, userId) {
     ...userResult.data,
     free_mystery_crates: userResult.data.free_mystery_crates || 0,
     free_void_crates: userResult.data.free_void_crates || 0,
+    equipped_skin: userResult.data.equipped_skin || 'default',
+    free_skin_crates: userResult.data.free_skin_crates || 0,
     wheel_available: getWheelAvailability(userResult.data.last_wheel_spin_at),
     abilities: abilitiesResult.data || [],
-    achievements: achievementsResult.data || []
+    achievements: achievementsResult.data || [],
+    skins: (skinsResult.data || []).map(s => s.skin_id)
   };
 }
 
@@ -178,7 +220,7 @@ router.post('/save-score', async (req, res) => {
 
     const { data: user, error: userErr } = await supabase
       .from('users')
-      .select('nickname, max_score, max_wave, games_played, coins, gems')
+      .select('nickname, max_score, max_wave, games_played, coins, gems, equipped_skin')
       .eq('id', userId)
       .single();
     if (userErr) throw new Error(userErr.message);
@@ -190,7 +232,13 @@ router.post('/save-score', async (req, res) => {
 
     const newMaxScore = Math.max(user.max_score, score);
     const newMaxWave = Math.max(user.max_wave, wave);
-    const coinsEarned = Math.floor(score / 100);
+
+    // Apply equipped skin boost multipliers
+    const skin = SKINS[user.equipped_skin] || null;
+    const coinsMult = skin ? skin.boost.coins_mult : 1;
+    const gemsMult  = skin ? skin.boost.gems_mult  : 1;
+
+    const coinsEarned = Math.floor(score / 100 * coinsMult);
 
     let gemsEarned = Math.max(0, Math.floor(gemsCollected));
     gemsEarned += Math.floor(wave / 5);
@@ -200,6 +248,7 @@ router.post('/save-score', async (req, res) => {
         gemsEarned += 5;
       }
     }
+    gemsEarned = Math.floor(gemsEarned * gemsMult);
 
     const { error: updateErr } = await supabase
       .from('users')
@@ -472,6 +521,118 @@ router.get('/achievements', async (req, res) => {
       .eq('user_id', userId);
     if (error) throw new Error(error.message);
     res.json({ success: true, data: achievements });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ── Skin crate endpoint ───────────────────────────────────────────────────────
+router.post('/open-skin-crate', async (req, res) => {
+  try {
+    const supabase = getDB();
+    const userId = req.user.userId;
+
+    const crateType = req.body.crateType || 'stellar';
+    const crate = SKIN_CRATE_TYPES[crateType];
+    if (!crate) return res.json({ success: false, error: 'Invalid skin crate type' });
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('coins, gems, free_skin_crates')
+      .eq('id', userId)
+      .single();
+
+    // Check if user has a free skin crate available
+    const freeCrates = Number(user.free_skin_crates || 0);
+    const usingFreeCrate = freeCrates > 0;
+
+    if (!usingFreeCrate) {
+      if (user.coins < crate.costCoins) {
+        return res.json({ success: false, error: `Not enough coins (need ${crate.costCoins})` });
+      }
+      if (user.gems < crate.costGems) {
+        return res.json({ success: false, error: `Not enough gems (need ${crate.costGems})` });
+      }
+    }
+
+    // Deduct cost
+    if (usingFreeCrate) {
+      await supabase.from('users').update({ free_skin_crates: freeCrates - 1 }).eq('id', userId);
+    } else {
+      await supabase.from('users').update({
+        coins: user.coins - crate.costCoins,
+        gems:  user.gems  - crate.costGems
+      }).eq('id', userId);
+    }
+
+    // Pick rarity then skin
+    const rarity = crate.pool[Math.floor(Math.random() * crate.pool.length)];
+    const pool = SKINS_BY_RARITY[rarity];
+    const skinId = pool[Math.floor(Math.random() * pool.length)];
+
+    // Check if already owned
+    const { data: existing } = await supabase
+      .from('user_skins')
+      .select('skin_id')
+      .eq('user_id', userId)
+      .eq('skin_id', skinId)
+      .maybeSingle();
+
+    let coinsCompensation = 0;
+    if (existing) {
+      // Already owned – compensate with coins
+      const compensation = { common: 500, rare: 1500, epic: 5000, legendary: 20000 };
+      coinsCompensation = compensation[rarity] || 500;
+      const { data: userData } = await supabase.from('users').select('coins').eq('id', userId).single();
+      await supabase.from('users').update({ coins: (userData?.coins || 0) + coinsCompensation }).eq('id', userId);
+    } else {
+      await supabase.from('user_skins').insert({ user_id: userId, skin_id: skinId });
+    }
+
+    const skinDef = SKINS[skinId];
+    res.json({
+      success: true,
+      data: {
+        skinId,
+        rarity,
+        skinName: skinDef?.name || skinId,
+        alreadyOwned: !!existing,
+        coinsCompensation,
+        usedFreeCrate: usingFreeCrate
+      }
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ── Equip skin endpoint ───────────────────────────────────────────────────────
+router.post('/equip-skin', async (req, res) => {
+  try {
+    const supabase = getDB();
+    const userId = req.user.userId;
+    const { skinId } = req.body;
+
+    if (!skinId || skinId === 'default') {
+      await supabase.from('users').update({ equipped_skin: 'default' }).eq('id', userId);
+      return res.json({ success: true, data: { equipped_skin: 'default' } });
+    }
+
+    if (!SKINS[skinId]) return res.json({ success: false, error: 'Unknown skin' });
+
+    const { data: owned } = await supabase
+      .from('user_skins')
+      .select('skin_id')
+      .eq('user_id', userId)
+      .eq('skin_id', skinId)
+      .maybeSingle();
+
+    if (!owned) return res.json({ success: false, error: 'Skin not owned' });
+
+    const { error } = await supabase.from('users').update({ equipped_skin: skinId }).eq('id', userId);
+    if (error) throw new Error(error.message);
+
+    res.json({ success: true, data: { equipped_skin: skinId } });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
