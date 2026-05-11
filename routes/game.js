@@ -39,13 +39,143 @@ const ABILITIES_BY_RARITY = {
   legendary: ['god_mode', 'nuke', 'time_warp', 'phoenix', 'singularity', 'storm']
 };
 
+const WHEEL_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+const WHEEL_REWARDS = [
+  { id: 'coins', kind: 'coins', amount: 750, weight: 28, title: 'COINS', description: '🪙 +750 COINS' },
+  { id: 'gems', kind: 'gems', amount: 25, weight: 22, title: 'GEMS', description: '💎 +25 GEMS' },
+  { id: 'ability_common', kind: 'ability', rarity: 'common', weight: 16, title: 'COMMON ABILITY', description: 'Unlock or upgrade a COMMON ability' },
+  { id: 'ability_rare', kind: 'ability', rarity: 'rare', weight: 12, title: 'RARE ABILITY', description: 'Unlock or upgrade a RARE ability' },
+  { id: 'ability_epic', kind: 'ability', rarity: 'epic', weight: 8, title: 'EPIC ABILITY', description: 'Unlock or upgrade an EPIC ability' },
+  { id: 'ability_legendary', kind: 'ability', rarity: 'legendary', weight: 4, title: 'LEGENDARY ABILITY', description: 'Unlock or upgrade a LEGENDARY ability' },
+  { id: 'crate_mystery', kind: 'crate', crateType: 'mystery', weight: 7, title: 'MYSTERY CRATE', description: '📦 Free 10-gem crate' },
+  { id: 'crate_void', kind: 'crate', crateType: 'void', weight: 3, title: 'VOID CRATE', description: '🕳️ Free 150-gem crate' }
+];
+const MAXED_ABILITY_COMPENSATION = { common: 1000, rare: 2500, epic: 6000, legendary: 15000 };
+
+function pickRandom(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function getWheelAvailability(lastSpinAt) {
+  if (!lastSpinAt) {
+    return { canSpin: true, nextSpinAt: null, remainingMs: 0 };
+  }
+
+  const nextSpinAt = new Date(new Date(lastSpinAt).getTime() + WHEEL_COOLDOWN_MS);
+  const remainingMs = nextSpinAt.getTime() - Date.now();
+
+  return {
+    canSpin: remainingMs <= 0,
+    nextSpinAt: nextSpinAt.toISOString(),
+    remainingMs: Math.max(0, remainingMs)
+  };
+}
+
+function pickWheelReward() {
+  const totalWeight = WHEEL_REWARDS.reduce((sum, reward) => sum + reward.weight, 0);
+  let roll = Math.random() * totalWeight;
+
+  for (const reward of WHEEL_REWARDS) {
+    roll -= reward.weight;
+    if (roll <= 0) return reward;
+  }
+
+  return WHEEL_REWARDS[0];
+}
+
+async function grantAbilityReward(supabase, userId, rarity) {
+  const abilityId = pickRandom(ABILITIES_BY_RARITY[rarity] || ABILITIES_BY_RARITY.common);
+  const { data: existing, error: existingErr } = await supabase
+    .from('user_abilities')
+    .select('level')
+    .eq('user_id', userId)
+    .eq('ability_id', abilityId)
+    .maybeSingle();
+
+  if (existingErr) throw new Error(existingErr.message);
+
+  if (!existing) {
+    const { error: insertErr } = await supabase.from('user_abilities').insert({ user_id: userId, ability_id: abilityId, level: 1 });
+    if (insertErr) throw new Error(insertErr.message);
+    return {
+      abilityId,
+      rarity,
+      level: 1,
+      alreadyOwned: false,
+      maxedOut: false,
+      title: `${rarity.toUpperCase()} ABILITY`,
+      description: `Unlocked ${abilityId.replace(/_/g, ' ').toUpperCase()} (LV 1)`
+    };
+  }
+
+  if (existing.level < 10) {
+    const { error: updateErr } = await supabase
+      .from('user_abilities')
+      .update({ level: existing.level + 1 })
+      .eq('user_id', userId)
+      .eq('ability_id', abilityId);
+    if (updateErr) throw new Error(updateErr.message);
+
+    return {
+      abilityId,
+      rarity,
+      level: existing.level + 1,
+      alreadyOwned: true,
+      maxedOut: false,
+      title: `${rarity.toUpperCase()} ABILITY`,
+      description: `${abilityId.replace(/_/g, ' ').toUpperCase()} upgraded to LV ${existing.level + 1}`
+    };
+  }
+
+  const compensation = MAXED_ABILITY_COMPENSATION[rarity] || 1000;
+  return {
+    abilityId,
+    rarity,
+    level: existing.level,
+    alreadyOwned: true,
+    maxedOut: true,
+    coinsCompensation: compensation,
+    title: `${rarity.toUpperCase()} ABILITY`,
+    description: `${abilityId.replace(/_/g, ' ').toUpperCase()} is MAX — converted into 🪙 ${compensation}`
+  };
+}
+
+async function fetchUserProfileData(supabase, userId) {
+  const [userResult, abilitiesResult, achievementsResult] = await Promise.all([
+    supabase
+      .from('users')
+      .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at, last_wheel_spin_at, free_mystery_crates, free_void_crates')
+      .eq('id', userId)
+      .maybeSingle(),
+    supabase
+      .from('user_abilities')
+      .select('ability_id, level')
+      .eq('user_id', userId),
+    supabase
+      .from('achievements')
+      .select('achievement_id, unlocked_at')
+      .eq('user_id', userId)
+  ]);
+
+  if (userResult.error) throw new Error(userResult.error.message);
+  if (!userResult.data) return null;
+
+  return {
+    ...userResult.data,
+    free_mystery_crates: userResult.data.free_mystery_crates || 0,
+    free_void_crates: userResult.data.free_void_crates || 0,
+    wheel_available: getWheelAvailability(userResult.data.last_wheel_spin_at),
+    abilities: abilitiesResult.data || [],
+    achievements: achievementsResult.data || []
+  };
+}
+
 router.post('/save-score', async (req, res) => {
   try {
     const { score, wave, enemiesKilled, gemsCollected = 0 } = req.body;
     const supabase = getDB();
     const userId = req.user.userId;
 
-    // Fetch user nickname + current stats
     const { data: user, error: userErr } = await supabase
       .from('users')
       .select('nickname, max_score, max_wave, games_played, coins, gems')
@@ -53,7 +183,6 @@ router.post('/save-score', async (req, res) => {
       .single();
     if (userErr) throw new Error(userErr.message);
 
-    // Insert score entry
     const { error: scoreErr } = await supabase
       .from('scores')
       .insert({ user_id: userId, nickname: user.nickname, score, wave, enemies_killed: enemiesKilled || 0 });
@@ -64,7 +193,6 @@ router.post('/save-score', async (req, res) => {
     const coinsEarned = Math.floor(score / 100);
 
     let gemsEarned = Math.max(0, Math.floor(gemsCollected));
-    // Base per-game gem bonus: 1 gem per 5 waves completed (e.g. wave 10 = 2 gems)
     gemsEarned += Math.floor(wave / 5);
     const milestoneWaves = [3, 5, 10, 20];
     for (const mw of milestoneWaves) {
@@ -85,10 +213,8 @@ router.post('/save-score', async (req, res) => {
       .eq('id', userId);
     if (updateErr) throw new Error(updateErr.message);
 
-    // Check achievements
     await checkAchievements(supabase, userId, { score, wave, enemiesKilled: enemiesKilled || 0 });
 
-    // Keep only the top 10 scores per user to limit database storage usage
     const { error: trimErr } = await supabase.rpc('trim_user_scores', { p_user_id: userId, p_keep: 10 });
     if (trimErr) console.warn('trim_user_scores failed (non-fatal):', trimErr.message);
 
@@ -103,7 +229,6 @@ router.post('/claim-tutorial-reward', async (req, res) => {
     const supabase = getDB();
     const userId = req.user.userId;
 
-    // Check if reward was already claimed (stored as a special achievement)
     const { data: existing } = await supabase
       .from('achievements')
       .select('achievement_id')
@@ -113,7 +238,6 @@ router.post('/claim-tutorial-reward', async (req, res) => {
 
     if (existing) return res.json({ success: false, error: 'Tutorial reward already claimed' });
 
-    // Award coins and gems
     const { data: user } = await supabase
       .from('users')
       .select('coins, gems')
@@ -139,34 +263,11 @@ router.get('/profile', async (req, res) => {
   try {
     const supabase = getDB();
     const userId = req.user.userId;
+    const profile = await fetchUserProfileData(supabase, userId);
 
-    const [userResult, abilitiesResult, achievementsResult] = await Promise.all([
-      supabase
-        .from('users')
-        .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at')
-        .eq('id', userId)
-        .maybeSingle(),
-      supabase
-        .from('user_abilities')
-        .select('ability_id, level')
-        .eq('user_id', userId),
-      supabase
-        .from('achievements')
-        .select('achievement_id, unlocked_at')
-        .eq('user_id', userId)
-    ]);
+    if (!profile) return res.json({ success: false, error: 'User not found' });
 
-    if (userResult.error) throw new Error(userResult.error.message);
-    if (!userResult.data) return res.json({ success: false, error: 'User not found' });
-
-    res.json({
-      success: true,
-      data: {
-        ...userResult.data,
-        abilities: abilitiesResult.data || [],
-        achievements: achievementsResult.data || []
-      }
-    });
+    res.json({ success: true, data: profile });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -236,13 +337,26 @@ router.post('/open-crate', async (req, res) => {
 
     const { data: user } = await supabase
       .from('users')
-      .select('gems')
+      .select('gems, free_mystery_crates, free_void_crates')
       .eq('id', userId)
       .single();
 
-    if (user.gems < crate.cost) return res.json({ success: false, error: `Not enough gems (need ${crate.cost})` });
+    const freeCrateColumn = crateType === 'mystery' ? 'free_mystery_crates' : crateType === 'void' ? 'free_void_crates' : null;
+    const freeCratesAvailable = freeCrateColumn ? Number(user[freeCrateColumn] || 0) : 0;
+    const usingFreeCrate = freeCratesAvailable > 0;
 
-    await supabase.from('users').update({ gems: user.gems - crate.cost }).eq('id', userId);
+    if (!usingFreeCrate && user.gems < crate.cost) {
+      return res.json({ success: false, error: `Not enough gems (need ${crate.cost})` });
+    }
+
+    if (usingFreeCrate) {
+      await supabase
+        .from('users')
+        .update({ [freeCrateColumn]: freeCratesAvailable - 1 })
+        .eq('id', userId);
+    } else {
+      await supabase.from('users').update({ gems: user.gems - crate.cost }).eq('id', userId);
+    }
 
     const rarity = crate.pool[Math.floor(Math.random() * crate.pool.length)];
     const pool = ABILITIES_BY_RARITY[rarity];
@@ -264,16 +378,82 @@ router.post('/open-crate', async (req, res) => {
           .eq('user_id', userId)
           .eq('ability_id', abilityId);
         newLevel = existing.level + 1;
-      } else {
-        // Already max level – refund half the cost
+      } else if (!usingFreeCrate) {
         await supabase.from('users').update({ gems: user.gems - crate.cost + Math.floor(crate.cost / 2) }).eq('id', userId);
+        newLevel = existing.level;
+      } else {
         newLevel = existing.level;
       }
     } else {
       await supabase.from('user_abilities').insert({ user_id: userId, ability_id: abilityId, level: 1 });
     }
 
-    res.json({ success: true, data: { abilityId, rarity, level: newLevel, alreadyOwned: !!existing } });
+    res.json({ success: true, data: { abilityId, rarity, level: newLevel, alreadyOwned: !!existing, usedFreeCrate: usingFreeCrate } });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+router.post('/spin-wheel', async (req, res) => {
+  try {
+    const supabase = getDB();
+    const userId = req.user.userId;
+
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('coins, gems, last_wheel_spin_at, free_mystery_crates, free_void_crates')
+      .eq('id', userId)
+      .single();
+    if (userErr) throw new Error(userErr.message);
+
+    const availability = getWheelAvailability(user.last_wheel_spin_at);
+    if (!availability.canSpin) {
+      return res.json({
+        success: false,
+        error: 'Wheel not ready yet',
+        data: availability
+      });
+    }
+
+    const reward = pickWheelReward();
+    const userUpdate = { last_wheel_spin_at: new Date().toISOString() };
+    let rewardData = {
+      id: reward.id,
+      kind: reward.kind,
+      title: reward.title,
+      description: reward.description
+    };
+
+    if (reward.kind === 'coins') {
+      userUpdate.coins = (user.coins || 0) + reward.amount;
+      rewardData.amount = reward.amount;
+    } else if (reward.kind === 'gems') {
+      userUpdate.gems = (user.gems || 0) + reward.amount;
+      rewardData.amount = reward.amount;
+    } else if (reward.kind === 'crate') {
+      const crateColumn = reward.crateType === 'mystery' ? 'free_mystery_crates' : 'free_void_crates';
+      userUpdate[crateColumn] = Number(user[crateColumn] || 0) + 1;
+      rewardData.crateType = reward.crateType;
+    } else if (reward.kind === 'ability') {
+      rewardData = { ...rewardData, ...(await grantAbilityReward(supabase, userId, reward.rarity)) };
+      if (rewardData.coinsCompensation) {
+        userUpdate.coins = (user.coins || 0) + rewardData.coinsCompensation;
+      }
+    }
+
+    const { error: updateErr } = await supabase.from('users').update(userUpdate).eq('id', userId);
+    if (updateErr) throw new Error(updateErr.message);
+
+    const nextSpinAt = new Date(new Date(userUpdate.last_wheel_spin_at).getTime() + WHEEL_COOLDOWN_MS).toISOString();
+
+    res.json({
+      success: true,
+      data: {
+        segmentId: reward.id,
+        reward: rewardData,
+        nextSpinAt
+      }
+    });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -314,4 +494,3 @@ async function checkAchievements(supabase, userId, { score, wave, enemiesKilled 
 }
 
 module.exports = router;
-

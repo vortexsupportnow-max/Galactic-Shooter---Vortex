@@ -5,12 +5,27 @@ let _selectedAbilityForSlot = null;
 let _lbType = 'scores';
 let _lbFilter = 'all';
 let _collFilter = 'all';
+let _wheelCountdownTimer = null;
+let _wheelRotation = 0;
+let _wheelSpinning = false;
+
+const WHEEL_SEGMENTS = [
+  { id: 'coins', label: '🪙<br>COINS' },
+  { id: 'gems', label: 'GEMS' },
+  { id: 'ability_common', label: 'COMMON<br>ABILITY', cssClass: 'common' },
+  { id: 'ability_rare', label: 'RARE<br>ABILITY', cssClass: 'rare' },
+  { id: 'ability_epic', label: 'EPIC<br>ABILITY', cssClass: 'epic' },
+  { id: 'ability_legendary', label: 'LEGENDARY<br>ABILITY', cssClass: 'legendary' },
+  { id: 'crate_mystery', label: '10 GEM<br>CRATE' },
+  { id: 'crate_void', label: '150 GEM<br>CRATE' }
+];
 
 function showMainMenu() {
   showScreen('menu');
   const nick = getNickname();
   document.getElementById('menu-nickname').textContent = nick || '???';
   updateCurrency();
+  refreshWheelStatus();
   initStarField('menuStars');
 }
 
@@ -20,6 +35,7 @@ async function updateCurrency() {
     document.getElementById('menu-coins').textContent = formatNumber(res.data.coins || 0);
     document.getElementById('menu-gems').textContent = formatNumber(res.data.gems || 0);
     _profileData = res.data;
+    refreshWheelStatus();
   }
 }
 
@@ -50,6 +66,7 @@ async function loadProfile() {
       <h3>CURRENCY</h3>
       <div class="stat-row"><span>🪙 COINS</span><span class="val">${formatNumber(d.coins)}</span></div>
       <div class="stat-row"><span>💎 GEMS</span><span class="val">${formatNumber(d.gems)}</span></div>
+      <div class="stat-row"><span>🎡 WHEEL</span><span class="val">${getWheelStatusLabel(d.wheel_available)}</span></div>
     </div>
     <div class="profile-card">
       <h3>STATS</h3>
@@ -57,6 +74,7 @@ async function loadProfile() {
       <div class="stat-row"><span>MAX SCORE</span><span class="val">${formatNumber(d.max_score)}</span></div>
       <div class="stat-row"><span>MAX WAVE</span><span class="val">${d.max_wave}</span></div>
       <div class="stat-row"><span>ABILITIES</span><span class="val">${aCount}/${total}</span></div>
+      <div class="stat-row"><span>FREE CRATES</span><span class="val">${(d.free_mystery_crates || 0) + (d.free_void_crates || 0)}</span></div>
     </div>
     <div class="profile-card">
       <h3>ACHIEVEMENTS</h3>
@@ -227,6 +245,9 @@ async function loadCrateShop() {
   const res = await apiFetch('/game/profile');
   if (res.success) {
     document.getElementById('crates-gems').textContent = formatNumber(res.data.gems || 0);
+    _profileData = res.data;
+    updateCrateDisplay(_selectedCrate);
+    refreshWheelStatus();
   }
   document.getElementById('crate-result').classList.add('hidden');
 }
@@ -280,14 +301,22 @@ function initCrateHandlers() {
 function updateCrateDisplay(type) {
   const def = CRATE_DEFS[type];
   const box = document.getElementById('crate-box');
+  const freeCrates = type === 'mystery'
+    ? Number(_profileData?.free_mystery_crates || 0)
+    : type === 'void'
+      ? Number(_profileData?.free_void_crates || 0)
+      : 0;
+
   box.className = `crate-box type-${type}`;
 
   document.getElementById('selected-crate-icon').textContent = def.icon;
   document.getElementById('selected-crate-name').textContent = def.name;
-  document.getElementById('selected-crate-cost').textContent = `${def.cost} 💎`;
+  document.getElementById('selected-crate-cost').textContent = freeCrates > 0 ? `FREE x${freeCrates} · ${def.cost} 💎` : `${def.cost} 💎`;
+  document.getElementById('open-crate-btn').textContent = freeCrates > 0 ? 'OPEN FREE CRATE' : 'OPEN CRATE';
 
   const info = document.getElementById('crate-info');
-  info.innerHTML = def.odds.map(o => `<div class="rarity-chance ${o.cls}">${o.label}</div>`).join('');
+  const freeLine = freeCrates > 0 ? `<div class="rarity-chance legendary">★ FREE CRATES AVAILABLE: ${freeCrates}</div>` : '';
+  info.innerHTML = freeLine + def.odds.map(o => `<div class="rarity-chance ${o.cls}">${o.label}</div>`).join('');
 
   document.getElementById('crate-result').classList.add('hidden');
 }
@@ -344,7 +373,7 @@ async function openCrate() {
     return;
   }
 
-  const { abilityId, rarity, level, alreadyOwned } = res.data;
+  const { abilityId, rarity, level, alreadyOwned, usedFreeCrate } = res.data;
 
   // Run the suspense animation now that we know the rarity
   await animateCrateOpening(rarity);
@@ -362,6 +391,7 @@ async function openCrate() {
     <div style="font-size:0.6rem;margin-top:0.5rem">${ability ? ability.name : abilityId}</div>
     <div style="font-size:0.45rem;margin-top:0.3rem;color:#aaa">
       ${alreadyOwned ? `UPGRADED TO LV ${level}` : 'NEW ABILITY!'}
+      ${usedFreeCrate ? '<br>FREE CRATE USED' : ''}
     </div>
     <div class="crate-continue-hint">[ PREMI UN TASTO O CLICCA PER CONTINUARE ]</div>
   `;
@@ -474,6 +504,7 @@ function initMenuHandlers() {
   });
   document.getElementById('btn-collection').addEventListener('click', showCollection);
   document.getElementById('btn-crates').addEventListener('click', showCrateShop);
+  document.getElementById('btn-wheel').addEventListener('click', openWheelOverlay);
   document.getElementById('btn-leaderboard').addEventListener('click', showLeaderboard);
   document.getElementById('btn-profile').addEventListener('click', showProfile);
   document.getElementById('btn-settings').addEventListener('click', openSettings);
@@ -519,12 +550,14 @@ function initSettingsHandlers() {
       localStorage.setItem('gs_audio_muted', 'false');
       _updateMuteBtn();
     }
+    if (window.syncBackgroundMusic) window.syncBackgroundMusic();
   });
 
   document.getElementById('settings-mute-btn').addEventListener('click', () => {
     window.audioMuted = !window.audioMuted;
     localStorage.setItem('gs_audio_muted', window.audioMuted);
     _updateMuteBtn();
+    if (window.syncBackgroundMusic) window.syncBackgroundMusic();
   });
 }
 
@@ -638,13 +671,17 @@ function renderTutorialSlide() {
 async function completeTutorial() {
   document.getElementById('tutorial-overlay').classList.add('hidden');
 
-  // Mark locally so tutorial won't show again on this device
   const key = `gs_tutorial_done_${getNickname()}`;
   localStorage.setItem(key, '1');
 
-  // Claim reward from server (idempotent — server guards against double-claim)
   const res = await apiFetch('/game/claim-tutorial-reward', { method: 'POST', body: '{}' });
   if (res.success) {
+    if (_profileData) {
+      _profileData.achievements = _profileData.achievements || [];
+      if (!_profileData.achievements.some(a => a.achievement_id === 'tutorial_done')) {
+        _profileData.achievements.push({ achievement_id: 'tutorial_done', unlocked_at: new Date().toISOString() });
+      }
+    }
     updateCurrency();
     alert('🎉 WELCOME GIFT RECEIVED!\n🪙 +1,000 COINS\n💎 +10 GEMS\n\nGood luck, pilot!');
   }
@@ -654,10 +691,189 @@ async function maybeShowTutorial() {
   const key = `gs_tutorial_done_${getNickname()}`;
   if (localStorage.getItem(key)) return;
 
-  // Show tutorial from the first slide
+  let profile = _profileData;
+  if (!profile || !Array.isArray(profile.achievements)) {
+    const res = await apiFetch('/game/profile');
+    if (res.success) {
+      profile = res.data;
+      _profileData = res.data;
+    }
+  }
+
+  const alreadyCompleted = (profile?.achievements || []).some(a => a.achievement_id === 'tutorial_done');
+  if (alreadyCompleted) {
+    localStorage.setItem(key, '1');
+    return;
+  }
+
   _tutorialSlide = 0;
   renderTutorialSlide();
   document.getElementById('tutorial-overlay').classList.remove('hidden');
+}
+
+function getWheelAvailability(profile = _profileData) {
+  const availability = profile?.wheel_available;
+  if (availability && typeof availability.canSpin === 'boolean') {
+    const nextSpinAt = availability.nextSpinAt ? new Date(availability.nextSpinAt) : null;
+    const remainingMs = nextSpinAt ? Math.max(0, nextSpinAt.getTime() - Date.now()) : 0;
+    return { canSpin: remainingMs <= 0 || availability.canSpin, nextSpinAt: availability.nextSpinAt, remainingMs };
+  }
+
+  if (!profile?.last_wheel_spin_at) return { canSpin: true, nextSpinAt: null, remainingMs: 0 };
+
+  const nextSpinAt = new Date(new Date(profile.last_wheel_spin_at).getTime() + 12 * 60 * 60 * 1000);
+  const remainingMs = Math.max(0, nextSpinAt.getTime() - Date.now());
+  return { canSpin: remainingMs <= 0, nextSpinAt: nextSpinAt.toISOString(), remainingMs };
+}
+
+function formatWheelCountdown(ms) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}H ${String(minutes).padStart(2, '0')}M`;
+  return `${minutes}M ${String(seconds).padStart(2, '0')}S`;
+}
+
+function getWheelStatusLabel(availability) {
+  if (!availability || availability.canSpin) return 'READY';
+  return formatWheelCountdown(availability.remainingMs || 0);
+}
+
+function refreshWheelStatus() {
+  const availability = getWheelAvailability();
+  const buttonStatus = document.getElementById('wheel-button-status');
+  const status = document.getElementById('wheel-status');
+  const spinBtn = document.getElementById('wheel-spin-btn');
+
+  if (buttonStatus) {
+    buttonStatus.textContent = availability.canSpin ? 'READY NOW' : `IN ${formatWheelCountdown(availability.remainingMs)}`;
+  }
+
+  if (status) {
+    status.innerHTML = availability.canSpin
+      ? 'Spin available now.<br>8 rewards with common and rare drops.'
+      : `Next spin available in<br>${formatWheelCountdown(availability.remainingMs)}`;
+  }
+
+  if (spinBtn && !_wheelSpinning) {
+    spinBtn.disabled = !availability.canSpin;
+    spinBtn.textContent = availability.canSpin ? 'SPIN NOW' : `WAIT ${formatWheelCountdown(availability.remainingMs)}`;
+  }
+}
+
+function renderWheelSegments() {
+  const wheel = document.getElementById('fortune-wheel');
+  if (!wheel || wheel.dataset.ready === '1') return;
+
+  wheel.innerHTML = '';
+  WHEEL_SEGMENTS.forEach((segment, index) => {
+    const label = document.createElement('div');
+    label.className = `wheel-segment-label ${segment.cssClass || ''}`.trim();
+    label.innerHTML = segment.label;
+    const angle = index * 45 + 22.5;
+    label.style.transform = `rotate(${angle}deg) translateY(-106px) rotate(${-angle}deg)`;
+    wheel.appendChild(label);
+  });
+
+  wheel.dataset.ready = '1';
+}
+
+async function refreshWheelProfile() {
+  const res = await apiFetch('/game/profile');
+  if (res.success) {
+    _profileData = res.data;
+    document.getElementById('menu-coins').textContent = formatNumber(res.data.coins || 0);
+    document.getElementById('menu-gems').textContent = formatNumber(res.data.gems || 0);
+    refreshWheelStatus();
+  }
+  return res;
+}
+
+function openWheelOverlay() {
+  renderWheelSegments();
+  document.getElementById('wheel-result').classList.add('hidden');
+  document.getElementById('wheel-overlay').classList.remove('hidden');
+  refreshWheelProfile();
+}
+
+function closeWheelOverlay() {
+  if (_wheelSpinning) return;
+  document.getElementById('wheel-overlay').classList.add('hidden');
+}
+
+function renderWheelRewardResult(reward) {
+  const resultEl = document.getElementById('wheel-result');
+  let meta = '';
+
+  if (reward.kind === 'ability') {
+    meta = reward.maxedOut
+      ? `Converted to ${formatNumber(reward.coinsCompensation || 0)} coins`
+      : reward.alreadyOwned
+        ? `Ability upgraded to LV ${reward.level}`
+        : `Unlocked ${reward.abilityId?.replace(/_/g, ' ').toUpperCase()}!`;
+  } else if (reward.kind === 'crate') {
+    meta = `Free ${reward.crateType.toUpperCase()} crate added to your inventory`;
+  } else if (reward.amount) {
+    meta = `Added ${formatNumber(reward.amount)} to your account`;
+  }
+
+  resultEl.innerHTML = `
+    <div class="wheel-result-title">${reward.title}</div>
+    <div class="wheel-result-body">${reward.description}</div>
+    <div class="wheel-result-meta">${meta}</div>
+  `;
+  resultEl.classList.remove('hidden');
+}
+
+async function spinWheel() {
+  if (_wheelSpinning) return;
+
+  const spinBtn = document.getElementById('wheel-spin-btn');
+  const wheel = document.getElementById('fortune-wheel');
+  const resultEl = document.getElementById('wheel-result');
+  resultEl.classList.add('hidden');
+
+  _wheelSpinning = true;
+  spinBtn.disabled = true;
+  spinBtn.textContent = 'SPINNING...';
+
+  const res = await apiFetch('/game/spin-wheel', { method: 'POST', body: '{}' });
+  if (!res.success) {
+    _wheelSpinning = false;
+    await refreshWheelProfile();
+    alert(res.error || 'Wheel spin failed');
+    return;
+  }
+
+  const segmentIndex = Math.max(0, WHEEL_SEGMENTS.findIndex(segment => segment.id === res.data.segmentId));
+  const centerAngle = segmentIndex * 45 + 22.5;
+  const extraRotation = 360 * 6 + (360 - centerAngle);
+  _wheelRotation += extraRotation;
+  wheel.style.transform = `rotate(${_wheelRotation}deg)`;
+
+  await sleep(4600);
+  renderWheelRewardResult(res.data.reward);
+  if (window.Sounds?.levelup) Sounds.levelup();
+
+  _wheelSpinning = false;
+  await refreshWheelProfile();
+  if (document.getElementById('screen-crates').classList.contains('active')) updateCrateDisplay(_selectedCrate);
+}
+
+function initWheelHandlers() {
+  renderWheelSegments();
+  refreshWheelStatus();
+
+  if (!_wheelCountdownTimer) {
+    _wheelCountdownTimer = setInterval(refreshWheelStatus, 1000);
+  }
+
+  document.getElementById('wheel-spin-btn').addEventListener('click', spinWheel);
+  document.getElementById('wheel-close').addEventListener('click', closeWheelOverlay);
+  document.getElementById('wheel-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('wheel-overlay')) closeWheelOverlay();
+  });
 }
 
 // ===== ABILITY INFO POPUP =====

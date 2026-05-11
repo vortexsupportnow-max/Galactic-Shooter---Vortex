@@ -14,7 +14,7 @@ window.audioMuted  = localStorage.getItem('gs_audio_muted') === 'true';
 async function apiFetch(path, options = {}) {
   const token = getToken();
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
   try {
     const res = await fetch(API_BASE + path, { ...options, headers });
     return await res.json();
@@ -25,9 +25,9 @@ async function apiFetch(path, options = {}) {
 
 // ===== RARITY COLORS =====
 const RARITY_COLORS = {
-  common:    '#aaaaaa',
-  rare:      '#4488ff',
-  epic:      '#aa44ff',
+  common: '#aaaaaa',
+  rare: '#4488ff',
+  epic: '#aa44ff',
   legendary: '#ffaa00'
 };
 
@@ -36,7 +36,7 @@ const RARITY_ORDER = ['common', 'rare', 'epic', 'legendary'];
 // ===== FORMAT NUMBER =====
 function formatNumber(n) {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'K';
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
   return String(n);
 }
 
@@ -85,6 +85,18 @@ class ParticleSystem {
 
 // ===== SOUND SYSTEM =====
 let audioCtx = null;
+let soundtrackGain = null;
+let soundtrackTimer = null;
+let soundtrackStarted = false;
+let soundtrackStep = 0;
+
+const SOUNDTRACK_PATTERN = [
+  { lead: [659.25, 783.99, 880, 783.99], bass: [220, 220] },
+  { lead: [698.46, 880, 987.77, 880], bass: [233.08, 233.08] },
+  { lead: [783.99, 987.77, 1174.66, 987.77], bass: [261.63, 261.63] },
+  { lead: [698.46, 880, 783.99, 659.25], bass: [196, 220] }
+];
+
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -111,11 +123,98 @@ function playTone(freq, type, duration, volume = 0.3, detune = 0) {
   } catch (e) {}
 }
 
+function getSoundtrackGain() {
+  const ctx = getAudioCtx();
+  if (!soundtrackGain) {
+    soundtrackGain = ctx.createGain();
+    soundtrackGain.gain.setValueAtTime(0, ctx.currentTime);
+    soundtrackGain.connect(ctx.destination);
+  }
+  syncBackgroundMusic();
+  return soundtrackGain;
+}
+
+function scheduleMusicVoice(freq, startAt, duration, volume, type, detune = 0) {
+  const ctx = getAudioCtx();
+  const bus = getSoundtrackGain();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, startAt);
+  osc.detune.setValueAtTime(detune, startAt);
+
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.04);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+
+  osc.connect(gain);
+  gain.connect(bus);
+  osc.start(startAt);
+  osc.stop(startAt + duration + 0.05);
+}
+
+function scheduleNextSoundtrackBar() {
+  if (!soundtrackStarted) return;
+
+  const ctx = getAudioCtx();
+  const bar = SOUNDTRACK_PATTERN[soundtrackStep % SOUNDTRACK_PATTERN.length];
+  const startAt = ctx.currentTime + 0.08;
+
+  bar.lead.forEach((freq, index) => {
+    const noteAt = startAt + index * 0.42;
+    scheduleMusicVoice(freq, noteAt, 0.34, 0.08, 'triangle');
+    scheduleMusicVoice(freq / 2, noteAt, 0.26, 0.025, 'sine', -3);
+  });
+
+  bar.bass.forEach((freq, index) => {
+    const noteAt = startAt + index * 0.84;
+    scheduleMusicVoice(freq, noteAt, 0.68, 0.09, 'sawtooth');
+    scheduleMusicVoice(freq * 1.5, noteAt, 0.32, 0.03, 'triangle');
+  });
+
+  soundtrackStep++;
+  soundtrackTimer = setTimeout(scheduleNextSoundtrackBar, 1680);
+}
+
+function syncBackgroundMusic() {
+  if (!soundtrackGain || !audioCtx) return;
+  const ctx = getAudioCtx();
+  const targetGain = window.audioMuted ? 0.0001 : Math.max(0.0001, (window.audioVolume ?? 1) * 0.16);
+  soundtrackGain.gain.cancelScheduledValues(ctx.currentTime);
+  soundtrackGain.gain.setTargetAtTime(targetGain, ctx.currentTime, 0.12);
+}
+
+function startBackgroundMusic() {
+  try {
+    getAudioCtx();
+    getSoundtrackGain();
+    syncBackgroundMusic();
+    if (soundtrackStarted) return;
+    soundtrackStarted = true;
+    scheduleNextSoundtrackBar();
+  } catch (e) {}
+}
+
+function tryUnlockBackgroundMusic() {
+  if (soundtrackStarted) return;
+  startBackgroundMusic();
+  if (soundtrackStarted) {
+    document.removeEventListener('pointerdown', tryUnlockBackgroundMusic);
+    document.removeEventListener('keydown', tryUnlockBackgroundMusic);
+  }
+}
+
+window.startBackgroundMusic = startBackgroundMusic;
+window.syncBackgroundMusic = syncBackgroundMusic;
+document.addEventListener('pointerdown', tryUnlockBackgroundMusic, { passive: true });
+document.addEventListener('keydown', tryUnlockBackgroundMusic);
+
 const Sounds = {
   shoot() { playTone(880, 'square', 0.07, 0.15); },
   explosion(big = false) {
     if (window.audioMuted) return;
-    const vol = (window.audioVolume ?? 1);
+    const vol = window.audioVolume ?? 1;
     const ctx = getAudioCtx();
     try {
       const noise = ctx.createOscillator();
@@ -131,7 +230,7 @@ const Sounds = {
       noise.stop(ctx.currentTime + (big ? 0.6 : 0.25));
     } catch (e) {}
   },
-  hit()     { playTone(440, 'square', 0.08, 0.2); },
+  hit() { playTone(440, 'square', 0.08, 0.2); },
   powerup() {
     playTone(440, 'sine', 0.1, 0.25);
     setTimeout(() => playTone(550, 'sine', 0.1, 0.25), 80);
@@ -141,5 +240,5 @@ const Sounds = {
     [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 'square', 0.15, 0.3), i * 100));
   },
   abilityUse() { playTone(330, 'sawtooth', 0.12, 0.3); },
-  die()   { playTone(100, 'sawtooth', 0.6, 0.4); }
+  die() { playTone(100, 'sawtooth', 0.6, 0.4); }
 };

@@ -6,15 +6,18 @@
 -- ── Tables ──────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS users (
-  id           BIGSERIAL PRIMARY KEY,
-  nickname     TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  coins        INTEGER NOT NULL DEFAULT 0,
-  gems         INTEGER NOT NULL DEFAULT 0,
-  games_played INTEGER NOT NULL DEFAULT 0,
-  max_score    INTEGER NOT NULL DEFAULT 0,
-  max_wave     INTEGER NOT NULL DEFAULT 0,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                  BIGSERIAL PRIMARY KEY,
+  nickname            TEXT UNIQUE NOT NULL,
+  password_hash       TEXT NOT NULL,
+  coins               INTEGER NOT NULL DEFAULT 0,
+  gems                INTEGER NOT NULL DEFAULT 0,
+  games_played        INTEGER NOT NULL DEFAULT 0,
+  max_score           INTEGER NOT NULL DEFAULT 0,
+  max_wave            INTEGER NOT NULL DEFAULT 0,
+  last_wheel_spin_at  TIMESTAMPTZ,
+  free_mystery_crates INTEGER NOT NULL DEFAULT 0,
+  free_void_crates    INTEGER NOT NULL DEFAULT 0,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS user_abilities (
@@ -42,6 +45,13 @@ CREATE TABLE IF NOT EXISTS achievements (
   unlocked_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, achievement_id)
 );
+
+-- UPDATE PERSISTENTE PER DATABASE GIA' ESISTENTI ------------------------------
+-- Esegui anche queste ALTER TABLE se il database esisteva gia' prima della ruota
+-- della fortuna, cosi' i nuovi campi vengono aggiunti senza ricreare la tabella.
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS last_wheel_spin_at TIMESTAMPTZ;
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS free_mystery_crates INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS free_void_crates INTEGER NOT NULL DEFAULT 0;
 
 -- ── Indexes ──────────────────────────────────────────────────
 

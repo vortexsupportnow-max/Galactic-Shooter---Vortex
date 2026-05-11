@@ -86,7 +86,8 @@
           <button class="btn btn-cyan btn-large" id="btn-play">▶ PLAY</button>
           <button class="btn btn-purple" id="btn-collection">⚡ COLLECTION</button>
           <button class="btn btn-yellow" id="btn-crates">📦 CRATES</button>
-          <button class="btn btn-blue" id="btn-leaderboard">🏆 LEADERBOARD</button>
+          <button class="btn btn-green" id="btn-wheel">🎡 FORTUNE WHEEL<span class="menu-btn-subtitle" id="wheel-button-status">LOADING...</span></button>
+          <button class="btn btn-blue" id="btn-leaderboard">&#127942; LEADERBOARD</button>
           <button class="btn btn-green" id="btn-profile">👤 PROFILE</button>
           <button class="btn btn-gray" id="btn-settings">⚙ SETTINGS</button>
           <button class="btn btn-ghost" id="btn-logout">LOGOUT</button>
@@ -255,6 +256,21 @@
         </div>
         <button class="btn btn-red" id="settings-mute-btn">🔊 MUTE</button>
         <button class="btn btn-ghost" id="settings-close">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Fortune Wheel Overlay -->
+    <div id="wheel-overlay" class="overlay hidden">
+      <div class="wheel-box">
+        <h3>🎡 FORTUNE WHEEL</h3>
+        <div class="wheel-status" id="wheel-status">LOADING...</div>
+        <div class="fortune-wheel-wrap">
+          <div class="wheel-pointer"></div>
+          <div class="fortune-wheel" id="fortune-wheel"></div>
+        </div>
+        <button class="btn btn-yellow" id="wheel-spin-btn">SPIN NOW</button>
+        <div class="wheel-result hidden" id="wheel-result"></div>
+        <button class="btn btn-ghost" id="wheel-close">CLOSE</button>
       </div>
     </div>
 

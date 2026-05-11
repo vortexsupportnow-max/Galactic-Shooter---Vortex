@@ -180,6 +180,12 @@ html, body {
 .gem-display  { color: var(--cyan); }
 .pilot-name { font-size: 0.55rem; color: var(--green); margin-bottom: 0.5rem; }
 .menu-buttons { width: 100%; display: flex; flex-direction: column; gap: 0.6rem; }
+.menu-btn-subtitle {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.4rem;
+  color: rgba(255,255,255,0.8);
+}
 
 /* ===== SCREEN HEADER ===== */
 .screen-header {
@@ -510,6 +516,122 @@ html, body {
 }
 .overlay-box h3 { font-size: 0.7rem; color: var(--cyan); }
 .slot-buttons { display: flex; gap: 0.6rem; width: 100%; }
+
+/* ===== FORTUNE WHEEL ===== */
+.wheel-box {
+  background: var(--dark);
+  border: 2px solid var(--yellow);
+  box-shadow: 0 0 30px rgba(255,255,0,0.2);
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  align-items: center;
+  width: min(92vw, 380px);
+}
+.wheel-box h3 {
+  font-size: 0.7rem;
+  color: var(--yellow);
+}
+.wheel-status {
+  min-height: 2.2rem;
+  text-align: center;
+  font-size: 0.45rem;
+  line-height: 1.8;
+  color: #d9d9ff;
+}
+.fortune-wheel-wrap {
+  position: relative;
+  width: 270px;
+  height: 270px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wheel-pointer {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-top: 24px solid var(--yellow);
+  filter: drop-shadow(0 0 10px rgba(255,255,0,0.5));
+  z-index: 3;
+}
+.fortune-wheel {
+  position: relative;
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  border: 4px solid var(--cyan);
+  box-shadow: 0 0 24px rgba(0,255,255,0.2);
+  background: conic-gradient(
+    #2f1f5c 0deg 45deg,
+    #123c61 45deg 90deg,
+    #365114 90deg 135deg,
+    #59420f 135deg 180deg,
+    #5a163b 180deg 225deg,
+    #4f2609 225deg 270deg,
+    #103f4a 270deg 315deg,
+    #4b154a 315deg 360deg
+  );
+  transition: transform 4.4s cubic-bezier(0.18, 0.89, 0.24, 1);
+  overflow: hidden;
+}
+.fortune-wheel::after {
+  content: '';
+  position: absolute;
+  inset: 26%;
+  border-radius: 50%;
+  background: rgba(0, 0, 20, 0.92);
+  border: 2px solid rgba(255,255,255,0.12);
+  z-index: 1;
+}
+.wheel-segment-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 76px;
+  margin-left: -38px;
+  text-align: center;
+  transform-origin: center -78px;
+  font-size: 0.32rem;
+  line-height: 1.6;
+  color: var(--white);
+  text-shadow: 0 0 6px rgba(0,0,0,0.7);
+  z-index: 2;
+  pointer-events: none;
+}
+.wheel-segment-label.common { color: var(--common); }
+.wheel-segment-label.rare { color: var(--rare); }
+.wheel-segment-label.epic { color: var(--epic); }
+.wheel-segment-label.legendary { color: var(--legendary); }
+.wheel-result {
+  width: 100%;
+  min-height: 4rem;
+  border: 1px solid var(--gray);
+  background: rgba(255,255,255,0.04);
+  padding: 0.8rem;
+  text-align: center;
+}
+.wheel-result-title {
+  font-size: 0.55rem;
+  color: var(--yellow);
+  margin-bottom: 0.45rem;
+}
+.wheel-result-body {
+  font-size: 0.42rem;
+  line-height: 1.8;
+  color: #e8e8ff;
+}
+.wheel-result-meta {
+  margin-top: 0.45rem;
+  font-size: 0.35rem;
+  color: var(--cyan);
+}
 .slot-buttons .btn { flex: 1; }
 
 /* ===== GAME CANVAS ===== */
