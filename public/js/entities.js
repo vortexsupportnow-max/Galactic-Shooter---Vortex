@@ -65,6 +65,11 @@ class Bullet {
       ctx.restore();
     } else {
       ctx.drawImage(GameAssets.enemyBullet, this.x - this.width/2, this.y - this.height/2);
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = '#ff3355';
+      ctx.fillRect(this.x - 3, this.y - this.height/2 - 2, 6, this.height + 4);
+      ctx.restore();
     }
   }
 }

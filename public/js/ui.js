@@ -254,18 +254,22 @@ function initSlotSelectHandlers() {
 
 function showCrateShop() {
   showScreen('crates');
+  _activeCrateTab('abilities');
   loadCrateShop();
 }
 
 async function loadCrateShop() {
   const res = await apiFetch('/game/profile');
   if (res.success) {
+    document.getElementById('crates-coins').textContent = formatNumber(res.data.coins || 0);
     document.getElementById('crates-gems').textContent = formatNumber(res.data.gems || 0);
     _profileData = res.data;
     updateCrateDisplay(_selectedCrate);
+    updateSkinCrateDisplay(_selectedSkinCrate);
     refreshWheelStatus();
   }
   document.getElementById('crate-result').classList.add('hidden');
+  document.getElementById('skin-crate-result').classList.add('hidden');
 }
 
 const CRATE_DEFS = {
@@ -298,9 +302,27 @@ const CRATE_DEFS = {
 };
 
 let _selectedCrate = 'mystery';
+let _selectedSkinCrate = 'stellar';
+
+function _activeCrateTab(tab) {
+  document.querySelectorAll('.crate-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.crate-tab-content').forEach(c => c.classList.add('hidden'));
+  const btn = document.querySelector(`.crate-tab[data-tab="${tab}"]`);
+  const content = document.getElementById(`crate-tab-${tab}`);
+  if (btn) btn.classList.add('active');
+  if (content) content.classList.remove('hidden');
+}
 
 function initCrateHandlers() {
   document.getElementById('open-crate-btn').addEventListener('click', openCrate);
+
+  document.querySelectorAll('.crate-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      _activeCrateTab(tab.dataset.tab);
+      if (tab.dataset.tab === 'abilities') updateCrateDisplay(_selectedCrate);
+      if (tab.dataset.tab === 'skins') updateSkinCrateDisplay(_selectedSkinCrate);
+    });
+  });
 
   document.querySelectorAll('.crate-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -311,7 +333,18 @@ function initCrateHandlers() {
     });
   });
 
+  document.querySelectorAll('.skin-crate-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.skin-crate-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      _selectedSkinCrate = card.dataset.crate;
+      updateSkinCrateDisplay(_selectedSkinCrate);
+    });
+  });
+
+  document.getElementById('open-skin-crate-btn').addEventListener('click', openSkinCrate);
   updateCrateDisplay(_selectedCrate);
+  updateSkinCrateDisplay(_selectedSkinCrate);
 }
 
 function updateCrateDisplay(type) {
@@ -878,7 +911,10 @@ async function spinWheel() {
 
   _wheelSpinning = false;
   await refreshWheelProfile();
-  if (document.getElementById('screen-crates').classList.contains('active')) updateCrateDisplay(_selectedCrate);
+  if (document.getElementById('screen-crates').classList.contains('active')) {
+    updateCrateDisplay(_selectedCrate);
+    updateSkinCrateDisplay(_selectedSkinCrate);
+  }
 }
 
 function initWheelHandlers() {
@@ -935,11 +971,8 @@ function initAbilityInfoHandlers() {
 
 // ===== SKINS =====
 
-let _selectedSkinCrate = 'stellar';
-
 function showSkins() {
   showScreen('skins');
-  _activeSkinTab('collection');
   loadSkins();
 }
 
@@ -960,7 +993,6 @@ async function loadSkins() {
     document.getElementById('skins-gems').textContent  = formatNumber(res.data.gems  || 0);
   }
   renderSkinGrid();
-  updateSkinCrateDisplay(_selectedSkinCrate);
 }
 
 function renderSkinGrid() {
@@ -1132,28 +1164,10 @@ async function openSkinCrate() {
 
   btn.textContent = 'OPEN SKIN CRATE';
   btn.disabled = false;
-  loadSkins();
+  loadCrateShop();
 }
 
 function initSkinHandlers() {
   document.getElementById('skins-back').addEventListener('click', showMainMenu);
   document.getElementById('btn-skins').addEventListener('click', showSkins);
-
-  document.querySelectorAll('.skin-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      _activeSkinTab(tab.dataset.tab);
-      if (tab.dataset.tab === 'shop') updateSkinCrateDisplay(_selectedSkinCrate);
-    });
-  });
-
-  document.querySelectorAll('.skin-crate-card').forEach(card => {
-    card.addEventListener('click', () => {
-      document.querySelectorAll('.skin-crate-card').forEach(c => c.classList.remove('active'));
-      card.classList.add('active');
-      _selectedSkinCrate = card.dataset.crate;
-      updateSkinCrateDisplay(_selectedSkinCrate);
-    });
-  });
-
-  document.getElementById('open-skin-crate-btn').addEventListener('click', openSkinCrate);
 }
