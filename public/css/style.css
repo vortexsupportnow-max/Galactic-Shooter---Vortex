@@ -160,10 +160,68 @@ html, body {
 .btn-pink:hover  { background: rgba(255,102,204,0.15); box-shadow: 0 0 12px #ff66cc; }
 .btn-large { font-size: 0.85rem; padding: 1rem 1.5rem; }
 
+/* ===== MENU TOPBAR ===== */
+.menu-topbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--gray);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  flex-shrink: 0;
+}
+.menu-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.6rem;
+}
+.menu-topbar-pilot {
+  color: var(--green);
+  font-size: 0.55rem;
+}
+.menu-topbar-icons {
+  display: flex;
+  gap: 0.5rem;
+}
+.menu-icon-btn {
+  background: transparent;
+  border: 1px solid var(--gray);
+  color: var(--white);
+  font-size: 1rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  font-family: inherit;
+  line-height: 1;
+}
+.menu-icon-btn:hover {
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px rgba(0,255,255,0.4);
+  background: rgba(0,255,255,0.08);
+}
+.menu-icon-btn--news {
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+.menu-icon-btn--news:hover {
+  border-color: var(--yellow);
+  box-shadow: 0 0 10px rgba(255,255,0,0.4);
+  background: rgba(255,255,0,0.08);
+}
+
 /* ===== MENU ===== */
 .menu-container {
-  width: 100%; max-width: 380px;
-  padding: 0 1.5rem 2rem;
+  width: 100%; max-width: 680px;
+  padding: 0 1.2rem 2rem;
   z-index: 1;
   position: relative;
   display: flex;
@@ -171,17 +229,8 @@ html, body {
   align-items: center;
   gap: 0.5rem;
 }
-.currency-bar {
-  display: flex; gap: 1.5rem;
-  background: var(--panel);
-  border: 1px solid var(--gray);
-  padding: 0.5rem 1.5rem;
-  font-size: 0.65rem;
-  margin-bottom: 0.3rem;
-}
 .coin-display { color: var(--yellow); }
 .gem-display  { color: var(--cyan); }
-.pilot-name { font-size: 0.55rem; color: var(--green); margin-bottom: 0.5rem; }
 .menu-buttons { width: 100%; display: flex; flex-direction: column; gap: 0.6rem; }
 .menu-btn-subtitle {
   display: block;
@@ -985,7 +1034,7 @@ html, body {
 .menu-split {
   width: 100%;
   display: flex;
-  gap: 0.6rem;
+  gap: 1rem;
   align-items: flex-start;
 }
 .menu-left {
@@ -993,7 +1042,7 @@ html, body {
   flex-direction: column;
   gap: 0.5rem;
   flex: 0 0 auto;
-  width: 38%;
+  width: 34%;
 }
 .menu-right {
   display: flex;
@@ -1006,20 +1055,20 @@ html, body {
 .season-panel {
   background: rgba(255,100,50,0.08);
   border: 1px solid #ff4400;
-  padding: 0.55rem 0.5rem;
+  padding: 0.55rem 0.6rem;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   box-shadow: 0 0 12px rgba(255,68,0,0.2);
 }
 .season-panel-title {
-  font-size: 0.36rem;
+  font-size: 0.4rem;
   color: #ff6622;
   text-shadow: 0 0 8px rgba(255,102,34,0.7);
   letter-spacing: 0.04em;
 }
 .season-panel-end {
-  font-size: 0.3rem;
+  font-size: 0.32rem;
   color: #ff8844;
 }
 .season-pulsar-bar-wrap {
@@ -1028,7 +1077,7 @@ html, body {
   gap: 0.2rem;
 }
 .season-pulsar-label {
-  font-size: 0.3rem;
+  font-size: 0.32rem;
   color: var(--yellow);
 }
 .season-pulsar-bar {
@@ -1049,8 +1098,8 @@ html, body {
 .btn-season {
   color: #ff6622;
   border-color: #ff4400;
-  font-size: 0.42rem !important;
-  padding: 0.55rem 0.4rem !important;
+  font-size: 0.46rem !important;
+  padding: 0.6rem 0.5rem !important;
 }
 .btn-season:hover {
   background: rgba(255,68,0,0.15);
@@ -1059,25 +1108,95 @@ html, body {
 .btn-mission {
   color: #ff88cc;
   border-color: #cc44aa;
-  font-size: 0.42rem !important;
-  padding: 0.55rem 0.4rem !important;
+  font-size: 0.46rem !important;
+  padding: 0.6rem 0.5rem !important;
 }
 .btn-mission:hover {
   background: rgba(204,68,170,0.15);
   box-shadow: 0 0 12px rgba(204,68,170,0.5);
 }
 
-/* Right menu buttons slightly smaller to fit */
+/* Right menu buttons */
 .menu-right .btn {
-  font-size: 0.52rem;
-  padding: 0.6rem 0.7rem;
+  font-size: 0.58rem;
+  padding: 0.65rem 0.8rem;
 }
 .menu-right .btn-large {
-  font-size: 0.7rem;
-  padding: 0.8rem 1rem;
+  font-size: 0.78rem;
+  padding: 0.9rem 1.2rem;
 }
 .menu-right .menu-btn-subtitle {
-  font-size: 0.34rem;
+  font-size: 0.36rem;
+}
+
+/* ===== PATCH NOTES OVERLAY ===== */
+.patchnotes-box {
+  max-width: 420px;
+  width: 92%;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.2rem 1.1rem 1rem;
+}
+.patchnotes-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.patchnotes-badge {
+  background: var(--yellow);
+  color: var(--bg);
+  font-size: 0.38rem;
+  padding: 0.2rem 0.5rem;
+  letter-spacing: 0.05em;
+}
+.patchnotes-title {
+  font-size: 0.6rem;
+  color: var(--cyan);
+  text-shadow: 0 0 8px rgba(0,255,255,0.5);
+}
+.patchnotes-version {
+  font-size: 0.45rem;
+  color: var(--yellow);
+}
+.patchnotes-date {
+  font-size: 0.38rem;
+  color: var(--gray);
+  margin-top: -0.3rem;
+}
+.patchnotes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.patchnotes-section {
+  border-left: 2px solid var(--cyan);
+  padding-left: 0.6rem;
+}
+.patchnotes-section-title {
+  font-size: 0.42rem;
+  color: var(--cyan);
+  margin-bottom: 0.35rem;
+}
+.patchnotes-section ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.patchnotes-section ul li {
+  font-size: 0.36rem;
+  color: rgba(255,255,255,0.85);
+  padding-left: 0.5rem;
+  position: relative;
+}
+.patchnotes-section ul li::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  color: var(--cyan);
 }
 
 /* ===== SEASON PASS SCREEN ===== */
@@ -1302,6 +1421,8 @@ html, body {
   .menu-left { width: 42%; }
   .menu-right .btn { font-size: 0.45rem; padding: 0.5rem 0.4rem; }
   .season-panel-title { font-size: 0.3rem; }
+  .menu-topbar-left { gap: 0.5rem; font-size: 0.5rem; }
+  .menu-icon-btn { width: 2rem; height: 2rem; font-size: 0.85rem; }
 }
   .title-line1 { font-size: 1.8rem; }
   .title-line2 { font-size: 1.2rem; }

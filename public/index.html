@@ -72,16 +72,26 @@
     <!-- Main Menu -->
     <div id="screen-menu" class="screen">
       <div class="stars-bg" id="menuStars"></div>
+
+      <!-- Top HUD bar -->
+      <div class="menu-topbar">
+        <div class="menu-topbar-left">
+          <span class="coin-display">🪙 <span id="menu-coins">0</span></span>
+          <span class="gem-display">💎 <span id="menu-gems">0</span></span>
+          <span class="menu-topbar-pilot">👾 <span id="menu-nickname">-</span></span>
+        </div>
+        <div class="menu-topbar-icons">
+          <button class="menu-icon-btn" id="btn-topbar-profile" title="Profilo">👤</button>
+          <button class="menu-icon-btn menu-icon-btn--news" id="btn-topbar-news" title="Patch Notes">📋</button>
+          <button class="menu-icon-btn" id="btn-topbar-settings" title="Impostazioni">⚙</button>
+        </div>
+      </div>
+
       <div class="menu-container">
         <div class="game-title">
           <div class="title-line1">GALACTIC</div>
           <div class="title-line2">SHOOTER</div>
         </div>
-        <div class="currency-bar">
-          <span class="coin-display">🪙 <span id="menu-coins">0</span></span>
-          <span class="gem-display">💎 <span id="menu-gems">0</span></span>
-        </div>
-        <div class="pilot-name">PILOT: <span id="menu-nickname">-</span></div>
 
         <!-- Two-column layout: left = season pass, right = game buttons -->
         <div class="menu-split">
@@ -109,11 +119,55 @@
             <button class="btn btn-yellow" id="btn-crates">📦 CRATES</button>
             <button class="btn btn-green" id="btn-wheel">&#127922; WHEEL<span class="menu-btn-subtitle" id="wheel-button-status">LOADING...</span></button>
             <button class="btn btn-blue" id="btn-leaderboard">&#127942; TOP</button>
-            <button class="btn btn-green" id="btn-profile">👤 PROFILO</button>
-            <button class="btn btn-gray" id="btn-settings">⚙ IMPOST.</button>
             <button class="btn btn-ghost" id="btn-logout">LOGOUT</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Patch Notes Overlay -->
+    <div id="patchnotes-overlay" class="overlay hidden">
+      <div class="overlay-box patchnotes-box">
+        <div class="patchnotes-header">
+          <span class="patchnotes-badge">NOVITÀ</span>
+          <h3 class="patchnotes-title">📋 PATCH NOTES</h3>
+        </div>
+        <div class="patchnotes-version">v2.5 — JAPAN SEASON</div>
+        <div class="patchnotes-date">🗓 Maggio 2025</div>
+        <div class="patchnotes-list">
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title">🌸 NUOVA STAGIONE</div>
+            <ul>
+              <li>Stagione Japan attiva fino al 30 Giugno</li>
+              <li>Nuovo Space Pass con ricompense esclusive</li>
+              <li>Missioni giornaliere e settimanali stagionali</li>
+            </ul>
+          </div>
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title">🎰 FORTUNE WHEEL</div>
+            <ul>
+              <li>Ruota della fortuna giornaliera gratuita</li>
+              <li>Premi: Coins, Gems, Ability Crates</li>
+            </ul>
+          </div>
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title">🌟 AURE &amp; CASSE</div>
+            <ul>
+              <li>Nuove Aure cosmetiche per la nave</li>
+              <li>Casse Aure: Stellar e Nova</li>
+              <li>Abilità stagionali esclusive</li>
+            </ul>
+          </div>
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title">⚙ MIGLIORAMENTI</div>
+            <ul>
+              <li>Menu principale rinnovato con HUD espanso</li>
+              <li>Bottoni rapidi Profilo, News e Impostazioni</li>
+              <li>Ottimizzazioni generali di performance</li>
+            </ul>
+          </div>
+        </div>
+        <button class="btn btn-ghost" id="patchnotes-close">CHIUDI</button>
       </div>
     </div>
 

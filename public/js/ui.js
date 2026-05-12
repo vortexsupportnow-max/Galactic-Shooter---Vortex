@@ -566,18 +566,32 @@ function initMenuHandlers() {
   document.getElementById('btn-crates').addEventListener('click', showCrateShop);
   document.getElementById('btn-wheel').addEventListener('click', openWheelOverlay);
   document.getElementById('btn-leaderboard').addEventListener('click', showLeaderboard);
-  document.getElementById('btn-profile').addEventListener('click', showProfile);
-  document.getElementById('btn-settings').addEventListener('click', openSettings);
   document.getElementById('btn-logout').addEventListener('click', () => {
     clearToken();
     setNickname('');
     showLoginScreen();
   });
 
+  // Top-right icon buttons
+  document.getElementById('btn-topbar-profile').addEventListener('click', showProfile);
+  document.getElementById('btn-topbar-settings').addEventListener('click', openSettings);
+  document.getElementById('btn-topbar-news').addEventListener('click', openPatchNotes);
+
   document.getElementById('profile-back').addEventListener('click', showMainMenu);
   document.getElementById('collection-back').addEventListener('click', showMainMenu);
   document.getElementById('crates-back').addEventListener('click', showMainMenu);
   document.getElementById('lb-back').addEventListener('click', showMainMenu);
+}
+
+// ===== PATCH NOTES =====
+function openPatchNotes() {
+  document.getElementById('patchnotes-overlay').classList.remove('hidden');
+}
+
+function initPatchNotesHandlers() {
+  document.getElementById('patchnotes-close').addEventListener('click', () => {
+    document.getElementById('patchnotes-overlay').classList.add('hidden');
+  });
 }
 
 // ===== SETTINGS =====
