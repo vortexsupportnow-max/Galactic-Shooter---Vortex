@@ -109,7 +109,7 @@ const SEASON_MISSIONS = [
   { id: 'm1', week: 1, title: 'Riscaldamento',      desc: 'Gioca 3 partite',              type: 'games_played',         target: 3,   pulsar: 500 },
   { id: 'm2', week: 1, title: 'Prima Battaglia',     desc: 'Uccidi 50 nemici',             type: 'enemies_killed',       target: 50,  pulsar: 500 },
   { id: 'm3', week: 2, title: 'Sopravvissuto',       desc: "Raggiungi l'onda 5",           type: 'max_wave_single',      target: 5,   pulsar: 500 },
-  { id: 'm4', week: 2, title: 'Raccoglitore',        desc: 'Guadagna 1000 monete',         type: 'coins_earned_session', target: 1000,pulsar: 500 },
+  { id: 'm4', week: 2, title: 'Raccoglitore',        desc: 'Guadagna 1000 monete in una partita', type: 'coins_earned_session', target: 1000, pulsar: 500 },
   { id: 'm5', week: 3, title: 'Cacciatore di Boss',  desc: "Raggiungi l'onda 10",          type: 'max_wave_single',      target: 10,  pulsar: 500 },
   { id: 'm6', week: 3, title: 'Abilità Ninja',       desc: 'Usa 5 abilità in una partita', type: 'abilities_used_single',target: 5,   pulsar: 500 },
   { id: 'm7', week: 4, title: 'Leggenda Galattica',  desc: "Raggiungi l'onda 15",          type: 'max_wave_single',      target: 15,  pulsar: 500 },
@@ -799,7 +799,7 @@ router.get('/season-pass', async (req, res) => {
     ]);
 
     const currentWeek = getCurrentSeasonWeek();
-    const missionProgress = passResult.data ? (missionsResult.data || []) : [];
+    const missionProgress = missionsResult.data || [];
 
     res.json({
       success: true,

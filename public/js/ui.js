@@ -88,9 +88,9 @@ async function loadProfile() {
       <div class="stat-row"><span>GAMES PLAYED</span><span class="val">${d.games_played}</span></div>
       <div class="stat-row"><span>MAX SCORE</span><span class="val">${formatNumber(d.max_score)}</span></div>
       <div class="stat-row"><span>MAX WAVE</span><span class="val">${d.max_wave}</span></div>
-      <div class="stat-row"><span>ABILITÀ</span><span class="val">${aCount}/${Object.keys(ABILITIES).length}</span></div>
+      <div class="stat-row"><span>ABILITÀ</span><span class="val">${aCount}/${Object.values(ABILITIES).filter(a => !a.season_exclusive).length}</span></div>
       <div class="stat-row"><span>CASSE GRATIS</span><span class="val">${(d.free_mystery_crates || 0) + (d.free_void_crates || 0)}</span></div>
-      <div class="stat-row"><span>AURE POSSEDUTE</span><span class="val">${skinsOwned}/${Object.keys(SKINS).length}</span></div>
+      <div class="stat-row"><span>AURE POSSEDUTE</span><span class="val">${skinsOwned}/${Object.values(SKINS).filter(s => !s.season_exclusive).length}</span></div>
     </div>
     <div class="profile-card">
       <h3>🌟 AURA EQUIPAGGIATA</h3>
