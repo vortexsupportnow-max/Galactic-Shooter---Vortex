@@ -82,16 +82,37 @@
           <span class="gem-display">💎 <span id="menu-gems">0</span></span>
         </div>
         <div class="pilot-name">PILOT: <span id="menu-nickname">-</span></div>
-        <div class="menu-buttons">
-          <button class="btn btn-cyan btn-large" id="btn-play">▶ PLAY</button>
-          <button class="btn btn-purple" id="btn-collection">⚡ COLLECTION</button>
-          <button class="btn btn-pink" id="btn-skins">🎨 SKINS</button>
-          <button class="btn btn-yellow" id="btn-crates">📦 CRATES</button>
-          <button class="btn btn-green" id="btn-wheel">&#127922; FORTUNE WHEEL<span class="menu-btn-subtitle" id="wheel-button-status">LOADING...</span></button>
-          <button class="btn btn-blue" id="btn-leaderboard">&#127942; LEADERBOARD</button>
-          <button class="btn btn-green" id="btn-profile">👤 PROFILE</button>
-          <button class="btn btn-gray" id="btn-settings">⚙ SETTINGS</button>
-          <button class="btn btn-ghost" id="btn-logout">LOGOUT</button>
+
+        <!-- Two-column layout: left = season pass, right = game buttons -->
+        <div class="menu-split">
+          <!-- LEFT: Season Pass Panel -->
+          <div class="menu-left">
+            <div class="season-panel">
+              <div class="season-panel-title">🌸 JAPAN SEASON</div>
+              <div class="season-panel-end">Fino al 30 Giu</div>
+              <div class="season-pulsar-bar-wrap">
+                <div class="season-pulsar-label">⚡ PULSAR: <span id="menu-pulsar">0</span></div>
+                <div class="season-pulsar-bar">
+                  <div class="season-pulsar-fill" id="menu-pulsar-fill" style="width:0%"></div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-season" id="btn-pass">🌸 SPACE PASS</button>
+            <button class="btn btn-mission" id="btn-missions">📋 MISSIONI</button>
+          </div>
+
+          <!-- RIGHT: Game buttons -->
+          <div class="menu-right">
+            <button class="btn btn-cyan btn-large" id="btn-play">▶ PLAY</button>
+            <button class="btn btn-purple" id="btn-collection">⚡ COLLECTION</button>
+            <button class="btn btn-pink" id="btn-skins">🌟 AURE</button>
+            <button class="btn btn-yellow" id="btn-crates">📦 CRATES</button>
+            <button class="btn btn-green" id="btn-wheel">&#127922; WHEEL<span class="menu-btn-subtitle" id="wheel-button-status">LOADING...</span></button>
+            <button class="btn btn-blue" id="btn-leaderboard">&#127942; TOP</button>
+            <button class="btn btn-green" id="btn-profile">👤 PROFILO</button>
+            <button class="btn btn-gray" id="btn-settings">⚙ IMPOST.</button>
+            <button class="btn btn-ghost" id="btn-logout">LOGOUT</button>
+          </div>
         </div>
       </div>
     </div>
@@ -149,11 +170,11 @@
       </div>
     </div>
 
-    <!-- Skins Screen -->
+    <!-- Aure Screen -->
     <div id="screen-skins" class="screen">
       <div class="screen-header">
         <button class="btn btn-ghost btn-back" id="skins-back">← BACK</button>
-        <h2 class="screen-title">🎨 SKINS</h2>
+        <h2 class="screen-title">🌟 AURE</h2>
         <div class="header-currency">
           🪙 <span id="skins-coins">0</span> &nbsp; 💎 <span id="skins-gems">0</span>
         </div>
@@ -176,7 +197,7 @@
       <div class="crates-content">
         <div class="crate-tabs">
           <button class="crate-tab active" data-tab="abilities">ABILITY CRATES</button>
-          <button class="crate-tab" data-tab="skins">SKIN CRATES</button>
+          <button class="crate-tab" data-tab="skins">CASSE AURE</button>
         </div>
 
         <div id="crate-tab-abilities" class="crate-tab-content">
@@ -242,7 +263,7 @@
 
             <div id="skin-crate-flash" class="crate-flash-overlay hidden"></div>
 
-            <button class="btn btn-pink btn-large" id="open-skin-crate-btn">OPEN SKIN CRATE</button>
+            <button class="btn btn-pink btn-large" id="open-skin-crate-btn">APRI CASSA AURA</button>
             <div id="skin-crate-result" class="skin-crate-result hidden"></div>
             <div class="crate-info" id="skin-crate-info"></div>
           </div>
@@ -353,6 +374,34 @@
       </div>
     </div>
 
+    <!-- Season Pass Screen -->
+    <div id="screen-pass" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="pass-back">← BACK</button>
+        <h2 class="screen-title">🌸 SPACE PASS</h2>
+        <div class="header-currency">
+          ⚡ <span id="pass-pulsar-header">0</span> Pulsar
+        </div>
+      </div>
+      <div class="pass-content" id="pass-content">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- Missions Screen -->
+    <div id="screen-missions" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="missions-back">← BACK</button>
+        <h2 class="screen-title">📋 MISSIONI</h2>
+        <div class="header-currency">
+          ⚡ <span id="missions-pulsar-header">0</span> Pulsar
+        </div>
+      </div>
+      <div class="missions-content" id="missions-content">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
   </div>
 
   <script src="/js/utils.js"></script>
@@ -364,6 +413,7 @@
   <script src="/js/game.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/ui.js"></script>
+  <script src="/js/season_pass.js"></script>
   <script src="/js/main.js"></script>
 </body>
 </html>

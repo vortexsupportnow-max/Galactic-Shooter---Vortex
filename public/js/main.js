@@ -63,6 +63,7 @@ async function init() {
   initTutorialHandlers();
   initWheelHandlers();
   initAbilityInfoHandlers();
+  initPassHandlers();
 
   // Init login starfield
   initStarField('loginStars');

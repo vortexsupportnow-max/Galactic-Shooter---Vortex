@@ -981,8 +981,328 @@ html, body {
 .skin-result-name  { font-size: 0.55rem; color: var(--white); }
 .skin-result-desc  { font-size: 0.4rem; color: #ff66cc; margin-top: 0.3rem; }
 
-/* ===== RESPONSIVE ===== */
-@media (max-width: 480px) {
+/* ===== MENU TWO-COLUMN LAYOUT ===== */
+.menu-split {
+  width: 100%;
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+.menu-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  width: 38%;
+}
+.menu-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+/* Season panel (left side of menu) */
+.season-panel {
+  background: rgba(255,100,50,0.08);
+  border: 1px solid #ff4400;
+  padding: 0.55rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  box-shadow: 0 0 12px rgba(255,68,0,0.2);
+}
+.season-panel-title {
+  font-size: 0.36rem;
+  color: #ff6622;
+  text-shadow: 0 0 8px rgba(255,102,34,0.7);
+  letter-spacing: 0.04em;
+}
+.season-panel-end {
+  font-size: 0.3rem;
+  color: #ff8844;
+}
+.season-pulsar-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.season-pulsar-label {
+  font-size: 0.3rem;
+  color: var(--yellow);
+}
+.season-pulsar-bar {
+  height: 5px;
+  background: rgba(255,255,0,0.15);
+  border: 1px solid rgba(255,255,0,0.3);
+  position: relative;
+  overflow: hidden;
+}
+.season-pulsar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffaa00, #ffff00);
+  box-shadow: 0 0 6px rgba(255,255,0,0.6);
+  transition: width 0.4s ease;
+}
+
+/* Season/Mission buttons */
+.btn-season {
+  color: #ff6622;
+  border-color: #ff4400;
+  font-size: 0.42rem !important;
+  padding: 0.55rem 0.4rem !important;
+}
+.btn-season:hover {
+  background: rgba(255,68,0,0.15);
+  box-shadow: 0 0 12px rgba(255,68,0,0.5);
+}
+.btn-mission {
+  color: #ff88cc;
+  border-color: #cc44aa;
+  font-size: 0.42rem !important;
+  padding: 0.55rem 0.4rem !important;
+}
+.btn-mission:hover {
+  background: rgba(204,68,170,0.15);
+  box-shadow: 0 0 12px rgba(204,68,170,0.5);
+}
+
+/* Right menu buttons slightly smaller to fit */
+.menu-right .btn {
+  font-size: 0.52rem;
+  padding: 0.6rem 0.7rem;
+}
+.menu-right .btn-large {
+  font-size: 0.7rem;
+  padding: 0.8rem 1rem;
+}
+.menu-right .menu-btn-subtitle {
+  font-size: 0.34rem;
+}
+
+/* ===== SEASON PASS SCREEN ===== */
+.pass-content {
+  width: 100%;
+  max-width: 480px;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  overflow-y: auto;
+}
+.pass-header-card {
+  background: rgba(255,100,50,0.08);
+  border: 1px solid #ff4400;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-shadow: 0 0 16px rgba(255,68,0,0.2);
+}
+.pass-season-name {
+  font-size: 0.75rem;
+  color: #ff6622;
+  text-shadow: 0 0 12px rgba(255,102,34,0.8);
+}
+.pass-season-info {
+  font-size: 0.42rem;
+  color: #ff8844;
+}
+.pass-pulsar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.pass-pulsar-label {
+  font-size: 0.45rem;
+  color: var(--yellow);
+}
+.pass-bar-outer {
+  height: 8px;
+  background: rgba(255,255,0,0.1);
+  border: 1px solid rgba(255,255,0,0.3);
+  overflow: hidden;
+}
+.pass-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffaa00, #ffff00);
+  box-shadow: 0 0 8px rgba(255,255,0,0.6);
+  transition: width 0.5s ease;
+}
+.pass-how {
+  font-size: 0.38rem;
+  color: #ccccdd;
+  line-height: 1.7;
+}
+
+/* Tier cards */
+.pass-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.pass-tier-card {
+  background: var(--panel);
+  border: 1px solid var(--gray);
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  transition: border-color 0.2s;
+}
+.pass-tier-card.unlocked {
+  border-color: #ff8844;
+  box-shadow: 0 0 8px rgba(255,136,68,0.2);
+}
+.pass-tier-card.claimed {
+  border-color: var(--gray);
+  opacity: 0.7;
+}
+.pass-tier-card.grand {
+  border-color: var(--legendary);
+  box-shadow: 0 0 16px rgba(255,170,0,0.4);
+  animation: legendaryGlow 2s ease-in-out infinite;
+}
+.pass-tier-num {
+  font-size: 0.35rem;
+  color: var(--gray);
+}
+.pass-tier-pulsar {
+  font-size: 0.42rem;
+  color: var(--yellow);
+}
+.pass-tier-reward {
+  font-size: 0.52rem;
+  color: var(--white);
+  font-weight: bold;
+}
+.pass-tier-claimed {
+  font-size: 0.4rem;
+  color: var(--green);
+}
+.pass-tier-locked {
+  font-size: 0.38rem;
+  color: #555577;
+}
+.pass-claim-btn {
+  width: auto !important;
+  padding: 0.4rem 0.8rem !important;
+  font-size: 0.42rem !important;
+}
+
+/* ===== MISSIONS SCREEN ===== */
+.missions-content {
+  width: 100%;
+  max-width: 480px;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  overflow-y: auto;
+}
+.missions-week-info {
+  font-size: 0.45rem;
+  color: var(--cyan);
+  padding: 0.4rem 0;
+}
+.missions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.mission-card {
+  background: var(--panel);
+  border: 1px solid var(--gray);
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: border-color 0.2s;
+}
+.mission-card.completed { border-color: var(--yellow); }
+.mission-card.claimed   { border-color: var(--green); opacity: 0.75; }
+.mission-card.locked    { opacity: 0.45; }
+.mission-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.mission-week {
+  font-size: 0.35rem;
+  color: var(--gray);
+}
+.mission-pulsar {
+  font-size: 0.38rem;
+  color: var(--yellow);
+}
+.mission-title {
+  font-size: 0.52rem;
+  color: var(--white);
+}
+.mission-desc {
+  font-size: 0.42rem;
+  color: #ccccdd;
+  line-height: 1.6;
+}
+.mission-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.mission-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  overflow: hidden;
+}
+.mission-progress-fill {
+  height: 100%;
+  background: var(--cyan);
+  transition: width 0.4s ease;
+}
+.mission-progress-fill.done {
+  background: var(--yellow);
+  box-shadow: 0 0 6px rgba(255,255,0,0.6);
+}
+.mission-progress-label {
+  font-size: 0.38rem;
+  color: var(--yellow);
+  white-space: nowrap;
+}
+.mission-locked-msg {
+  font-size: 0.38rem;
+  color: #555577;
+}
+.mission-claim-btn {
+  width: auto !important;
+  padding: 0.4rem 0.8rem !important;
+  font-size: 0.42rem !important;
+  margin-top: 0.2rem;
+}
+.mission-claimed-label {
+  font-size: 0.4rem;
+  color: var(--green);
+}
+
+/* Season exclusive tags */
+.skin-season-tag {
+  font-size: 0.3rem;
+  color: #ff6622;
+  letter-spacing: 0.05em;
+}
+.ability-season-tag {
+  font-size: 0.3rem;
+  color: #ff6622;
+  letter-spacing: 0.05em;
+}
+
+/* ===== RESPONSIVE for two-column menu ===== */
+@media (max-width: 360px) {
+  .menu-left { width: 42%; }
+  .menu-right .btn { font-size: 0.45rem; padding: 0.5rem 0.4rem; }
+  .season-panel-title { font-size: 0.3rem; }
+}
   .title-line1 { font-size: 1.8rem; }
   .title-line2 { font-size: 1.2rem; }
   .ability-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }

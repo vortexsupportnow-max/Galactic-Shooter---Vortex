@@ -3,8 +3,8 @@
 function getAbilityRarity(abilityId) {
   const rarities = {
     common:    ['shield','speed_boost','triple_shot','frag_bomb','rapid_fire','heal','spread_shot','homing'],
-    rare:      ['laser','magnetic_field','clone','time_slow','piercing','ricochet','overcharge','drone'],
-    epic:      ['black_hole','emp','rain_of_fire','chain_lightning','vortex','gravity_well','turret','freeze'],
+    rare:      ['laser','magnetic_field','clone','time_slow','piercing','ricochet','overcharge','drone','bushido_blade'],
+    epic:      ['black_hole','emp','rain_of_fire','chain_lightning','vortex','gravity_well','turret','freeze','sakura_storm'],
     legendary: ['god_mode','nuke','time_warp','phoenix','singularity','storm']
   };
   for (const [rarity, ids] of Object.entries(rarities)) {
@@ -301,6 +301,47 @@ const ABILITIES = {
       for (const e of gs.enemies) e.frozen = true;
       if (gs.boss) gs.boss.frozen = true;
       gs.particles.emit(240, 350, 40, '#44aaff', { speed: 6, decay: 0.01 });
+      Sounds.abilityUse();
+    }
+  },
+
+  // ===== JAPAN SEASON (pass-exclusive) =====
+  bushido_blade: {
+    id: 'bushido_blade', name: 'Bushido Blade', rarity: 'rare', icon: 'bushido_blade',
+    season_exclusive: true,
+    description: 'Katana slash: deals 300+30*level dmg to all enemies in a vertical line',
+    maxLevel: 10,
+    apply(gs, level) {
+      const damage = 300 + level * 30;
+      const slashX = gs.player.x;
+      const slashWidth = 30 + level * 3;
+      for (const e of gs.enemies) {
+        if (Math.abs(e.x - slashX) < slashWidth) {
+          e.hp -= damage;
+          gs.particles.emit(e.x, e.y, 12, '#ff4400', { speed: 5 });
+        }
+      }
+      if (gs.boss && Math.abs(gs.boss.x - slashX) < slashWidth * 2) {
+        gs.boss.hp -= damage;
+        gs.particles.emit(gs.boss.x, gs.boss.y, 20, '#ff4400', { speed: 6 });
+      }
+      gs.particles.emit(slashX, 350, 40, '#ff6600', { speed: 7, decay: 0.02 });
+      Sounds.explosion(false);
+    }
+  },
+  sakura_storm: {
+    id: 'sakura_storm', name: 'Sakura Storm', rarity: 'epic', icon: 'sakura_storm',
+    season_exclusive: true,
+    description: 'Sakura petals deal area damage for 5s (+0.5s/level)',
+    maxLevel: 10,
+    apply(gs, level) {
+      gs.sakuraStorm = {
+        timer: (5 + level * 0.5) * 1000,
+        interval: 250,
+        lastSpawn: 0,
+        damage: 25 + level * 8
+      };
+      gs.particles.emit(gs.player.x, gs.player.y, 30, '#ff88cc', { speed: 5, decay: 0.015 });
       Sounds.abilityUse();
     }
   },
