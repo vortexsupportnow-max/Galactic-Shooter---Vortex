@@ -63,6 +63,32 @@ ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS free_void_crates INTEGER NO
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS equipped_skin TEXT NOT NULL DEFAULT 'default';
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS free_skin_crates INTEGER NOT NULL DEFAULT 0;
 
+-- ── Japan Season / Space Pass ─────────────────────────────────────────────────
+
+-- Tracks each user's season pass progress (pulsar earned, tiers claimed)
+CREATE TABLE IF NOT EXISTS user_season_pass (
+  id           BIGSERIAL PRIMARY KEY,
+  user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  season_id    TEXT NOT NULL DEFAULT 'japan_s1',
+  pulsar       INTEGER NOT NULL DEFAULT 0,
+  claimed_tiers TEXT[] NOT NULL DEFAULT '{}',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, season_id)
+);
+
+-- Tracks per-user progress on each season mission
+CREATE TABLE IF NOT EXISTS user_mission_progress (
+  id             BIGSERIAL PRIMARY KEY,
+  user_id        BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  mission_id     TEXT NOT NULL,
+  progress       INTEGER NOT NULL DEFAULT 0,
+  completed      BOOLEAN NOT NULL DEFAULT false,
+  reward_claimed BOOLEAN NOT NULL DEFAULT false,
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, mission_id)
+);
+
 -- ── Indexes ──────────────────────────────────────────────────
 
 CREATE INDEX IF NOT EXISTS idx_users_nickname          ON users(nickname);
@@ -73,6 +99,8 @@ CREATE INDEX IF NOT EXISTS idx_scores_created_at       ON scores(created_at);
 CREATE INDEX IF NOT EXISTS idx_user_abilities_user_id  ON user_abilities(user_id);
 CREATE INDEX IF NOT EXISTS idx_achievements_user_id    ON achievements(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_skins_user_id      ON user_skins(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_season_pass_user_id ON user_season_pass(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_mission_progress_user_id ON user_mission_progress(user_id);
 
 -- ── Row-Level Security ────────────────────────────────────────
 -- The Node.js backend is the only caller (server-side, trusted).
@@ -84,19 +112,24 @@ ALTER TABLE user_abilities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scores         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE achievements   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_skins     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_season_pass ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_mission_progress ENABLE ROW LEVEL SECURITY;
 
--- Drop policies first so this script is idempotent
 DROP POLICY IF EXISTS "backend_all" ON users;
 DROP POLICY IF EXISTS "backend_all" ON user_abilities;
 DROP POLICY IF EXISTS "backend_all" ON scores;
 DROP POLICY IF EXISTS "backend_all" ON achievements;
 DROP POLICY IF EXISTS "backend_all" ON user_skins;
+DROP POLICY IF EXISTS "backend_all" ON user_season_pass;
+DROP POLICY IF EXISTS "backend_all" ON user_mission_progress;
 
 CREATE POLICY "backend_all" ON users          FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "backend_all" ON user_abilities FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "backend_all" ON scores         FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "backend_all" ON achievements   FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "backend_all" ON user_skins     FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "backend_all" ON user_season_pass FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "backend_all" ON user_mission_progress FOR ALL USING (true) WITH CHECK (true);
 
 -- ── Helper Functions (called via supabase.rpc) ────────────────
 

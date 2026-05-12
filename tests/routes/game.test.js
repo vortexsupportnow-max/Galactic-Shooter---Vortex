@@ -282,22 +282,19 @@ describe('GET /api/game/profile', () => {
     const abilities = [{ ability_id: 'shield', level: 2 }];
     const achievements = [{ achievement_id: 'score_1k', unlocked_at: '2024-01-02' }];
 
-    const fromMap = {
-      users: { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: user, error: null }) },
-      user_abilities: { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: undefined },
-      achievements: { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: undefined }
-    };
-
-    // Return different data per table
+    // Now 6 tables: users, user_abilities, achievements, user_skins, user_season_pass, user_mission_progress
     let tableIdx = 0;
     const tables = [
       { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: user, error: null }) },
       { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: abilities, error: null }) },
-      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: achievements, error: null }) }
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: achievements, error: null }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: [], error: null }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: [], error: null }) }
     ];
 
     const supabase = {
-      from: jest.fn(() => tables[tableIdx++] || tables[2])
+      from: jest.fn(() => tables[tableIdx++] || tables[tables.length - 1])
     };
     getDB.mockReturnValue(supabase);
 
@@ -311,9 +308,12 @@ describe('GET /api/game/profile', () => {
     const tables = [
       { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) },
       { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: [], error: null }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: [], error: null }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: [], error: null }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) },
       { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: [], error: null }) }
     ];
-    const supabase = { from: jest.fn(() => tables[tableIdx++] || tables[2]) };
+    const supabase = { from: jest.fn(() => tables[tableIdx++] || tables[tables.length - 1]) };
     getDB.mockReturnValue(supabase);
 
     const res = await request(app).get('/api/game/profile');
@@ -325,9 +325,12 @@ describe('GET /api/game/profile', () => {
     const tables = [
       { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: null, error: { message: 'db failure' } }) },
       { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: [], error: null }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: [], error: null }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: [], error: null }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) },
       { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), then: (resolve) => resolve({ data: [], error: null }) }
     ];
-    const supabase = { from: jest.fn(() => tables[tableIdx++] || tables[2]) };
+    const supabase = { from: jest.fn(() => tables[tableIdx++] || tables[tables.length - 1]) };
     getDB.mockReturnValue(supabase);
 
     const res = await request(app).get('/api/game/profile');

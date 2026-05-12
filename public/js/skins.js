@@ -79,6 +79,22 @@ const SKINS = {
     color: '#ffaa00', emoji: '👑',
     description: '+30% coins/gems, +25% score, +2 lives',
     boost: { coins_mult: 1.30, gems_mult: 1.30, score_mult: 1.25, extra_lives: 2, starting_shield: false }
+  },
+
+  // ── Japan Season (pass-exclusive) ───────────────────────────────────────────
+  rising_sun: {
+    id: 'rising_sun', name: 'Rising Sun', rarity: 'epic',
+    color: '#ff4400', emoji: '🌅',
+    description: '+20% score, +10% gems',
+    season_exclusive: true,
+    boost: { coins_mult: 1.00, gems_mult: 1.10, score_mult: 1.20, extra_lives: 0, starting_shield: false }
+  },
+  torii_gate: {
+    id: 'torii_gate', name: 'Torii Gate', rarity: 'legendary',
+    color: '#ff0033', emoji: '⛩️',
+    description: '+25% coins/gems, start shielded, +1 life',
+    season_exclusive: true,
+    boost: { coins_mult: 1.25, gems_mult: 1.25, score_mult: 1.00, extra_lives: 1, starting_shield: true }
   }
 };
 

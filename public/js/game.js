@@ -173,6 +173,8 @@ class GalacticGame {
       storm: null,
       singularity: null,
       turret: null,
+      sakuraStorm: null,
+      abilitiesUsed: 0,
       keys: this.keys
     };
 
@@ -266,6 +268,19 @@ class GalacticGame {
         }
       }
       if (gs.storm.timer <= 0) gs.storm = null;
+    }
+
+    // Sakura Storm
+    if (gs.sakuraStorm) {
+      gs.sakuraStorm.timer -= dt;
+      gs.sakuraStorm.lastSpawn += dt;
+      if (gs.sakuraStorm.lastSpawn >= gs.sakuraStorm.interval) {
+        gs.sakuraStorm.lastSpawn = 0;
+        const x = 40 + Math.random() * 400;
+        gs.bullets.push(new Bullet(x, 0, 0, 5, gs.sakuraStorm.damage, 'player'));
+        gs.particles.emit(x, 0, 3, '#ff88cc', { speed: 3, decay: 0.025 });
+      }
+      if (gs.sakuraStorm.timer <= 0) gs.sakuraStorm = null;
     }
 
     // Singularity
@@ -667,6 +682,7 @@ class GalacticGame {
     if (!def) return;
     def.apply(gs, ability.level || 1);
     gs.abilitySlots[slot] = null; // consume
+    gs.abilitiesUsed++;
     Sounds.abilityUse();
   }
 
@@ -844,7 +860,8 @@ class GalacticGame {
           score: gs.score,
           wave: gs.wave,
           enemiesKilled: gs.enemiesKilled,
-          gemsCollected: gs.gemsCollected
+          gemsCollected: gs.gemsCollected,
+          abilitiesUsed: gs.abilitiesUsed || 0
         })
       });
       if (res.success) {

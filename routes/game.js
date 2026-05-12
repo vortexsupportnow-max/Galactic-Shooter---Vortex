@@ -66,7 +66,10 @@ const SKINS = {
   void_wraith:       { id: 'void_wraith',        name: 'Void Wraith',       rarity: 'epic',      boost: { coins_mult: 1.25, gems_mult: 1.10, score_mult: 1.00, extra_lives: 0, starting_shield: false } },
   celestial:         { id: 'celestial',          name: 'Celestial Dragon',  rarity: 'epic',      boost: { coins_mult: 1.00, gems_mult: 1.00, score_mult: 1.20, extra_lives: 1, starting_shield: false } },
   quantum_rift:      { id: 'quantum_rift',       name: 'Quantum Rift',      rarity: 'epic',      boost: { coins_mult: 1.15, gems_mult: 1.15, score_mult: 1.00, extra_lives: 0, starting_shield: true  } },
-  galactic_overlord: { id: 'galactic_overlord',  name: 'Galactic Overlord', rarity: 'legendary', boost: { coins_mult: 1.30, gems_mult: 1.30, score_mult: 1.25, extra_lives: 2, starting_shield: false } }
+  galactic_overlord: { id: 'galactic_overlord',  name: 'Galactic Overlord', rarity: 'legendary', boost: { coins_mult: 1.30, gems_mult: 1.30, score_mult: 1.25, extra_lives: 2, starting_shield: false } },
+  // Japan Season (pass-exclusive)
+  rising_sun:        { id: 'rising_sun',         name: 'Rising Sun',        rarity: 'epic',      season_exclusive: true, boost: { coins_mult: 1.00, gems_mult: 1.10, score_mult: 1.20, extra_lives: 0, starting_shield: false } },
+  torii_gate:        { id: 'torii_gate',         name: 'Torii Gate',        rarity: 'legendary', season_exclusive: true, boost: { coins_mult: 1.25, gems_mult: 1.25, score_mult: 1.00, extra_lives: 1, starting_shield: true  } }
 };
 
 const SKINS_BY_RARITY = {
@@ -74,6 +77,7 @@ const SKINS_BY_RARITY = {
   rare:      ['phantom', 'crimson_nova', 'nebula', 'thunder'],
   epic:      ['void_wraith', 'celestial', 'quantum_rift'],
   legendary: ['galactic_overlord']
+  // Note: rising_sun and torii_gate are excluded — pass-exclusive only
 };
 
 const SKIN_CRATE_TYPES = {
@@ -86,6 +90,58 @@ const SKIN_CRATE_TYPES = {
     pool: [...Array(15).fill('common'), ...Array(40).fill('rare'), ...Array(35).fill('epic'), ...Array(10).fill('legendary')]
   }
 };
+
+// ── Japan Season (pass-exclusive abilities) ───────────────────────────────────
+// These IDs exist in the game but are NOT in the regular ABILITIES_BY_RARITY crate pools.
+const SEASON_EXCLUSIVE_ABILITIES = ['bushido_blade', 'sakura_storm'];
+const SEASON_EXCLUSIVE_SKINS     = ['rising_sun', 'torii_gate'];
+
+// ── Season Pass ───────────────────────────────────────────────────────────────
+
+const SEASON_ID   = 'japan_s1';
+const SEASON_NAME = 'JAPAN SEASON';
+const SEASON_END  = new Date('2026-06-30T23:59:59Z');
+
+// Season start = May 12 2026 (week anchor for unlocking missions)
+const SEASON_START = new Date('2026-05-12T00:00:00Z');
+
+const SEASON_MISSIONS = [
+  { id: 'm1', week: 1, title: 'Riscaldamento',      desc: 'Gioca 3 partite',              type: 'games_played',         target: 3,   pulsar: 500 },
+  { id: 'm2', week: 1, title: 'Prima Battaglia',     desc: 'Uccidi 50 nemici',             type: 'enemies_killed',       target: 50,  pulsar: 500 },
+  { id: 'm3', week: 2, title: 'Sopravvissuto',       desc: "Raggiungi l'onda 5",           type: 'max_wave_single',      target: 5,   pulsar: 500 },
+  { id: 'm4', week: 2, title: 'Raccoglitore',        desc: 'Guadagna 1000 monete in una partita', type: 'coins_earned_session', target: 1000, pulsar: 500 },
+  { id: 'm5', week: 3, title: 'Cacciatore di Boss',  desc: "Raggiungi l'onda 10",          type: 'max_wave_single',      target: 10,  pulsar: 500 },
+  { id: 'm6', week: 3, title: 'Abilità Ninja',       desc: 'Usa 5 abilità in una partita', type: 'abilities_used_single',target: 5,   pulsar: 500 },
+  { id: 'm7', week: 4, title: 'Leggenda Galattica',  desc: "Raggiungi l'onda 15",          type: 'max_wave_single',      target: 15,  pulsar: 500 },
+  { id: 'm8', week: 4, title: 'Cacciatore di Gemme', desc: 'Colleziona 30 gemme',          type: 'gems_collected',       target: 30,  pulsar: 500 },
+  { id: 'm9', week: 5, title: 'Sterminatore',        desc: 'Uccidi 200 nemici in totale',  type: 'enemies_killed',       target: 200, pulsar: 500 },
+  { id: 'm10',week: 5, title: 'Veterano della Season',desc: 'Completa 10 partite',         type: 'games_played',         target: 10,  pulsar: 500 }
+];
+
+// Pass rewards per tier (each tier unlocked at pulsar threshold)
+const PASS_TIERS = [
+  { tier: 1,  pulsar: 500,  reward: { type: 'coins',   amount: 1000 } },
+  { tier: 2,  pulsar: 1000, reward: { type: 'gems',    amount: 20 } },
+  { tier: 3,  pulsar: 1500, reward: { type: 'coins',   amount: 2500 } },
+  { tier: 4,  pulsar: 2000, reward: { type: 'gems',    amount: 40 } },
+  { tier: 5,  pulsar: 2500, reward: { type: 'ability', abilityId: 'bushido_blade' } },
+  { tier: 6,  pulsar: 3000, reward: { type: 'coins',   amount: 5000 } },
+  { tier: 7,  pulsar: 3500, reward: { type: 'skin',    skinId: 'rising_sun' } },
+  { tier: 8,  pulsar: 4000, reward: { type: 'gems',    amount: 80 } },
+  { tier: 9,  pulsar: 4500, reward: { type: 'ability', abilityId: 'sakura_storm' } },
+  { tier: 10, pulsar: 5000, reward: { type: 'skin',    skinId: 'torii_gate' } }
+];
+
+function getCurrentSeasonWeek() {
+  const now = Date.now();
+  const ms = now - SEASON_START.getTime();
+  if (ms < 0) return 0;
+  return Math.min(Math.floor(ms / (7 * 24 * 60 * 60 * 1000)) + 1, 7);
+}
+
+function isSeasonActive() {
+  return Date.now() < SEASON_END.getTime();
+}
 
 function pickRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
@@ -176,7 +232,7 @@ async function grantAbilityReward(supabase, userId, rarity) {
 }
 
 async function fetchUserProfileData(supabase, userId) {
-  const [userResult, abilitiesResult, achievementsResult, skinsResult] = await Promise.all([
+  const [userResult, abilitiesResult, achievementsResult, skinsResult, passResult, missionsResult] = await Promise.all([
     supabase
       .from('users')
       .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at, last_wheel_spin_at, free_mystery_crates, free_void_crates, equipped_skin, free_skin_crates')
@@ -193,6 +249,16 @@ async function fetchUserProfileData(supabase, userId) {
     supabase
       .from('user_skins')
       .select('skin_id')
+      .eq('user_id', userId),
+    supabase
+      .from('user_season_pass')
+      .select('pulsar, claimed_tiers')
+      .eq('user_id', userId)
+      .eq('season_id', SEASON_ID)
+      .maybeSingle(),
+    supabase
+      .from('user_mission_progress')
+      .select('mission_id, progress, completed, reward_claimed')
       .eq('user_id', userId)
   ]);
 
@@ -208,13 +274,23 @@ async function fetchUserProfileData(supabase, userId) {
     wheel_available: getWheelAvailability(userResult.data.last_wheel_spin_at),
     abilities: abilitiesResult.data || [],
     achievements: achievementsResult.data || [],
-    skins: (skinsResult.data || []).map(s => s.skin_id)
+    skins: (skinsResult.data || []).map(s => s.skin_id),
+    season_pass: {
+      season_id: SEASON_ID,
+      season_name: SEASON_NAME,
+      season_end: SEASON_END.toISOString(),
+      current_week: getCurrentSeasonWeek(),
+      active: isSeasonActive(),
+      pulsar: passResult.data?.pulsar || 0,
+      claimed_tiers: passResult.data?.claimed_tiers || [],
+      missions: (missionsResult.data || [])
+    }
   };
 }
 
 router.post('/save-score', async (req, res) => {
   try {
-    const { score, wave, enemiesKilled, gemsCollected = 0 } = req.body;
+    const { score, wave, enemiesKilled, gemsCollected = 0, abilitiesUsed = 0 } = req.body;
     const supabase = getDB();
     const userId = req.user.userId;
 
@@ -266,6 +342,17 @@ router.post('/save-score', async (req, res) => {
 
     const { error: trimErr } = await supabase.rpc('trim_user_scores', { p_user_id: userId, p_keep: 10 });
     if (trimErr) console.warn('trim_user_scores failed (non-fatal):', trimErr.message);
+
+    // Update season mission progress (non-fatal)
+    if (isSeasonActive()) {
+      updateMissionProgress(supabase, userId, {
+        wave,
+        enemiesKilled: enemiesKilled || 0,
+        gemsCollected: gemsCollected || 0,
+        coinsEarned,
+        abilitiesUsed: abilitiesUsed || 0
+      }).catch(e => console.warn('mission progress update failed (non-fatal):', e.message));
+    }
 
     res.json({ success: true, data: { coinsEarned, gemsEarned, newMaxScore, newMaxWave } });
   } catch (err) {
@@ -633,6 +720,226 @@ router.post('/equip-skin', async (req, res) => {
     if (error) throw new Error(error.message);
 
     res.json({ success: true, data: { equipped_skin: skinId } });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+async function updateMissionProgress(supabase, userId, { wave, enemiesKilled, gemsCollected, coinsEarned, abilitiesUsed }) {
+  const currentWeek = getCurrentSeasonWeek();
+  const availableMissions = SEASON_MISSIONS.filter(m => m.week <= currentWeek);
+
+  // Fetch existing progress
+  const { data: existing } = await supabase
+    .from('user_mission_progress')
+    .select('mission_id, progress, completed')
+    .eq('user_id', userId)
+    .in('mission_id', availableMissions.map(m => m.id));
+
+  const existingMap = {};
+  for (const row of (existing || [])) existingMap[row.mission_id] = row;
+
+  for (const mission of availableMissions) {
+    const prev = existingMap[mission.id];
+    if (prev?.completed) continue;
+
+    let increment = 0;
+    let isSingle = false;
+
+    switch (mission.type) {
+      case 'games_played':         increment = 1; break;
+      case 'enemies_killed':       increment = enemiesKilled; break;
+      case 'gems_collected':       increment = gemsCollected; break;
+      case 'coins_earned_session': isSingle = true; increment = coinsEarned >= mission.target ? mission.target : 0; break;
+      case 'max_wave_single':      isSingle = true; increment = wave >= mission.target ? mission.target : 0; break;
+      case 'abilities_used_single':isSingle = true; increment = abilitiesUsed >= mission.target ? mission.target : 0; break;
+    }
+
+    if (increment === 0 && !isSingle) continue;
+
+    const newProgress = isSingle
+      ? (increment >= mission.target ? mission.target : (prev?.progress || 0))
+      : Math.min(mission.target, (prev?.progress || 0) + increment);
+
+    const completed = newProgress >= mission.target;
+
+    if (!prev) {
+      await supabase.from('user_mission_progress').insert({
+        user_id: userId,
+        mission_id: mission.id,
+        progress: newProgress,
+        completed,
+        reward_claimed: false
+      });
+    } else if (newProgress > prev.progress) {
+      await supabase.from('user_mission_progress')
+        .update({ progress: newProgress, completed })
+        .eq('user_id', userId)
+        .eq('mission_id', mission.id);
+    }
+  }
+}
+
+// ── Season Pass routes ────────────────────────────────────────────────────────
+
+router.get('/season-pass', async (req, res) => {
+  try {
+    const supabase = getDB();
+    const userId = req.user.userId;
+
+    const [passResult, missionsResult] = await Promise.all([
+      supabase.from('user_season_pass')
+        .select('pulsar, claimed_tiers')
+        .eq('user_id', userId)
+        .eq('season_id', SEASON_ID)
+        .maybeSingle(),
+      supabase.from('user_mission_progress')
+        .select('mission_id, progress, completed, reward_claimed')
+        .eq('user_id', userId)
+    ]);
+
+    const currentWeek = getCurrentSeasonWeek();
+    const missionProgress = missionsResult.data || [];
+
+    res.json({
+      success: true,
+      data: {
+        season_id: SEASON_ID,
+        season_name: SEASON_NAME,
+        season_end: SEASON_END.toISOString(),
+        current_week: currentWeek,
+        active: isSeasonActive(),
+        pulsar: passResult.data?.pulsar || 0,
+        claimed_tiers: passResult.data?.claimed_tiers || [],
+        missions: SEASON_MISSIONS.map(m => {
+          const prog = missionProgress.find(p => p.mission_id === m.id);
+          return {
+            ...m,
+            unlocked: m.week <= currentWeek,
+            progress: prog?.progress || 0,
+            completed: prog?.completed || false,
+            reward_claimed: prog?.reward_claimed || false
+          };
+        }),
+        tiers: PASS_TIERS
+      }
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+router.post('/claim-mission-reward', async (req, res) => {
+  try {
+    const { missionId } = req.body;
+    const supabase = getDB();
+    const userId = req.user.userId;
+
+    const mission = SEASON_MISSIONS.find(m => m.id === missionId);
+    if (!mission) return res.json({ success: false, error: 'Unknown mission' });
+
+    if (mission.week > getCurrentSeasonWeek()) {
+      return res.json({ success: false, error: 'Mission not yet unlocked' });
+    }
+
+    const { data: prog } = await supabase.from('user_mission_progress')
+      .select('completed, reward_claimed')
+      .eq('user_id', userId)
+      .eq('mission_id', missionId)
+      .maybeSingle();
+
+    if (!prog?.completed) return res.json({ success: false, error: 'Mission not completed' });
+    if (prog.reward_claimed) return res.json({ success: false, error: 'Reward already claimed' });
+
+    // Grant Pulsar
+    const { data: passRow } = await supabase.from('user_season_pass')
+      .select('pulsar, claimed_tiers')
+      .eq('user_id', userId)
+      .eq('season_id', SEASON_ID)
+      .maybeSingle();
+
+    const newPulsar = (passRow?.pulsar || 0) + mission.pulsar;
+
+    if (passRow) {
+      await supabase.from('user_season_pass')
+        .update({ pulsar: newPulsar })
+        .eq('user_id', userId)
+        .eq('season_id', SEASON_ID);
+    } else {
+      await supabase.from('user_season_pass')
+        .insert({ user_id: userId, season_id: SEASON_ID, pulsar: newPulsar, claimed_tiers: [] });
+    }
+
+    await supabase.from('user_mission_progress')
+      .update({ reward_claimed: true })
+      .eq('user_id', userId)
+      .eq('mission_id', missionId);
+
+    res.json({ success: true, data: { pulsarEarned: mission.pulsar, totalPulsar: newPulsar } });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+router.post('/claim-pass-tier', async (req, res) => {
+  try {
+    const { tier } = req.body;
+    const supabase = getDB();
+    const userId = req.user.userId;
+
+    const tierDef = PASS_TIERS.find(t => t.tier === tier);
+    if (!tierDef) return res.json({ success: false, error: 'Invalid tier' });
+
+    const { data: passRow } = await supabase.from('user_season_pass')
+      .select('pulsar, claimed_tiers')
+      .eq('user_id', userId)
+      .eq('season_id', SEASON_ID)
+      .maybeSingle();
+
+    if (!passRow) return res.json({ success: false, error: 'No pass data found' });
+
+    const claimedTiers = passRow.claimed_tiers || [];
+    const tierKey = `tier_${tier}`;
+
+    if (claimedTiers.includes(tierKey)) return res.json({ success: false, error: 'Tier already claimed' });
+    if (passRow.pulsar < tierDef.pulsar) return res.json({ success: false, error: 'Not enough Pulsar' });
+
+    const newClaimedTiers = [...claimedTiers, tierKey];
+    await supabase.from('user_season_pass')
+      .update({ claimed_tiers: newClaimedTiers })
+      .eq('user_id', userId)
+      .eq('season_id', SEASON_ID);
+
+    const { data: user } = await supabase.from('users').select('coins, gems').eq('id', userId).single();
+    const reward = tierDef.reward;
+    let rewardDesc = '';
+
+    if (reward.type === 'coins') {
+      await supabase.from('users').update({ coins: (user.coins || 0) + reward.amount }).eq('id', userId);
+      rewardDesc = `+${reward.amount} monete`;
+    } else if (reward.type === 'gems') {
+      await supabase.from('users').update({ gems: (user.gems || 0) + reward.amount }).eq('id', userId);
+      rewardDesc = `+${reward.amount} gemme`;
+    } else if (reward.type === 'ability') {
+      const { data: existing } = await supabase.from('user_abilities')
+        .select('level').eq('user_id', userId).eq('ability_id', reward.abilityId).maybeSingle();
+      if (!existing) {
+        await supabase.from('user_abilities').insert({ user_id: userId, ability_id: reward.abilityId, level: 1 });
+      } else if (existing.level < 10) {
+        await supabase.from('user_abilities').update({ level: existing.level + 1 })
+          .eq('user_id', userId).eq('ability_id', reward.abilityId);
+      }
+      rewardDesc = `Abilità: ${reward.abilityId.replace(/_/g, ' ')}`;
+    } else if (reward.type === 'skin') {
+      const { data: ownedSkin } = await supabase.from('user_skins')
+        .select('skin_id').eq('user_id', userId).eq('skin_id', reward.skinId).maybeSingle();
+      if (!ownedSkin) {
+        await supabase.from('user_skins').insert({ user_id: userId, skin_id: reward.skinId });
+      }
+      rewardDesc = `Aura: ${SKINS[reward.skinId]?.name || reward.skinId}`;
+    }
+
+    res.json({ success: true, data: { tier, reward, rewardDesc } });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

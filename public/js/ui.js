@@ -32,6 +32,12 @@ function showMainMenu() {
   updateCurrency();
   refreshWheelStatus();
   initStarField('menuStars');
+  // Refresh season pass mini-panel
+  if (window.fetchPassData) {
+    window.fetchPassData().then(data => {
+      if (data && window.updateMenuPassPanel) window.updateMenuPassPanel(data);
+    }).catch(() => {});
+  }
 }
 
 async function updateCurrency() {
@@ -65,7 +71,6 @@ async function loadProfile() {
   const skinObj = SKINS[equippedSkin];
   const skinLabel = skinObj ? `${skinObj.emoji} ${skinObj.name}` : '🚀 DEFAULT';
   const skinsOwned = (d.skins || []).length;
-
   content.innerHTML = `
     <div class="profile-card">
       <h3>PILOT INFO</h3>
@@ -83,14 +88,15 @@ async function loadProfile() {
       <div class="stat-row"><span>GAMES PLAYED</span><span class="val">${d.games_played}</span></div>
       <div class="stat-row"><span>MAX SCORE</span><span class="val">${formatNumber(d.max_score)}</span></div>
       <div class="stat-row"><span>MAX WAVE</span><span class="val">${d.max_wave}</span></div>
-      <div class="stat-row"><span>ABILITIES</span><span class="val">${aCount}/${total}</span></div>
-      <div class="stat-row"><span>FREE CRATES</span><span class="val">${(d.free_mystery_crates || 0) + (d.free_void_crates || 0)}</span></div>
-      <div class="stat-row"><span>SKINS OWNED</span><span class="val">${skinsOwned}/${Object.keys(SKINS).length}</span></div>
+      <div class="stat-row"><span>ABILITÀ</span><span class="val">${aCount}/${Object.values(ABILITIES).filter(a => !a.season_exclusive).length}</span></div>
+      <div class="stat-row"><span>CASSE GRATIS</span><span class="val">${(d.free_mystery_crates || 0) + (d.free_void_crates || 0)}</span></div>
+      <div class="stat-row"><span>AURE POSSEDUTE</span><span class="val">${skinsOwned}/${Object.values(SKINS).filter(s => !s.season_exclusive).length}</span></div>
     </div>
     <div class="profile-card">
-      <h3>🎨 EQUIPPED SKIN</h3>
-      <div class="stat-row"><span>SKIN</span><span class="val" style="color:#ff66cc">${skinLabel}</span></div>
+      <h3>🌟 AURA EQUIPAGGIATA</h3>
+      <div class="stat-row"><span>AURA</span><span class="val" style="color:#ff66cc">${skinLabel}</span></div>
       ${skinObj ? `<div class="stat-row"><span>BOOST</span><span class="val" style="font-size:0.38rem;color:var(--yellow)">${skinObj.description}</span></div>` : ''}
+      ${skinObj?.season_exclusive ? `<div class="stat-row"><span style="color:#ff4400">🌸 SEASON EXCLUSIVE</span><span class="val" style="color:#ff4400">Japan Season</span></div>` : ''}
     </div>
     <div class="profile-card">
       <h3>ACHIEVEMENTS</h3>
@@ -167,7 +173,8 @@ function renderAbilityGrid(profile) {
     card.appendChild(icon);
     card.innerHTML += `
       <div class="ability-name">${ability.name}</div>
-      ${owned ? `<div class="ability-level">LV ${owned}/10</div>` : '<div class="ability-level" style="color:#555">LOCKED</div>'}
+      ${ability.season_exclusive ? '<div class="ability-season-tag">🌸 JAPAN SEASON</div>' : ''}
+      ${owned ? `<div class="ability-level">LV ${owned}/10</div>` : ability.season_exclusive ? '<div class="ability-level" style="color:#ff4400">SOLO DAL PASS</div>' : '<div class="ability-level" style="color:#555">BLOCCATA</div>'}
     `;
 
     if (owned) {
@@ -946,8 +953,13 @@ function openAbilityInfo(ability, ownedLevel) {
   document.getElementById('ability-info-desc').textContent = ability.description;
 
   const levelEl = document.getElementById('ability-info-level');
-  levelEl.textContent = ownedLevel ? `LEVEL ${ownedLevel} / 10` : '🔒 LOCKED — OPEN CRATES TO UNLOCK';
-  levelEl.style.color = ownedLevel ? 'var(--yellow)' : '#555577';
+  if (ability.season_exclusive && !ownedLevel) {
+    levelEl.textContent = '🌸 ESCLUSIVA JAPAN SEASON — Riscatta dal PASS';
+    levelEl.style.color = '#ff4400';
+  } else {
+    levelEl.textContent = ownedLevel ? `LEVEL ${ownedLevel} / 10` : '🔒 BLOCCATA — APRI CASSE PER SBLOCCARE';
+    levelEl.style.color = ownedLevel ? 'var(--yellow)' : '#555577';
+  }
 
   const iconWrap = document.getElementById('ability-info-icon-wrap');
   iconWrap.innerHTML = '';
@@ -1013,7 +1025,7 @@ function renderSkinGrid() {
     <div class="skin-name">DEFAULT</div>
     <div class="skin-desc" style="color:#555">No boost</div>
     ${equipped === 'default'
-      ? '<div class="skin-equipped-label">✓ EQUIPPED</div>'
+      ? '<div class="skin-equipped-label">✓ EQUIPAGGIATA</div>'
       : '<button class="skin-equip-btn" data-skin="default">EQUIP</button>'}
   `;
   if (equipped !== 'default') {
@@ -1042,11 +1054,14 @@ function renderSkinGrid() {
       <div class="skin-name">${skin.name}</div>
       <div class="skin-desc">${skin.description}</div>
       <div class="skin-boosts">${boostLines.join(' · ')}</div>
+      ${skin.season_exclusive ? '<div class="skin-season-tag">🌸 JAPAN SEASON</div>' : ''}
       ${isOwned
         ? isEquipped
-          ? '<div class="skin-equipped-label">✓ EQUIPPED</div>'
+          ? '<div class="skin-equipped-label">✓ EQUIPAGGIATA</div>'
           : `<button class="skin-equip-btn" data-skin="${skin.id}">EQUIP</button>`
-        : '<div class="skin-locked-label">🔒 LOCKED</div>'}
+        : skin.season_exclusive
+          ? '<div class="skin-locked-label">🌸 SOLO DAL PASS</div>'
+          : '<div class="skin-locked-label">🔒 BLOCCATA</div>'}
     `;
 
     if (isOwned && !isEquipped) {
@@ -1094,7 +1109,7 @@ function updateSkinCrateDisplay(type) {
   }
 
   const openBtn = document.getElementById('open-skin-crate-btn');
-  if (openBtn) openBtn.textContent = freeCrates > 0 ? 'OPEN FREE SKIN CRATE' : 'OPEN SKIN CRATE';
+  if (openBtn) openBtn.textContent = freeCrates > 0 ? 'APRI AURA GRATUITA' : 'APRI CASSA AURA';
 
   const info = document.getElementById('skin-crate-info');
   if (info) {
@@ -1117,9 +1132,9 @@ async function openSkinCrate() {
   });
 
   if (!res.success) {
-    btn.textContent = 'OPEN SKIN CRATE';
+    btn.textContent = 'APRI CASSA AURA';
     btn.disabled = false;
-    alert(res.error || 'Failed to open skin crate');
+    alert(res.error || 'Failed to open aura crate');
     return;
   }
 
@@ -1142,7 +1157,7 @@ async function openSkinCrate() {
     <div class="skin-result-name">${skinName}</div>
     <div class="skin-result-desc">${skin?.description || ''}</div>
     <div style="font-size:0.4rem;margin-top:0.4rem;color:#aaa">
-      ${alreadyOwned ? `Already owned — +${formatNumber(coinsCompensation)} coins compensation` : '🎉 NEW SKIN UNLOCKED!'}
+      ${alreadyOwned ? `Already owned — +${formatNumber(coinsCompensation)} coins compensation` : '🎉 NUOVA AURA SBLOCCATA!'}
       ${usedFreeCrate ? '<br>FREE CRATE USED' : ''}
     </div>
     <div class="crate-continue-hint">[ TAP TO CONTINUE ]</div>
@@ -1162,7 +1177,7 @@ async function openSkinCrate() {
     resultEl.addEventListener('click', dismiss);
   });
 
-  btn.textContent = 'OPEN SKIN CRATE';
+  btn.textContent = 'APRI CASSA AURA';
   btn.disabled = false;
   loadCrateShop();
 }
