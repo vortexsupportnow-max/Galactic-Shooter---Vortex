@@ -105,31 +105,142 @@ const SEASON_END  = new Date('2026-06-30T23:59:59Z');
 // Season start = May 12 2026 (week anchor for unlocking missions)
 const SEASON_START = new Date('2026-05-12T00:00:00Z');
 
-const SEASON_MISSIONS = [
-  { id: 'm1', week: 1, title: 'Riscaldamento',      desc: 'Gioca 3 partite',              type: 'games_played',         target: 3,   pulsar: 500 },
-  { id: 'm2', week: 1, title: 'Prima Battaglia',     desc: 'Uccidi 50 nemici',             type: 'enemies_killed',       target: 50,  pulsar: 500 },
-  { id: 'm3', week: 2, title: 'Sopravvissuto',       desc: "Raggiungi l'onda 5",           type: 'max_wave_single',      target: 5,   pulsar: 500 },
-  { id: 'm4', week: 2, title: 'Raccoglitore',        desc: 'Guadagna 1000 monete in una partita', type: 'coins_earned_session', target: 1000, pulsar: 500 },
-  { id: 'm5', week: 3, title: 'Cacciatore di Boss',  desc: "Raggiungi l'onda 10",          type: 'max_wave_single',      target: 10,  pulsar: 500 },
-  { id: 'm6', week: 3, title: 'Abilità Ninja',       desc: 'Usa 5 abilità in una partita', type: 'abilities_used_single',target: 5,   pulsar: 500 },
-  { id: 'm7', week: 4, title: 'Leggenda Galattica',  desc: "Raggiungi l'onda 15",          type: 'max_wave_single',      target: 15,  pulsar: 500 },
-  { id: 'm8', week: 4, title: 'Cacciatore di Gemme', desc: 'Colleziona 30 gemme',          type: 'gems_collected',       target: 30,  pulsar: 500 },
-  { id: 'm9', week: 5, title: 'Sterminatore',        desc: 'Uccidi 200 nemici in totale',  type: 'enemies_killed',       target: 200, pulsar: 500 },
-  { id: 'm10',week: 5, title: 'Veterano della Season',desc: 'Completa 10 partite',         type: 'games_played',         target: 10,  pulsar: 500 }
+// difficulty → pulsar/coins/gems rewards
+const MISSION_REWARDS = {
+  easy:   { pulsar: 400,  coins: 500,   gems: 0  },
+  medium: { pulsar: 700,  coins: 1500,  gems: 5  },
+  hard:   { pulsar: 1200, coins: 3000,  gems: 15 },
+  epic:   { pulsar: 1800, coins: 6000,  gems: 30 }
+};
+
+// 70 missions – 10 per week for 7 weeks. Each has: id, week, difficulty, title, desc, type, target
+// pulsar/reward_coins/reward_gems are derived from MISSION_REWARDS at runtime.
+const SEASON_MISSIONS_DEF = [
+  // ── Week 1: Il Risveglio ─────────────────────────────────────────────────
+  { id: 'w1_1',  week: 1, difficulty: 'easy',   title: 'Prima Partita',          desc: 'Gioca 1 partita',                      type: 'games_played',          target: 1    },
+  { id: 'w1_2',  week: 1, difficulty: 'easy',   title: 'Sparatorie Iniziali',    desc: 'Abbatti 20 nemici',                    type: 'enemies_killed',        target: 20   },
+  { id: 'w1_3',  week: 1, difficulty: 'easy',   title: 'Sopravvissuto',          desc: "Raggiungi l'onda 3",                   type: 'max_wave_single',       target: 3    },
+  { id: 'w1_4',  week: 1, difficulty: 'easy',   title: 'Prime Monete',           desc: 'Guadagna 300 monete in una partita',   type: 'coins_earned_session',  target: 300  },
+  { id: 'w1_5',  week: 1, difficulty: 'medium', title: 'Pilota Promettente',     desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
+  { id: 'w1_6',  week: 1, difficulty: 'medium', title: 'Battesimo del Fuoco',    desc: 'Abbatti 80 nemici in totale',          type: 'enemies_killed',        target: 80   },
+  { id: 'w1_7',  week: 1, difficulty: 'medium', title: 'Cacciatore',             desc: "Raggiungi l'onda 5",                   type: 'max_wave_single',       target: 5    },
+  { id: 'w1_8',  week: 1, difficulty: 'hard',   title: 'Sfida dell\'Onda',       desc: "Raggiungi l'onda 8",                   type: 'max_wave_single',       target: 8    },
+  { id: 'w1_9',  week: 1, difficulty: 'hard',   title: 'Cacciatore di Bottino',  desc: 'Guadagna 1,000 monete in una partita', type: 'coins_earned_session',  target: 1000 },
+  { id: 'w1_10', week: 1, difficulty: 'epic',   title: 'Veterano della Settimana','desc': "Raggiungi l'onda 12",               type: 'max_wave_single',       target: 12   },
+
+  // ── Week 2: Il Guerriero ─────────────────────────────────────────────────
+  { id: 'w2_1',  week: 2, difficulty: 'easy',   title: 'Di Ritorno',             desc: 'Gioca 3 partite',                      type: 'games_played',          target: 3    },
+  { id: 'w2_2',  week: 2, difficulty: 'easy',   title: 'Raffica Nemica',         desc: 'Abbatti 40 nemici',                    type: 'enemies_killed',        target: 40   },
+  { id: 'w2_3',  week: 2, difficulty: 'easy',   title: 'Primo Uso',              desc: 'Usa 2 abilità in una partita',         type: 'abilities_used_single', target: 2    },
+  { id: 'w2_4',  week: 2, difficulty: 'easy',   title: 'Raccoglitore',           desc: 'Raccogli 10 gemme in totale',          type: 'gems_collected',        target: 10   },
+  { id: 'w2_5',  week: 2, difficulty: 'medium', title: 'Sterminio',              desc: 'Abbatti 180 nemici in totale',         type: 'enemies_killed',        target: 180  },
+  { id: 'w2_6',  week: 2, difficulty: 'medium', title: 'Profondo Spazio',        desc: "Raggiungi l'onda 7",                   type: 'max_wave_single',       target: 7    },
+  { id: 'w2_7',  week: 2, difficulty: 'medium', title: 'Cacciatore di Gemme',    desc: 'Raccogli 30 gemme in totale',          type: 'gems_collected',        target: 30   },
+  { id: 'w2_8',  week: 2, difficulty: 'hard',   title: 'Decimazione',            desc: "Raggiungi l'onda 10",                  type: 'max_wave_single',       target: 10   },
+  { id: 'w2_9',  week: 2, difficulty: 'hard',   title: 'Ninja dello Spazio',     desc: 'Usa 5 abilità in una partita',         type: 'abilities_used_single', target: 5    },
+  { id: 'w2_10', week: 2, difficulty: 'epic',   title: 'Macchina da Guerra',     desc: 'Abbatti 400 nemici in totale',         type: 'enemies_killed',        target: 400  },
+
+  // ── Week 3: Cacciatore di Stelle ─────────────────────────────────────────
+  { id: 'w3_1',  week: 3, difficulty: 'easy',   title: 'Continuare a Volare',    desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
+  { id: 'w3_2',  week: 3, difficulty: 'easy',   title: 'Pioggia di Fuoco',       desc: 'Abbatti 60 nemici',                    type: 'enemies_killed',        target: 60   },
+  { id: 'w3_3',  week: 3, difficulty: 'easy',   title: 'Zona di Pericolo',       desc: "Raggiungi l'onda 5",                   type: 'max_wave_single',       target: 5    },
+  { id: 'w3_4',  week: 3, difficulty: 'easy',   title: 'Bottino Galattico',      desc: 'Guadagna 500 monete in una partita',   type: 'coins_earned_session',  target: 500  },
+  { id: 'w3_5',  week: 3, difficulty: 'medium', title: 'Grande Caccia',          desc: 'Abbatti 300 nemici in totale',         type: 'enemies_killed',        target: 300  },
+  { id: 'w3_6',  week: 3, difficulty: 'medium', title: 'Conquistatore',          desc: "Raggiungi l'onda 10",                  type: 'max_wave_single',       target: 10   },
+  { id: 'w3_7',  week: 3, difficulty: 'medium', title: 'Minatore Spaziale',      desc: 'Raccogli 60 gemme in totale',          type: 'gems_collected',        target: 60   },
+  { id: 'w3_8',  week: 3, difficulty: 'hard',   title: 'Macellaio Cosmico',      desc: "Raggiungi l'onda 13",                  type: 'max_wave_single',       target: 13   },
+  { id: 'w3_9',  week: 3, difficulty: 'hard',   title: 'Colpo Grosso',           desc: 'Guadagna 2,000 monete in una partita', type: 'coins_earned_session',  target: 2000 },
+  { id: 'w3_10', week: 3, difficulty: 'epic',   title: 'Asso dello Spazio',      desc: 'Abbatti 700 nemici in totale',         type: 'enemies_killed',        target: 700  },
+
+  // ── Week 4: Leggenda della Galassia ──────────────────────────────────────
+  { id: 'w4_1',  week: 4, difficulty: 'easy',   title: 'Routine Galattica',      desc: 'Gioca 8 partite',                      type: 'games_played',          target: 8    },
+  { id: 'w4_2',  week: 4, difficulty: 'easy',   title: 'Caccia Continua',        desc: 'Abbatti 80 nemici',                    type: 'enemies_killed',        target: 80   },
+  { id: 'w4_3',  week: 4, difficulty: 'easy',   title: 'Tattico',                desc: 'Usa 3 abilità in una partita',         type: 'abilities_used_single', target: 3    },
+  { id: 'w4_4',  week: 4, difficulty: 'easy',   title: 'Gemme Celesti',          desc: 'Raccogli 20 gemme',                    type: 'gems_collected',        target: 20   },
+  { id: 'w4_5',  week: 4, difficulty: 'medium', title: 'Sterminatore',           desc: 'Abbatti 500 nemici in totale',         type: 'enemies_killed',        target: 500  },
+  { id: 'w4_6',  week: 4, difficulty: 'medium', title: 'Profondo Abisso',        desc: "Raggiungi l'onda 12",                  type: 'max_wave_single',       target: 12   },
+  { id: 'w4_7',  week: 4, difficulty: 'medium', title: 'Veterano',               desc: 'Gioca 15 partite in totale',           type: 'games_played',          target: 15   },
+  { id: 'w4_8',  week: 4, difficulty: 'hard',   title: 'Signore delle Onde',     desc: "Raggiungi l'onda 15",                  type: 'max_wave_single',       target: 15   },
+  { id: 'w4_9',  week: 4, difficulty: 'hard',   title: 'Tesoro Cosmico',         desc: 'Raccogli 100 gemme in totale',         type: 'gems_collected',        target: 100  },
+  { id: 'w4_10', week: 4, difficulty: 'epic',   title: 'Mille Battaglie',        desc: 'Abbatti 1,000 nemici in totale',       type: 'enemies_killed',        target: 1000 },
+
+  // ── Week 5: Sterminatore Cosmico ─────────────────────────────────────────
+  { id: 'w5_1',  week: 5, difficulty: 'easy',   title: 'Ancora in Volo',         desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
+  { id: 'w5_2',  week: 5, difficulty: 'easy',   title: 'Piombo Galattico',       desc: 'Abbatti 100 nemici',                   type: 'enemies_killed',        target: 100  },
+  { id: 'w5_3',  week: 5, difficulty: 'easy',   title: 'Sopravvissuto Plus',     desc: "Raggiungi l'onda 6",                   type: 'max_wave_single',       target: 6    },
+  { id: 'w5_4',  week: 5, difficulty: 'easy',   title: 'Ricco Spaziale',         desc: 'Guadagna 800 monete in una partita',   type: 'coins_earned_session',  target: 800  },
+  { id: 'w5_5',  week: 5, difficulty: 'medium', title: 'Sinfonia di Fuoco',      desc: 'Abbatti 700 nemici in totale',         type: 'enemies_killed',        target: 700  },
+  { id: 'w5_6',  week: 5, difficulty: 'medium', title: 'Cacciatore di Boss',     desc: "Raggiungi l'onda 14",                  type: 'max_wave_single',       target: 14   },
+  { id: 'w5_7',  week: 5, difficulty: 'medium', title: 'Combo Letale',           desc: 'Usa 8 abilità in una partita',         type: 'abilities_used_single', target: 8    },
+  { id: 'w5_8',  week: 5, difficulty: 'hard',   title: 'Predatore dell\'Onda',   desc: "Raggiungi l'onda 18",                  type: 'max_wave_single',       target: 18   },
+  { id: 'w5_9',  week: 5, difficulty: 'hard',   title: 'Grande Fortuna',         desc: 'Guadagna 3,500 monete in una partita', type: 'coins_earned_session',  target: 3500 },
+  { id: 'w5_10', week: 5, difficulty: 'epic',   title: 'Flagello Cosmico',       desc: 'Abbatti 1,500 nemici in totale',       type: 'enemies_killed',        target: 1500 },
+
+  // ── Week 6: Maestro del Vortex ────────────────────────────────────────────
+  { id: 'w6_1',  week: 6, difficulty: 'easy',   title: 'Routine da Maestro',     desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
+  { id: 'w6_2',  week: 6, difficulty: 'easy',   title: 'Distruzione Metodica',   desc: 'Abbatti 100 nemici',                   type: 'enemies_killed',        target: 100  },
+  { id: 'w6_3',  week: 6, difficulty: 'easy',   title: 'Arsenal Galattico',      desc: 'Usa 5 abilità in una partita',         type: 'abilities_used_single', target: 5    },
+  { id: 'w6_4',  week: 6, difficulty: 'easy',   title: 'Gemme del Vortex',       desc: 'Raccogli 30 gemme',                    type: 'gems_collected',        target: 30   },
+  { id: 'w6_5',  week: 6, difficulty: 'medium', title: 'Devastazione',           desc: 'Abbatti 1,000 nemici in totale',       type: 'enemies_killed',        target: 1000 },
+  { id: 'w6_6',  week: 6, difficulty: 'medium', title: 'Guardiano del Vortex',   desc: "Raggiungi l'onda 16",                  type: 'max_wave_single',       target: 16   },
+  { id: 'w6_7',  week: 6, difficulty: 'medium', title: 'Veterano Esperto',       desc: 'Gioca 25 partite in totale',           type: 'games_played',          target: 25   },
+  { id: 'w6_8',  week: 6, difficulty: 'hard',   title: 'Onda Perfetta',          desc: "Raggiungi l'onda 20",                  type: 'max_wave_single',       target: 20   },
+  { id: 'w6_9',  week: 6, difficulty: 'hard',   title: 'Vault Cosmico',          desc: 'Raccogli 200 gemme in totale',         type: 'gems_collected',        target: 200  },
+  { id: 'w6_10', week: 6, difficulty: 'epic',   title: 'Ira del Vortex',         desc: 'Abbatti 2,500 nemici in totale',       type: 'enemies_killed',        target: 2500 },
+
+  // ── Week 7: Campione Galattico ────────────────────────────────────────────
+  { id: 'w7_1',  week: 7, difficulty: 'easy',   title: 'Ultimo Capitolo',        desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
+  { id: 'w7_2',  week: 7, difficulty: 'easy',   title: 'Falce Galattica',        desc: 'Abbatti 150 nemici',                   type: 'enemies_killed',        target: 150  },
+  { id: 'w7_3',  week: 7, difficulty: 'easy',   title: 'Onda Finale',            desc: "Raggiungi l'onda 8",                   type: 'max_wave_single',       target: 8    },
+  { id: 'w7_4',  week: 7, difficulty: 'easy',   title: 'Tattico Supremo',        desc: 'Usa 5 abilità in una partita',         type: 'abilities_used_single', target: 5    },
+  { id: 'w7_5',  week: 7, difficulty: 'medium', title: 'Genocidio Stellare',     desc: 'Abbatti 1,500 nemici in totale',       type: 'enemies_killed',        target: 1500 },
+  { id: 'w7_6',  week: 7, difficulty: 'medium', title: 'Ascesa Finale',          desc: "Raggiungi l'onda 18",                  type: 'max_wave_single',       target: 18   },
+  { id: 'w7_7',  week: 7, difficulty: 'medium', title: 'Grande Veterano',        desc: 'Gioca 35 partite in totale',           type: 'games_played',          target: 35   },
+  { id: 'w7_8',  week: 7, difficulty: 'hard',   title: 'Vetta dell\'Universo',   desc: "Raggiungi l'onda 25",                  type: 'max_wave_single',       target: 25   },
+  { id: 'w7_9',  week: 7, difficulty: 'hard',   title: 'Tesoro Leggendario',     desc: 'Raccogli 350 gemme in totale',         type: 'gems_collected',        target: 350  },
+  { id: 'w7_10', week: 7, difficulty: 'epic',   title: 'Il Grande Campione',     desc: 'Abbatti 4,000 nemici in totale',       type: 'enemies_killed',        target: 4000 }
 ];
+
+// Attach reward fields from MISSION_REWARDS based on difficulty
+const SEASON_MISSIONS = SEASON_MISSIONS_DEF.map(m => ({
+  ...m,
+  pulsar:        MISSION_REWARDS[m.difficulty].pulsar,
+  reward_coins:  MISSION_REWARDS[m.difficulty].coins,
+  reward_gems:   MISSION_REWARDS[m.difficulty].gems
+}));
 
 // Pass rewards per tier (each tier unlocked at pulsar threshold)
 const PASS_TIERS = [
-  { tier: 1,  pulsar: 500,  reward: { type: 'coins',   amount: 1000 } },
-  { tier: 2,  pulsar: 1000, reward: { type: 'gems',    amount: 20 } },
-  { tier: 3,  pulsar: 1500, reward: { type: 'coins',   amount: 2500 } },
-  { tier: 4,  pulsar: 2000, reward: { type: 'gems',    amount: 40 } },
-  { tier: 5,  pulsar: 2500, reward: { type: 'ability', abilityId: 'bushido_blade' } },
-  { tier: 6,  pulsar: 3000, reward: { type: 'coins',   amount: 5000 } },
-  { tier: 7,  pulsar: 3500, reward: { type: 'skin',    skinId: 'rising_sun' } },
-  { tier: 8,  pulsar: 4000, reward: { type: 'gems',    amount: 80 } },
-  { tier: 9,  pulsar: 4500, reward: { type: 'ability', abilityId: 'sakura_storm' } },
-  { tier: 10, pulsar: 5000, reward: { type: 'skin',    skinId: 'torii_gate' } }
+  { tier: 1,  pulsar: 1000,  reward: { type: 'coins',   amount: 1000 } },
+  { tier: 2,  pulsar: 2000,  reward: { type: 'gems',    amount: 20 } },
+  { tier: 3,  pulsar: 3500,  reward: { type: 'coins',   amount: 2500 } },
+  { tier: 4,  pulsar: 5000,  reward: { type: 'gems',    amount: 40 } },
+  { tier: 5,  pulsar: 6500,  reward: { type: 'coins',   amount: 4000 } },
+  { tier: 6,  pulsar: 8000,  reward: { type: 'ability', abilityId: 'bushido_blade' } },
+  { tier: 7,  pulsar: 9500,  reward: { type: 'gems',    amount: 60 } },
+  { tier: 8,  pulsar: 11000, reward: { type: 'coins',   amount: 6000 } },
+  { tier: 9,  pulsar: 13000, reward: { type: 'skin',    skinId: 'rising_sun' } },
+  { tier: 10, pulsar: 15000, reward: { type: 'gems',    amount: 80 } },
+  { tier: 11, pulsar: 17000, reward: { type: 'coins',   amount: 8000 } },
+  { tier: 12, pulsar: 19000, reward: { type: 'gems',    amount: 100 } },
+  { tier: 13, pulsar: 21000, reward: { type: 'coins',   amount: 10000 } },
+  { tier: 14, pulsar: 23000, reward: { type: 'ability', abilityId: 'sakura_storm' } },
+  { tier: 15, pulsar: 25000, reward: { type: 'gems',    amount: 120 } },
+  { tier: 16, pulsar: 27000, reward: { type: 'coins',   amount: 12000 } },
+  { tier: 17, pulsar: 29000, reward: { type: 'gems',    amount: 150 } },
+  { tier: 18, pulsar: 31000, reward: { type: 'coins',   amount: 15000 } },
+  { tier: 19, pulsar: 33000, reward: { type: 'gems',    amount: 180 } },
+  { tier: 20, pulsar: 35000, reward: { type: 'coins',   amount: 18000 } },
+  { tier: 21, pulsar: 37000, reward: { type: 'gems',    amount: 200 } },
+  { tier: 22, pulsar: 39000, reward: { type: 'coins',   amount: 22000 } },
+  { tier: 23, pulsar: 41000, reward: { type: 'gems',    amount: 250 } },
+  { tier: 24, pulsar: 43000, reward: { type: 'coins',   amount: 28000 } },
+  { tier: 25, pulsar: 44500, reward: { type: 'gems',    amount: 300 } },
+  { tier: 26, pulsar: 46000, reward: { type: 'coins',   amount: 35000 } },
+  { tier: 27, pulsar: 47500, reward: { type: 'gems',    amount: 350 } },
+  { tier: 28, pulsar: 48500, reward: { type: 'coins',   amount: 45000 } },
+  { tier: 29, pulsar: 49500, reward: { type: 'gems',    amount: 400 } },
+  { tier: 30, pulsar: 50000, reward: { type: 'skin',    skinId: 'torii_gate' } }
 ];
 
 function getCurrentSeasonWeek() {
@@ -346,6 +457,7 @@ router.post('/save-score', async (req, res) => {
     // Update season mission progress (non-fatal)
     if (isSeasonActive()) {
       updateMissionProgress(supabase, userId, {
+        score,
         wave,
         enemiesKilled: enemiesKilled || 0,
         gemsCollected: gemsCollected || 0,
@@ -725,7 +837,7 @@ router.post('/equip-skin', async (req, res) => {
   }
 });
 
-async function updateMissionProgress(supabase, userId, { wave, enemiesKilled, gemsCollected, coinsEarned, abilitiesUsed }) {
+async function updateMissionProgress(supabase, userId, { score, wave, enemiesKilled, gemsCollected, coinsEarned, abilitiesUsed }) {
   const currentWeek = getCurrentSeasonWeek();
   const availableMissions = SEASON_MISSIONS.filter(m => m.week <= currentWeek);
 
@@ -753,6 +865,7 @@ async function updateMissionProgress(supabase, userId, { wave, enemiesKilled, ge
       case 'coins_earned_session': isSingle = true; increment = coinsEarned >= mission.target ? mission.target : 0; break;
       case 'max_wave_single':      isSingle = true; increment = wave >= mission.target ? mission.target : 0; break;
       case 'abilities_used_single':isSingle = true; increment = abilitiesUsed >= mission.target ? mission.target : 0; break;
+      case 'score_single':         isSingle = true; increment = score >= mission.target ? mission.target : 0; break;
     }
 
     if (increment === 0 && !isSingle) continue;
@@ -851,7 +964,7 @@ router.post('/claim-mission-reward', async (req, res) => {
     if (!prog?.completed) return res.json({ success: false, error: 'Mission not completed' });
     if (prog.reward_claimed) return res.json({ success: false, error: 'Reward already claimed' });
 
-    // Grant Pulsar
+    // Grant Pulsar + coins + gems based on difficulty
     const { data: passRow } = await supabase.from('user_season_pass')
       .select('pulsar, claimed_tiers')
       .eq('user_id', userId)
@@ -870,12 +983,26 @@ router.post('/claim-mission-reward', async (req, res) => {
         .insert({ user_id: userId, season_id: SEASON_ID, pulsar: newPulsar, claimed_tiers: [] });
     }
 
+    // Grant coins/gems if any
+    if (mission.reward_coins > 0 || mission.reward_gems > 0) {
+      const { data: userRow } = await supabase.from('users').select('coins, gems').eq('id', userId).single();
+      await supabase.from('users').update({
+        coins: (userRow?.coins || 0) + (mission.reward_coins || 0),
+        gems:  (userRow?.gems  || 0) + (mission.reward_gems  || 0)
+      }).eq('id', userId);
+    }
+
     await supabase.from('user_mission_progress')
       .update({ reward_claimed: true })
       .eq('user_id', userId)
       .eq('mission_id', missionId);
 
-    res.json({ success: true, data: { pulsarEarned: mission.pulsar, totalPulsar: newPulsar } });
+    res.json({ success: true, data: {
+      pulsarEarned: mission.pulsar,
+      totalPulsar: newPulsar,
+      coinsEarned: mission.reward_coins || 0,
+      gemsEarned:  mission.reward_gems  || 0
+    } });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

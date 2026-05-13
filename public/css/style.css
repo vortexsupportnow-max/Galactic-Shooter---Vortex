@@ -1343,16 +1343,14 @@ html, body {
 .mission-card.locked    { opacity: 0.45; }
 .mission-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 0.3rem;
 }
 .mission-week {
   font-size: 0.35rem;
   color: var(--gray);
-}
-.mission-pulsar {
-  font-size: 0.38rem;
-  color: var(--yellow);
 }
 .mission-title {
   font-size: 0.52rem;
@@ -1402,6 +1400,25 @@ html, body {
 .mission-claimed-label {
   font-size: 0.4rem;
   color: var(--green);
+}
+
+/* Difficulty badges */
+.mission-difficulty {
+  font-size: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  letter-spacing: 0.06em;
+  border: 1px solid currentColor;
+}
+.mission-difficulty--easy    { color: var(--green); }
+.mission-difficulty--medium  { color: var(--yellow); }
+.mission-difficulty--hard    { color: #ff8844; }
+.mission-difficulty--epic    { color: var(--purple); text-shadow: 0 0 6px var(--purple); }
+
+/* Mission reward summary line */
+.mission-pulsar {
+  font-size: 0.35rem;
+  color: var(--yellow);
+  white-space: nowrap;
 }
 
 /* Season exclusive tags */
