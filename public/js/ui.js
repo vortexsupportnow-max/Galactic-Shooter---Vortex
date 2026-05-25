@@ -31,6 +31,7 @@ function showMainMenu() {
   document.getElementById('menu-nickname').textContent = nick || '???';
   updateCurrency();
   refreshWheelStatus();
+  updateStreakButton();
   initStarField('menuStars');
   // Refresh season pass mini-panel
   if (window.fetchPassData) {
@@ -47,6 +48,7 @@ async function updateCurrency() {
     document.getElementById('menu-gems').textContent = formatNumber(res.data.gems || 0);
     _profileData = res.data;
     refreshWheelStatus();
+    updateStreakButton();
   }
 }
 
@@ -90,13 +92,14 @@ async function loadProfile() {
       <div class="stat-row"><span>MAX WAVE</span><span class="val">${d.max_wave}</span></div>
       <div class="stat-row"><span>ABILITÀ</span><span class="val">${aCount}/${Object.values(ABILITIES).filter(a => !a.season_exclusive).length}</span></div>
       <div class="stat-row"><span>CASSE GRATIS</span><span class="val">${(d.free_mystery_crates || 0) + (d.free_void_crates || 0)}</span></div>
-      <div class="stat-row"><span>AURE POSSEDUTE</span><span class="val">${skinsOwned}/${Object.values(SKINS).filter(s => !s.season_exclusive).length}</span></div>
+      <div class="stat-row"><span>AURE POSSEDUTE</span><span class="val">${skinsOwned}/${Object.values(SKINS).filter(s => !s.season_exclusive && !s.streak_exclusive).length}</span></div>
     </div>
     <div class="profile-card">
       <h3>🌟 AURA EQUIPAGGIATA</h3>
       <div class="stat-row"><span>AURA</span><span class="val" style="color:#ff66cc">${skinLabel}</span></div>
       ${skinObj ? `<div class="stat-row"><span>BOOST</span><span class="val" style="font-size:0.38rem;color:var(--yellow)">${skinObj.description}</span></div>` : ''}
       ${skinObj?.season_exclusive ? `<div class="stat-row"><span style="color:#ff4400">🌸 SEASON EXCLUSIVE</span><span class="val" style="color:#ff4400">Japan Season</span></div>` : ''}
+      ${skinObj?.streak_exclusive ? `<div class="stat-row"><span style="color:#ff6600">🔥 STREAK EXCLUSIVE</span><span class="val" style="color:#ff6600">30 Giorni</span></div>` : ''}
     </div>
     <div class="profile-card">
       <h3>ACHIEVEMENTS</h3>
@@ -1118,13 +1121,16 @@ function renderSkinGrid() {
       <div class="skin-desc">${skin.description}</div>
       <div class="skin-boosts">${boostLines.join(' · ')}</div>
       ${skin.season_exclusive ? '<div class="skin-season-tag">🌸 JAPAN SEASON</div>' : ''}
+      ${skin.streak_exclusive ? '<div class="skin-season-tag" style="color:#ff6600;border-color:#ff6600">🔥 STREAK EXCLUSIVE</div>' : ''}
       ${isOwned
         ? isEquipped
           ? '<div class="skin-equipped-label">✓ EQUIPAGGIATA</div>'
           : `<button class="skin-equip-btn" data-skin="${skin.id}">EQUIP</button>`
         : skin.season_exclusive
           ? '<div class="skin-locked-label">🌸 SOLO DAL PASS</div>'
-          : '<div class="skin-locked-label">🔒 BLOCCATA</div>'}
+          : skin.streak_exclusive
+            ? '<div class="skin-locked-label">🔥 STREAK 30 GIORNI</div>'
+            : '<div class="skin-locked-label">🔒 BLOCCATA</div>'}
     `;
 
     if (isOwned && !isEquipped) {
@@ -1248,4 +1254,128 @@ async function openSkinCrate() {
 function initSkinHandlers() {
   document.getElementById('skins-back').addEventListener('click', showMainMenu);
   document.getElementById('btn-skins').addEventListener('click', showSkins);
+}
+
+// ===== DAILY STREAK SYSTEM =====
+
+let _streakData = null;
+
+function initStreakHandlers() {
+  document.getElementById('btn-streak').addEventListener('click', openStreakOverlay);
+  document.getElementById('streak-close').addEventListener('click', closeStreakOverlay);
+  document.getElementById('streak-claim-btn').addEventListener('click', claimStreak);
+}
+
+function openStreakOverlay() {
+  const overlay = document.getElementById('streak-overlay');
+  overlay.classList.remove('hidden');
+  document.getElementById('streak-result').classList.add('hidden');
+  refreshStreakUI();
+}
+
+function closeStreakOverlay() {
+  document.getElementById('streak-overlay').classList.add('hidden');
+}
+
+function refreshStreakUI() {
+  if (!_profileData || !_profileData.streak) return;
+  const streak = _profileData.streak;
+  _streakData = streak;
+
+  const current = streak.current || 0;
+  const dayInCycle = ((current) % 30);
+  document.getElementById('streak-day-num').textContent = current;
+  document.getElementById('streak-progress-bar').style.width = `${(dayInCycle / 30) * 100}%`;
+  document.getElementById('streak-progress-label').textContent = `${dayInCycle} / 30`;
+
+  // Build rewards grid (show milestone days)
+  const grid = document.getElementById('streak-rewards-grid');
+  const milestones = [1, 4, 7, 10, 14, 15, 20, 21, 24, 25, 27, 28, 30];
+  grid.innerHTML = streak.allRewards
+    .filter(r => milestones.includes(r.day))
+    .map(r => {
+      const claimed = current >= r.day;
+      const isNext = r.day === streak.rewardDay;
+      let icon = '🪙';
+      if (r.type === 'gems') icon = '💎';
+      else if (r.type === 'ability') icon = '⚡';
+      else if (r.type === 'skin') icon = '🔥';
+      let label = '';
+      if (r.type === 'coins') label = `${r.amount}`;
+      else if (r.type === 'gems') label = `${r.amount}`;
+      else if (r.type === 'ability') label = r.rarity.toUpperCase();
+      else if (r.type === 'skin') label = 'AURA';
+      return `<div class="streak-reward-cell ${claimed ? 'claimed' : ''} ${isNext ? 'next' : ''}">
+        <div class="streak-reward-day">G${r.day}</div>
+        <div class="streak-reward-icon">${icon}</div>
+        <div class="streak-reward-label">${label}</div>
+      </div>`;
+    }).join('');
+
+  // Next reward preview
+  const nextRewardEl = document.getElementById('streak-next-reward');
+  const nr = streak.nextReward;
+  let nrText = '';
+  if (nr.type === 'coins') nrText = `Prossimo: 🪙 +${nr.amount} coins`;
+  else if (nr.type === 'gems') nrText = `Prossimo: 💎 +${nr.amount} gems`;
+  else if (nr.type === 'ability') nrText = `Prossimo: ⚡ Abilità ${nr.rarity.toUpperCase()}`;
+  else if (nr.type === 'skin') nrText = `Prossimo: 🔥 AURA LEGGENDARIA ESCLUSIVA`;
+  nextRewardEl.textContent = nrText;
+
+  // Claim button state
+  const claimBtn = document.getElementById('streak-claim-btn');
+  if (streak.canClaim) {
+    claimBtn.textContent = 'RISCUOTI';
+    claimBtn.disabled = false;
+    claimBtn.classList.remove('btn-ghost');
+    claimBtn.classList.add('btn-yellow');
+  } else {
+    claimBtn.textContent = '✓ GIÀ RISCOSSO OGGI';
+    claimBtn.disabled = true;
+    claimBtn.classList.remove('btn-yellow');
+    claimBtn.classList.add('btn-ghost');
+  }
+}
+
+async function claimStreak() {
+  const btn = document.getElementById('streak-claim-btn');
+  btn.textContent = '...';
+  btn.disabled = true;
+
+  const res = await apiFetch('/game/claim-streak', { method: 'POST' });
+
+  if (!res.success) {
+    btn.textContent = res.error || 'ERRORE';
+    btn.disabled = true;
+    return;
+  }
+
+  // Show result
+  const resultEl = document.getElementById('streak-result');
+  resultEl.classList.remove('hidden');
+  resultEl.innerHTML = `
+    <div class="streak-result-content">
+      <div class="streak-result-day">GIORNO ${res.data.streakDay} 🔥</div>
+      <div class="streak-result-reward">${res.data.description}</div>
+    </div>
+  `;
+
+  btn.textContent = '✓ GIÀ RISCOSSO OGGI';
+  btn.disabled = true;
+  btn.classList.remove('btn-yellow');
+  btn.classList.add('btn-ghost');
+
+  // Refresh profile data
+  updateCurrency();
+}
+
+function updateStreakButton() {
+  const statusEl = document.getElementById('streak-button-status');
+  if (!statusEl) return;
+  if (_profileData && _profileData.streak && _profileData.streak.canClaim) {
+    statusEl.textContent = '● DISPONIBILE';
+    statusEl.style.color = '#00ff88';
+  } else {
+    statusEl.textContent = '';
+  }
 }

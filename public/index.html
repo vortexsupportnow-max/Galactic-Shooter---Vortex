@@ -109,6 +109,7 @@
             </div>
             <button class="btn btn-season" id="btn-pass">🌸 SPACE PASS</button>
             <button class="btn btn-mission" id="btn-missions">📋 MISSIONI</button>
+            <button class="btn btn-streak" id="btn-streak">🔥 STREAK<span class="menu-btn-subtitle" id="streak-button-status"></span></button>
           </div>
 
           <!-- RIGHT: Game buttons -->
@@ -450,6 +451,25 @@
         <div id="ability-info-desc" class="ability-info-desc"></div>
         <div id="ability-info-level" class="ability-info-level"></div>
         <button class="btn btn-ghost" id="ability-info-close">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Daily Streak Overlay -->
+    <div id="streak-overlay" class="overlay hidden">
+      <div class="streak-box">
+        <h3>🔥 STREAK GIORNALIERA</h3>
+        <div class="streak-info">
+          <div class="streak-day-display">GIORNO <span id="streak-day-num">0</span></div>
+          <div class="streak-progress-bar-wrap">
+            <div class="streak-progress-bar" id="streak-progress-bar" style="width:0%"></div>
+          </div>
+          <div class="streak-progress-label" id="streak-progress-label">0 / 30</div>
+        </div>
+        <div class="streak-rewards-grid" id="streak-rewards-grid"></div>
+        <div class="streak-next-reward" id="streak-next-reward"></div>
+        <button class="btn btn-yellow" id="streak-claim-btn">RISCUOTI</button>
+        <div class="streak-result hidden" id="streak-result"></div>
+        <button class="btn btn-ghost" id="streak-close">CHIUDI</button>
       </div>
     </div>
 

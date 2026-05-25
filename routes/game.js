@@ -69,7 +69,9 @@ const SKINS = {
   galactic_overlord: { id: 'galactic_overlord',  name: 'Galactic Overlord', rarity: 'legendary', boost: { coins_mult: 1.30, gems_mult: 1.30, score_mult: 1.25, extra_lives: 2, starting_shield: false } },
   // Japan Season (pass-exclusive)
   rising_sun:        { id: 'rising_sun',         name: 'Rising Sun',        rarity: 'epic',      season_exclusive: true, boost: { coins_mult: 1.00, gems_mult: 1.10, score_mult: 1.20, extra_lives: 0, starting_shield: false } },
-  torii_gate:        { id: 'torii_gate',         name: 'Torii Gate',        rarity: 'legendary', season_exclusive: true, boost: { coins_mult: 1.25, gems_mult: 1.25, score_mult: 1.00, extra_lives: 1, starting_shield: true  } }
+  torii_gate:        { id: 'torii_gate',         name: 'Torii Gate',        rarity: 'legendary', season_exclusive: true, boost: { coins_mult: 1.25, gems_mult: 1.25, score_mult: 1.00, extra_lives: 1, starting_shield: true  } },
+  // Streak-exclusive (day 30 reward — NOT obtainable from crates)
+  streak_inferno:    { id: 'streak_inferno',     name: 'Streak Inferno',    rarity: 'legendary', streak_exclusive: true, boost: { coins_mult: 1.35, gems_mult: 1.35, score_mult: 1.30, extra_lives: 2, starting_shield: true  } }
 };
 
 const SKINS_BY_RARITY = {
@@ -95,6 +97,42 @@ const SKIN_CRATE_TYPES = {
 // These IDs exist in the game but are NOT in the regular ABILITIES_BY_RARITY crate pools.
 const SEASON_EXCLUSIVE_ABILITIES = ['bushido_blade', 'sakura_storm'];
 const SEASON_EXCLUSIVE_SKINS     = ['rising_sun', 'torii_gate'];
+const STREAK_EXCLUSIVE_SKINS     = ['streak_inferno'];
+
+// ── Daily Login Streak ────────────────────────────────────────────────────────
+// Rewards for specific streak days. Days not listed give a default small coins reward.
+const STREAK_REWARDS = [
+  { day: 1,  type: 'coins',   amount: 100 },
+  { day: 2,  type: 'coins',   amount: 150 },
+  { day: 3,  type: 'coins',   amount: 200 },
+  { day: 4,  type: 'ability', rarity: 'common' },
+  { day: 5,  type: 'coins',   amount: 350 },
+  { day: 6,  type: 'coins',   amount: 500 },
+  { day: 7,  type: 'gems',    amount: 5 },
+  { day: 8,  type: 'coins',   amount: 300 },
+  { day: 9,  type: 'coins',   amount: 400 },
+  { day: 10, type: 'ability', rarity: 'rare' },
+  { day: 11, type: 'coins',   amount: 500 },
+  { day: 12, type: 'gems',    amount: 5 },
+  { day: 13, type: 'coins',   amount: 600 },
+  { day: 14, type: 'gems',    amount: 10 },
+  { day: 15, type: 'ability', rarity: 'rare' },
+  { day: 16, type: 'coins',   amount: 750 },
+  { day: 17, type: 'coins',   amount: 800 },
+  { day: 18, type: 'gems',    amount: 10 },
+  { day: 19, type: 'coins',   amount: 900 },
+  { day: 20, type: 'ability', rarity: 'epic' },
+  { day: 21, type: 'gems',    amount: 15 },
+  { day: 22, type: 'coins',   amount: 1200 },
+  { day: 23, type: 'coins',   amount: 1500 },
+  { day: 24, type: 'ability', rarity: 'epic' },
+  { day: 25, type: 'gems',    amount: 20 },
+  { day: 26, type: 'coins',   amount: 2000 },
+  { day: 27, type: 'ability', rarity: 'legendary' },
+  { day: 28, type: 'gems',    amount: 25 },
+  { day: 29, type: 'coins',   amount: 3000 },
+  { day: 30, type: 'skin',    skinId: 'streak_inferno' }
+];
 
 // ── Season Pass ───────────────────────────────────────────────────────────────
 
@@ -258,6 +296,23 @@ function pickRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+function getStreakStatus(streakCurrent, lastClaim) {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const canClaim = lastClaim !== today;
+  const nextDay = streakCurrent + 1;
+  // Find reward for next claim day (capped at 30, then cycles)
+  const rewardDay = ((nextDay - 1) % 30) + 1;
+  const reward = STREAK_REWARDS.find(r => r.day === rewardDay) || { type: 'coins', amount: 100 };
+  return {
+    current: streakCurrent,
+    canClaim,
+    nextDay,
+    rewardDay,
+    nextReward: reward,
+    allRewards: STREAK_REWARDS
+  };
+}
+
 function getWheelAvailability(lastSpinAt) {
   if (!lastSpinAt) {
     return { canSpin: true, nextSpinAt: null, remainingMs: 0 };
@@ -346,7 +401,7 @@ async function fetchUserProfileData(supabase, userId) {
   const [userResult, abilitiesResult, achievementsResult, skinsResult, passResult, missionsResult] = await Promise.all([
     supabase
       .from('users')
-      .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at, last_wheel_spin_at, free_mystery_crates, free_void_crates, equipped_skin, free_skin_crates')
+      .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at, last_wheel_spin_at, free_mystery_crates, free_void_crates, equipped_skin, free_skin_crates, streak_current, streak_last_claim')
       .eq('id', userId)
       .maybeSingle(),
     supabase
@@ -383,6 +438,7 @@ async function fetchUserProfileData(supabase, userId) {
     equipped_skin: userResult.data.equipped_skin || 'default',
     free_skin_crates: userResult.data.free_skin_crates || 0,
     wheel_available: getWheelAvailability(userResult.data.last_wheel_spin_at),
+    streak: getStreakStatus(userResult.data.streak_current || 0, userResult.data.streak_last_claim),
     abilities: abilitiesResult.data || [],
     achievements: achievementsResult.data || [],
     skins: (skinsResult.data || []).map(s => s.skin_id),
@@ -502,6 +558,90 @@ router.post('/claim-tutorial-reward', async (req, res) => {
       .insert({ user_id: userId, achievement_id: 'tutorial_done' });
 
     res.json({ success: true, data: { coinsEarned: 1000, gemsEarned: 10 } });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+router.post('/claim-streak', async (req, res) => {
+  try {
+    const supabase = getDB();
+    const userId = req.user.userId;
+
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('coins, gems, streak_current, streak_last_claim')
+      .eq('id', userId)
+      .single();
+    if (userErr) throw new Error(userErr.message);
+
+    const today = new Date().toISOString().slice(0, 10);
+    if (user.streak_last_claim === today) {
+      return res.json({ success: false, error: 'Already claimed today' });
+    }
+
+    // Check if streak continues or resets
+    let newStreak;
+    if (user.streak_last_claim) {
+      const lastDate = new Date(user.streak_last_claim);
+      const todayDate = new Date(today);
+      const diffDays = Math.floor((todayDate - lastDate) / (24 * 60 * 60 * 1000));
+      newStreak = diffDays === 1 ? (user.streak_current || 0) + 1 : 1;
+    } else {
+      newStreak = 1;
+    }
+
+    // Get reward for this day (cycles every 30 days)
+    const rewardDay = ((newStreak - 1) % 30) + 1;
+    const rewardDef = STREAK_REWARDS.find(r => r.day === rewardDay) || { type: 'coins', amount: 100 };
+
+    const userUpdate = { streak_current: newStreak, streak_last_claim: today };
+    let rewardResult = { type: rewardDef.type, day: rewardDay, streakDay: newStreak };
+
+    if (rewardDef.type === 'coins') {
+      userUpdate.coins = (user.coins || 0) + rewardDef.amount;
+      rewardResult.amount = rewardDef.amount;
+      rewardResult.description = `🪙 +${rewardDef.amount} COINS`;
+    } else if (rewardDef.type === 'gems') {
+      userUpdate.gems = (user.gems || 0) + rewardDef.amount;
+      rewardResult.amount = rewardDef.amount;
+      rewardResult.description = `💎 +${rewardDef.amount} GEMS`;
+    } else if (rewardDef.type === 'ability') {
+      const abilityResult = await grantAbilityReward(supabase, userId, rewardDef.rarity);
+      rewardResult.abilityData = abilityResult;
+      rewardResult.description = abilityResult.description;
+      if (abilityResult.coinsCompensation) {
+        userUpdate.coins = (user.coins || 0) + abilityResult.coinsCompensation;
+      }
+    } else if (rewardDef.type === 'skin') {
+      // Grant the exclusive streak skin
+      const { data: existingSkin } = await supabase
+        .from('user_skins')
+        .select('skin_id')
+        .eq('user_id', userId)
+        .eq('skin_id', rewardDef.skinId)
+        .maybeSingle();
+
+      if (!existingSkin) {
+        await supabase.from('user_skins').insert({ user_id: userId, skin_id: rewardDef.skinId });
+        rewardResult.skinId = rewardDef.skinId;
+        rewardResult.description = `🔥 AURA LEGGENDARIA ESCLUSIVA: STREAK INFERNO`;
+        rewardResult.newSkin = true;
+      } else {
+        // Already has the skin — give coin compensation
+        const compensation = 25000;
+        userUpdate.coins = (user.coins || 0) + compensation;
+        rewardResult.skinId = rewardDef.skinId;
+        rewardResult.description = `Streak Inferno già posseduta — 🪙 +${compensation}`;
+        rewardResult.coinsCompensation = compensation;
+        rewardResult.newSkin = false;
+      }
+    }
+
+    const { error: updateErr } = await supabase.from('users').update(userUpdate).eq('id', userId);
+    if (updateErr) throw new Error(updateErr.message);
+
+    res.json({ success: true, data: rewardResult });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

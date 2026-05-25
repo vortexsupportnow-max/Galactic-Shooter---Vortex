@@ -95,6 +95,15 @@ const SKINS = {
     description: '+25% coins/gems, start shielded, +1 life',
     season_exclusive: true,
     boost: { coins_mult: 1.25, gems_mult: 1.25, score_mult: 1.00, extra_lives: 1, starting_shield: true }
+  },
+
+  // ── Streak Exclusive (day 30 reward — NOT obtainable from crates) ──────────
+  streak_inferno: {
+    id: 'streak_inferno', name: 'Streak Inferno', rarity: 'legendary',
+    color: '#ff6600', emoji: '🔥',
+    description: '+35% coins/gems, +30% score, +2 lives, start shielded',
+    streak_exclusive: true,
+    boost: { coins_mult: 1.35, gems_mult: 1.35, score_mult: 1.30, extra_lives: 2, starting_shield: true }
   }
 };
 

@@ -63,6 +63,10 @@ ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS free_void_crates INTEGER NO
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS equipped_skin TEXT NOT NULL DEFAULT 'default';
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS free_skin_crates INTEGER NOT NULL DEFAULT 0;
 
+-- Daily login streak columns
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS streak_current INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS streak_last_claim DATE;
+
 -- ── Japan Season / Space Pass ─────────────────────────────────────────────────
 
 -- Tracks each user's season pass progress (pulsar earned, tiers claimed)

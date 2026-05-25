@@ -1151,6 +1151,125 @@ html, body {
   box-shadow: 0 0 12px rgba(204,68,170,0.5);
 }
 
+.btn-streak {
+  color: #ff8800;
+  border-color: #ff6600;
+  font-size: 0.46rem !important;
+  padding: 0.6rem 0.5rem !important;
+}
+.btn-streak:hover {
+  background: rgba(255,102,0,0.15);
+  box-shadow: 0 0 12px rgba(255,102,0,0.5);
+}
+
+/* Streak overlay */
+.streak-box {
+  background: var(--dark);
+  border: 2px solid #ff6600;
+  box-shadow: 0 0 30px rgba(255,102,0,0.3);
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-items: center;
+  width: min(92vw, 400px);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.streak-box h3 {
+  font-size: 0.7rem;
+  color: #ff8800;
+}
+.streak-info {
+  width: 100%;
+  text-align: center;
+}
+.streak-day-display {
+  font-size: 0.65rem;
+  color: #ffcc00;
+  margin-bottom: 0.4rem;
+}
+.streak-progress-bar-wrap {
+  width: 100%;
+  height: 10px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.streak-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6600, #ffcc00);
+  transition: width 0.5s ease;
+  border-radius: 5px;
+}
+.streak-progress-label {
+  font-size: 0.36rem;
+  color: #aaa;
+  margin-top: 0.2rem;
+}
+.streak-rewards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  gap: 0.3rem;
+  width: 100%;
+  margin: 0.3rem 0;
+}
+.streak-reward-cell {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 0.25rem 0.15rem;
+  text-align: center;
+  transition: all 0.2s;
+}
+.streak-reward-cell.claimed {
+  background: rgba(0,255,100,0.1);
+  border-color: rgba(0,255,100,0.4);
+  opacity: 0.7;
+}
+.streak-reward-cell.next {
+  border-color: #ffcc00;
+  background: rgba(255,200,0,0.15);
+  box-shadow: 0 0 8px rgba(255,200,0,0.3);
+}
+.streak-reward-day {
+  font-size: 0.28rem;
+  color: #aaa;
+}
+.streak-reward-icon {
+  font-size: 0.5rem;
+}
+.streak-reward-label {
+  font-size: 0.26rem;
+  color: #ccc;
+}
+.streak-next-reward {
+  font-size: 0.4rem;
+  color: #ffcc00;
+  text-align: center;
+}
+.streak-result {
+  width: 100%;
+  text-align: center;
+  padding: 0.6rem;
+  background: rgba(255,102,0,0.1);
+  border: 1px solid #ff6600;
+  border-radius: 8px;
+}
+.streak-result-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.streak-result-day {
+  font-size: 0.5rem;
+  color: #ffcc00;
+}
+.streak-result-reward {
+  font-size: 0.45rem;
+  color: #fff;
+}
+
 /* Right menu buttons */
 .menu-right .btn {
   font-size: 0.58rem;
@@ -1493,7 +1612,7 @@ html, body {
   .season-panel-title { font-size: 0.6rem; }
   .season-panel-end { font-size: 0.5rem; }
   .season-pulsar-label { font-size: 0.5rem; }
-  .btn-season, .btn-mission { font-size: 0.62rem !important; padding: 0.85rem 0.7rem !important; }
+  .btn-season, .btn-mission, .btn-streak { font-size: 0.62rem !important; padding: 0.85rem 0.7rem !important; }
   .menu-right { gap: 0.8rem; }
   .menu-right .btn { font-size: 0.72rem; padding: 0.85rem 1rem; }
   .menu-right .btn-large { font-size: 1rem; padding: 1.1rem 1.5rem; }
@@ -1517,7 +1636,7 @@ html, body {
   .season-panel-end { font-size: 0.58rem; }
   .season-pulsar-label { font-size: 0.58rem; }
   .season-pulsar-bar { height: 7px; }
-  .btn-season, .btn-mission { font-size: 0.72rem !important; padding: 1rem 0.8rem !important; }
+  .btn-season, .btn-mission, .btn-streak { font-size: 0.72rem !important; padding: 1rem 0.8rem !important; }
   .menu-right { gap: 1rem; }
   .menu-right .btn { font-size: 0.85rem; padding: 1rem 1.2rem; }
   .menu-right .btn-large { font-size: 1.15rem; padding: 1.3rem 1.8rem; }
@@ -1536,7 +1655,7 @@ html, body {
   }
   .menu-split { gap: 3rem; }
   .season-panel-title { font-size: 0.78rem; }
-  .btn-season, .btn-mission { font-size: 0.8rem !important; padding: 1.1rem 1rem !important; }
+  .btn-season, .btn-mission, .btn-streak { font-size: 0.8rem !important; padding: 1.1rem 1rem !important; }
   .menu-right .btn { font-size: 0.95rem; padding: 1.1rem 1.4rem; }
   .menu-right .btn-large { font-size: 1.3rem; padding: 1.5rem 2rem; }
   .menu-right .menu-btn-subtitle { font-size: 0.6rem; }
