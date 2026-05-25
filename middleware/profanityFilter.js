@@ -53,7 +53,6 @@ const BANNED_WORDS = [
   'vattafanculo',
   'mignotta',
   'baldracca',
-  'escort', // used as insult in Italian slang
   'culattone',
   'frocio',
   'ricchione',
@@ -101,8 +100,11 @@ const BANNED_WORDS = [
   'cracker',
 ];
 
-// De-duplicate and sort longest-first so more specific patterns are tried first
-const BANNED_SORTED = [...new Set(BANNED_WORDS)].sort((a, b) => b.length - a.length);
+// De-duplicate, sort longest-first, and pre-normalise so that the
+// normalise() call is not repeated on every nickname check.
+const BANNED_NORMALISED = [...new Set(BANNED_WORDS)]
+  .sort((a, b) => b.length - a.length)
+  .map(w => normalise(w));
 
 /**
  * Returns true if `nickname` contains profanity, blasphemy, or slurs.
@@ -114,7 +116,7 @@ const BANNED_SORTED = [...new Set(BANNED_WORDS)].sort((a, b) => b.length - a.len
 function containsProfanity(nickname) {
   if (typeof nickname !== 'string') return false;
   const norm = normalise(nickname);
-  return BANNED_SORTED.some(word => norm.includes(normalise(word)));
+  return BANNED_NORMALISED.some(word => norm.includes(word));
 }
 
 module.exports = { containsProfanity };
