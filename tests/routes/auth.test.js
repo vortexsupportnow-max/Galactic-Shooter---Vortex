@@ -67,6 +67,21 @@ describe('POST /api/auth/register', () => {
     expect(res.body).toEqual({ success: false, error: 'Password must be at least 8 characters' });
   });
 
+  it('returns error when nickname contains profanity', async () => {
+    const res = await request(app).post('/api/auth/register').send({ nickname: 'CazzoXX', password: 'secret123' });
+    expect(res.body).toEqual({ success: false, error: 'Nickname contains inappropriate language' });
+  });
+
+  it('returns error when nickname contains English profanity', async () => {
+    const res = await request(app).post('/api/auth/register').send({ nickname: 'FuckYou', password: 'secret123' });
+    expect(res.body).toEqual({ success: false, error: 'Nickname contains inappropriate language' });
+  });
+
+  it('returns error when nickname uses leet-speak to bypass filter', async () => {
+    const res = await request(app).post('/api/auth/register').send({ nickname: 'c4zz0', password: 'secret123' });
+    expect(res.body).toEqual({ success: false, error: 'Nickname contains inappropriate language' });
+  });
+
   it('returns error when nickname is already taken', async () => {
     const supabase = {
       from: jest.fn().mockReturnValue({

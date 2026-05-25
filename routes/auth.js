@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { getDB } = require('../db/database');
 const { JWT_SECRET } = require('../config');
+const { containsProfanity } = require('../middleware/profanityFilter');
 
 const router = express.Router();
 
@@ -18,6 +19,9 @@ router.post('/register', async (req, res) => {
     }
     if (nickname.length < 3 || nickname.length > 20) {
       return res.json({ success: false, error: 'Nickname must be 3-20 characters' });
+    }
+    if (containsProfanity(nickname)) {
+      return res.json({ success: false, error: 'Nickname contains inappropriate language' });
     }
     if (password.length < 8) {
       return res.json({ success: false, error: 'Password must be at least 8 characters' });
