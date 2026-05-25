@@ -125,7 +125,7 @@ class GalacticGame {
     zone.addEventListener('touchend', onEnd);
   }
 
-  start(abilitySlots = [null, null, null], unlockedAbilityIds = [], skinBoosts = null, skinColor = null) {
+  start(abilitySlots = [null, null, null], unlockedAbilityIds = [], skinBoosts = null, skinColor = null, skinTrail = null) {
     if (this.animId) cancelAnimationFrame(this.animId);
 
     const player = new Player(480, 700);
@@ -154,6 +154,8 @@ class GalacticGame {
       abilitySlots: abilitySlots.map(a => a ? { ...a } : null),
       unlockedAbilityIds: unlockedAbilityIds,
       skinBoosts: boosts,
+      skinTrail: skinTrail || null,
+      trailTimer: 0,
       paused: false,
       gameOver: false,
       waveComplete: false,
@@ -482,6 +484,26 @@ class GalacticGame {
         }
         gs.powerUps.splice(i, 1);
         if (assigned) Sounds.powerup();
+      }
+    }
+
+    // Emit skin trail particles behind player
+    if (gs.skinTrail && !gs.gameOver) {
+      gs.trailTimer += dt;
+      const interval = 50; // emit every 50ms
+      if (gs.trailTimer >= interval) {
+        gs.trailTimer -= interval;
+        const t = gs.skinTrail;
+        for (let i = 0; i < t.count; i++) {
+          const color = t.colors[Math.floor(Math.random() * t.colors.length)];
+          const offsetX = (Math.random() - 0.5) * t.spread;
+          gs.particles.emit(gs.player.x + offsetX, gs.player.y + 20, 1, color, {
+            speed: t.speed * (0.6 + Math.random() * 0.4),
+            size: t.size * (0.7 + Math.random() * 0.6),
+            decay: t.decay,
+            gravity: 0.05
+          });
+        }
       }
     }
 
@@ -947,9 +969,9 @@ class GalacticGame {
 // Global instance
 let gameInstance = null;
 
-function startGame(abilitySlots, unlockedAbilityIds, skinBoosts, skinColor) {
+function startGame(abilitySlots, unlockedAbilityIds, skinBoosts, skinColor, skinTrail) {
   if (!gameInstance) gameInstance = new GalacticGame();
-  gameInstance.start(abilitySlots || [null, null, null], unlockedAbilityIds || [], skinBoosts || null, skinColor || null);
+  gameInstance.start(abilitySlots || [null, null, null], unlockedAbilityIds || [], skinBoosts || null, skinColor || null, skinTrail || null);
 }
 
 function stopGame() {

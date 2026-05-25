@@ -611,8 +611,9 @@ function initMenuHandlers() {
     const equippedSkin    = res.success ? (res.data.equipped_skin || 'default') : 'default';
     const skinBoosts      = getEquippedSkinBoosts(equippedSkin);
     const skinColor       = SKINS[equippedSkin]?.color || null;
+    const skinTrail       = getEquippedSkinTrail(equippedSkin);
     showScreen('game');
-    startGame([null, null, null], ownedAbilityIds, skinBoosts, skinColor);
+    startGame([null, null, null], ownedAbilityIds, skinBoosts, skinColor, skinTrail);
   });
   document.getElementById('btn-collection').addEventListener('click', showCollection);
   document.getElementById('btn-crates').addEventListener('click', showCrateShop);
