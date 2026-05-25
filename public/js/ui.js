@@ -1283,7 +1283,7 @@ function refreshStreakUI() {
   _streakData = streak;
 
   const current = streak.current || 0;
-  const dayInCycle = ((current) % 30);
+  const dayInCycle = current === 0 ? 0 : (((current - 1) % 30) + 1);
   document.getElementById('streak-day-num').textContent = current;
   document.getElementById('streak-progress-bar').style.width = `${(dayInCycle / 30) * 100}%`;
   document.getElementById('streak-progress-label').textContent = `${dayInCycle} / 30`;
