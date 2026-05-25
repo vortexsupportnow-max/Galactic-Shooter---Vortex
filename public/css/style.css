@@ -728,16 +728,18 @@ html, body {
   touch-action: none;
 }
 
-/* ===== TOUCH CONTROLS ===== */
+/* ===== TOUCH CONTROLS (Optimized) ===== */
 #touch-controls {
   position: absolute; inset: 0;
   pointer-events: none;
   display: flex; justify-content: space-between; align-items: flex-end;
   padding: 0.5rem;
+  touch-action: none;
 }
 #joystick-zone {
   pointer-events: all;
-  width: 120px; height: 120px;
+  touch-action: none;
+  width: 130px; height: 130px;
   display: flex; align-items: center; justify-content: center;
 }
 #joystick-base {
@@ -747,6 +749,7 @@ html, body {
   border: 2px solid rgba(0,255,255,0.3);
   position: relative;
   display: flex; align-items: center; justify-content: center;
+  touch-action: none;
 }
 #joystick-stick {
   width: 44px; height: 44px;
@@ -754,30 +757,62 @@ html, body {
   background: rgba(0,255,255,0.5);
   border: 2px solid var(--cyan);
   position: absolute;
-  transition: transform 0.05s;
+  will-change: transform;
 }
 #touch-right {
   pointer-events: all;
-  display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-end;
+  touch-action: none;
+  display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;
 }
 .touch-ability-btn {
   font-family: 'Press Start 2P', monospace;
-  font-size: 0.55rem;
-  width: 50px; height: 50px;
+  font-size: 0.6rem;
+  width: 52px; height: 52px;
+  border-radius: 8px;
   border: 2px solid var(--purple);
   background: rgba(170,0,255,0.2);
   color: var(--purple); cursor: pointer;
+  touch-action: none;
 }
-.touch-ability-btn:active { background: rgba(170,0,255,0.5); }
-#fire-btn {
-  font-size: 1.2rem;
-  width: 70px; height: 70px;
-  border-radius: 50%;
-  border: 2px solid var(--red);
-  background: rgba(255,34,68,0.3);
-  cursor: pointer;
+.touch-ability-btn:active { background: rgba(170,0,255,0.5); transform: scale(0.92); }
+
+/* ===== SHOP / EXCHANGE ===== */
+.shop-scroll-list {
+  overflow-y: auto;
+  max-height: calc(100vh - 80px);
+  -webkit-overflow-scrolling: touch;
 }
-#fire-btn:active { background: rgba(255,34,68,0.6); }
+.exchange-content {
+  display: flex; flex-direction: column; gap: 1.2rem;
+  padding: 1rem 0;
+}
+.exchange-section {
+  display: flex; flex-direction: column; gap: 0.6rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(0,0,0,0.3);
+}
+.exchange-title {
+  font-size: 0.6rem;
+  color: var(--cyan);
+  text-align: center;
+  margin-bottom: 0.3rem;
+}
+.exchange-options {
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.exchange-btn {
+  font-size: 0.5rem !important;
+  padding: 0.5rem 0.8rem !important;
+}
+.exchange-result {
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.55rem;
+  color: var(--cyan);
+}
+.exchange-result.error { color: var(--red); }
 
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 6px; }

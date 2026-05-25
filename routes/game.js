@@ -1091,4 +1091,63 @@ async function checkAchievements(supabase, userId, { score, wave, enemiesKilled 
   );
 }
 
+// ===== CURRENCY EXCHANGE =====
+const EXCHANGE_RATES = {
+  gems_to_coins_10:   { cost_gems: 5,  give_coins: 100 },
+  gems_to_coins_25:   { cost_gems: 10, give_coins: 220 },
+  gems_to_coins_50:   { cost_gems: 25, give_coins: 600 },
+  coins_to_gems_100:  { cost_coins: 200,  give_gems: 1 },
+  coins_to_gems_500:  { cost_coins: 900,  give_gems: 5 },
+  coins_to_gems_1000: { cost_coins: 1600, give_gems: 10 }
+};
+
+router.post('/exchange', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { exchange_id } = req.body;
+    const rate = EXCHANGE_RATES[exchange_id];
+    if (!rate) return res.json({ success: false, error: 'Invalid exchange type' });
+
+    const supabase = getDB();
+
+    // Get current balance
+    const { data: profile, error: pErr } = await supabase
+      .from('profiles')
+      .select('coins, gems')
+      .eq('id', userId)
+      .single();
+    if (pErr || !profile) return res.json({ success: false, error: 'Profile not found' });
+
+    // Check sufficient funds
+    if (rate.cost_gems && profile.gems < rate.cost_gems) {
+      return res.json({ success: false, error: 'Gemme insufficienti' });
+    }
+    if (rate.cost_coins && profile.coins < rate.cost_coins) {
+      return res.json({ success: false, error: 'Monete insufficienti' });
+    }
+
+    // Perform exchange
+    let newCoins = profile.coins;
+    let newGems = profile.gems;
+
+    if (rate.cost_gems) {
+      newGems -= rate.cost_gems;
+      newCoins += rate.give_coins;
+    } else {
+      newCoins -= rate.cost_coins;
+      newGems += rate.give_gems;
+    }
+
+    const { error: uErr } = await supabase
+      .from('profiles')
+      .update({ coins: newCoins, gems: newGems })
+      .eq('id', userId);
+    if (uErr) return res.json({ success: false, error: 'Exchange failed' });
+
+    res.json({ success: true, data: { coins: newCoins, gems: newGems } });
+  } catch (e) {
+    res.json({ success: false, error: 'Server error' });
+  }
+});
+
 module.exports = router;
