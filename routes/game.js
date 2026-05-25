@@ -1093,12 +1093,12 @@ async function checkAchievements(supabase, userId, { score, wave, enemiesKilled 
 
 // ===== CURRENCY EXCHANGE =====
 const EXCHANGE_RATES = {
-  gems_to_coins_10:   { cost_gems: 5,  give_coins: 100 },
-  gems_to_coins_25:   { cost_gems: 10, give_coins: 220 },
-  gems_to_coins_50:   { cost_gems: 25, give_coins: 600 },
-  coins_to_gems_100:  { cost_coins: 200,  give_gems: 1 },
-  coins_to_gems_500:  { cost_coins: 900,  give_gems: 5 },
-  coins_to_gems_1000: { cost_coins: 1600, give_gems: 10 }
+  gems_to_coins_10:   { cost_gems: 5,  give_coins: 250 },
+  gems_to_coins_25:   { cost_gems: 10, give_coins: 550 },
+  gems_to_coins_50:   { cost_gems: 25, give_coins: 1500 },
+  coins_to_gems_100:  { cost_coins: 500,  give_gems: 1 },
+  coins_to_gems_500:  { cost_coins: 2200, give_gems: 5 },
+  coins_to_gems_1000: { cost_coins: 4000, give_gems: 10 }
 };
 
 router.post('/exchange', async (req, res) => {
