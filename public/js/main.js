@@ -65,6 +65,7 @@ async function init() {
   initAbilityInfoHandlers();
   initPassHandlers();
   initPatchNotesHandlers();
+  initStreakHandlers();
 
   // Init login starfield
   initStarField('loginStars');

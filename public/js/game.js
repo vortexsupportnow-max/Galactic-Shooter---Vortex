@@ -72,15 +72,11 @@ class GalacticGame {
       btn.addEventListener('touchstart', e => {
         e.preventDefault();
         this._useAbility(parseInt(btn.dataset.slot));
-      });
+      }, { passive: false });
     });
 
-    // Fire button
-    const fireBtn = document.getElementById('fire-btn');
-    if (fireBtn) {
-      fireBtn.addEventListener('touchstart', e => { e.preventDefault(); this.touchFire = true; });
-      fireBtn.addEventListener('touchend', e => { e.preventDefault(); this.touchFire = false; });
-    }
+    // Auto-fire on mobile (no fire button needed)
+    this.touchActive = false;
 
     // Joystick
     this._setupJoystick();
@@ -100,6 +96,7 @@ class GalacticGame {
       startX = rect.left + rect.width / 2;
       startY = rect.top + rect.height / 2;
       active = true;
+      this.touchActive = true;
       e.preventDefault();
     };
     const onMove = e => {
@@ -118,6 +115,7 @@ class GalacticGame {
     };
     const onEnd = e => {
       active = false;
+      this.touchActive = false;
       stick.style.transform = '';
       if (this.gs) { this.gs.player.joystickVX = 0; this.gs.player.joystickVY = 0; }
     };
@@ -127,7 +125,7 @@ class GalacticGame {
     zone.addEventListener('touchend', onEnd);
   }
 
-  start(abilitySlots = [null, null, null], unlockedAbilityIds = [], skinBoosts = null, skinColor = null) {
+  start(abilitySlots = [null, null, null], unlockedAbilityIds = [], skinBoosts = null, skinColor = null, skinTrail = null) {
     if (this.animId) cancelAnimationFrame(this.animId);
 
     const player = new Player(480, 700);
@@ -156,6 +154,8 @@ class GalacticGame {
       abilitySlots: abilitySlots.map(a => a ? { ...a } : null),
       unlockedAbilityIds: unlockedAbilityIds,
       skinBoosts: boosts,
+      skinTrail: skinTrail || null,
+      trailTimer: 0,
       paused: false,
       gameOver: false,
       waveComplete: false,
@@ -175,6 +175,7 @@ class GalacticGame {
       turret: null,
       sakuraStorm: null,
       abilitiesUsed: 0,
+      waveAnnounce: 1500,
       keys: this.keys
     };
 
@@ -208,8 +209,8 @@ class GalacticGame {
     const dtF = dt / 16.667;
     const gs = this.gs;
 
-    // Auto-fire with touch
-    if (this.touchFire || this.keys[' '] || this.keys['z'] || this.keys['Z']) {
+    // Auto-fire: always active on mobile touch or keyboard/direction keys
+    if (this.touchActive || this.touchFire || this.keys[' '] || this.keys['z'] || this.keys['Z']) {
       gs.player.shoot(now, gs.bullets);
     }
     // Auto-fire if any direction key held
@@ -443,6 +444,9 @@ class GalacticGame {
       if (gs.comboTimer > 3000) { gs.combo = 1; gs.comboTimer = 0; }
     }
 
+    // Wave announcement timer
+    if (gs.waveAnnounce > 0) gs.waveAnnounce -= dt;
+
     // Update enemies
     for (let i = gs.enemies.length - 1; i >= 0; i--) {
       const e = gs.enemies[i];
@@ -480,6 +484,26 @@ class GalacticGame {
         }
         gs.powerUps.splice(i, 1);
         if (assigned) Sounds.powerup();
+      }
+    }
+
+    // Emit skin trail particles behind player
+    if (gs.skinTrail && !gs.gameOver) {
+      gs.trailTimer += dt;
+      const interval = 50; // emit every 50ms
+      if (gs.trailTimer >= interval) {
+        gs.trailTimer -= interval;
+        const t = gs.skinTrail;
+        for (let i = 0; i < t.count; i++) {
+          const color = t.colors[Math.floor(Math.random() * t.colors.length)];
+          const offsetX = (Math.random() - 0.5) * t.spread;
+          gs.particles.emit(gs.player.x + offsetX, gs.player.y + 20, 1, color, {
+            speed: t.speed * (0.6 + Math.random() * 0.4),
+            size: t.size * (0.7 + Math.random() * 0.6),
+            decay: t.decay,
+            gravity: 0.05
+          });
+        }
       }
     }
 
@@ -631,6 +655,9 @@ class GalacticGame {
     const config = this._waveConfig(wave);
     gs.enemies = [];
 
+    // Wave start announcement timer
+    gs.waveAnnounce = 1500; // ms to show wave announcement
+
     const rows = Math.ceil(config.count / 8);
     let spawned = 0;
     for (let row = 0; row < rows && spawned < config.count; row++) {
@@ -691,14 +718,19 @@ class GalacticGame {
     const gs = this.gs;
     ctx.clearRect(0, 0, 480, 700);
 
-    // Background
-    ctx.fillStyle = '#000011';
+    // Dynamic background - shifts hue based on wave
+    const waveHue = gs ? (gs.wave * 8) % 360 : 0;
+    const bgR = Math.floor(Math.sin(waveHue * 0.017) * 8);
+    const bgG = Math.floor(Math.sin((waveHue + 120) * 0.017) * 6);
+    const bgB = Math.floor(17 + Math.sin((waveHue + 240) * 0.017) * 8);
+    ctx.fillStyle = `rgb(${Math.max(0,bgR)},${Math.max(0,bgG)},${Math.max(0,bgB)})`;
     ctx.fillRect(0, 0, 480, 700);
 
-    // Starfield
+    // Starfield with wave-based tinting
+    const starTint = gs ? `hsl(${waveHue}, 60%, 85%)` : '#ffffff';
     for (const s of this.stars) {
       ctx.globalAlpha = s.alpha;
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = s.speed > 2 ? starTint : '#ffffff';
       ctx.fillRect(s.x, s.y, s.size, s.size);
     }
     ctx.globalAlpha = 1;
@@ -764,25 +796,72 @@ class GalacticGame {
     // HUD
     if (!gs.gameOver) this.hud.draw(ctx, gs);
 
-    // Wave complete overlay
+    // Wave start announcement
+    if (gs.waveAnnounce > 0 && !gs.gameOver && !gs.waveComplete) {
+      ctx.save();
+      const announceAlpha = Math.min(1, gs.waveAnnounce / 500);
+      ctx.globalAlpha = announceAlpha;
+      ctx.textAlign = 'center';
+      ctx.font = '20px "Press Start 2P"';
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#00ffff'; ctx.shadowBlur = 30;
+      ctx.fillText(`WAVE ${gs.wave}`, 240, 330);
+      ctx.shadowBlur = 0;
+      if (gs.wave % 5 === 0) {
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillStyle = '#ff00aa';
+        ctx.shadowColor = '#ff00aa'; ctx.shadowBlur = 15;
+        ctx.fillText('⚠ BOSS INCOMING', 240, 365);
+        ctx.shadowBlur = 0;
+      }
+      ctx.restore();
+    }
+
+    // Wave complete overlay - enhanced animation
     if (gs.waveComplete && !gs.gameOver) {
       ctx.save();
-      ctx.globalAlpha = 0.6;
-      ctx.fillStyle = '#000022';
-      ctx.fillRect(0, 280, 480, 140);
+      // Animated background pulse
+      const pulseAlpha = 0.5 + Math.sin(now * 0.005) * 0.15;
+      ctx.globalAlpha = pulseAlpha;
+      ctx.fillStyle = '#000033';
+      ctx.fillRect(0, 250, 480, 200);
       ctx.globalAlpha = 1;
-      ctx.textAlign = 'center';
-      ctx.font = '16px "Press Start 2P"';
-      ctx.fillStyle = '#00ffff';
-      ctx.shadowColor = '#00ffff'; ctx.shadowBlur = 20;
-      ctx.fillText('WAVE CLEAR!', 240, 340);
+
+      // Glowing border lines
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#00ffff'; ctx.shadowBlur = 15;
+      ctx.beginPath(); ctx.moveTo(40, 270); ctx.lineTo(440, 270); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(40, 430); ctx.lineTo(440, 430); ctx.stroke();
       ctx.shadowBlur = 0;
-      ctx.font = '10px "Press Start 2P"';
+
+      ctx.textAlign = 'center';
+      // Wave clear text with scale animation
+      const scale = 1 + Math.sin(now * 0.008) * 0.05;
+      ctx.font = `${Math.round(18 * scale)}px "Press Start 2P"`;
+      ctx.fillStyle = '#00ffff';
+      ctx.shadowColor = '#00ffff'; ctx.shadowBlur = 25;
+      ctx.fillText('WAVE CLEAR!', 240, 320);
+      ctx.shadowBlur = 0;
+
+      // Coins earned
+      ctx.font = '11px "Press Start 2P"';
       ctx.fillStyle = '#ffff00';
-      ctx.fillText(`+${gs.wave * 10} COINS`, 240, 365);
+      ctx.shadowColor = '#ffff00'; ctx.shadowBlur = 8;
+      ctx.fillText(`+${gs.wave * 10} COINS`, 240, 355);
+      ctx.shadowBlur = 0;
+
+      // Combo bonus display
+      if (gs.combo > 1) {
+        ctx.font = '9px "Press Start 2P"';
+        ctx.fillStyle = '#ff8800';
+        ctx.fillText(`COMBO x${gs.combo}`, 240, 380);
+      }
+
+      // Next wave countdown
       ctx.font = '8px "Press Start 2P"';
       ctx.fillStyle = '#aaaaaa';
-      ctx.fillText(`WAVE ${gs.wave + 1} IN ${(gs.waveCountdown / 1000).toFixed(1)}s`, 240, 390);
+      ctx.fillText(`WAVE ${gs.wave + 1} IN ${(gs.waveCountdown / 1000).toFixed(1)}s`, 240, 410);
       ctx.restore();
     }
 
@@ -890,9 +969,9 @@ class GalacticGame {
 // Global instance
 let gameInstance = null;
 
-function startGame(abilitySlots, unlockedAbilityIds, skinBoosts, skinColor) {
+function startGame(abilitySlots, unlockedAbilityIds, skinBoosts, skinColor, skinTrail) {
   if (!gameInstance) gameInstance = new GalacticGame();
-  gameInstance.start(abilitySlots || [null, null, null], unlockedAbilityIds || [], skinBoosts || null, skinColor || null);
+  gameInstance.start(abilitySlots || [null, null, null], unlockedAbilityIds || [], skinBoosts || null, skinColor || null, skinTrail || null);
 }
 
 function stopGame() {

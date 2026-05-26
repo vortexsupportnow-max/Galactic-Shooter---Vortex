@@ -728,16 +728,18 @@ html, body {
   touch-action: none;
 }
 
-/* ===== TOUCH CONTROLS ===== */
+/* ===== TOUCH CONTROLS (Optimized) ===== */
 #touch-controls {
   position: absolute; inset: 0;
   pointer-events: none;
   display: flex; justify-content: space-between; align-items: flex-end;
   padding: 0.5rem;
+  touch-action: none;
 }
 #joystick-zone {
   pointer-events: all;
-  width: 120px; height: 120px;
+  touch-action: none;
+  width: 130px; height: 130px;
   display: flex; align-items: center; justify-content: center;
 }
 #joystick-base {
@@ -747,6 +749,7 @@ html, body {
   border: 2px solid rgba(0,255,255,0.3);
   position: relative;
   display: flex; align-items: center; justify-content: center;
+  touch-action: none;
 }
 #joystick-stick {
   width: 44px; height: 44px;
@@ -754,30 +757,62 @@ html, body {
   background: rgba(0,255,255,0.5);
   border: 2px solid var(--cyan);
   position: absolute;
-  transition: transform 0.05s;
+  will-change: transform;
 }
 #touch-right {
   pointer-events: all;
-  display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-end;
+  touch-action: none;
+  display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;
 }
 .touch-ability-btn {
   font-family: 'Press Start 2P', monospace;
-  font-size: 0.55rem;
-  width: 50px; height: 50px;
+  font-size: 0.6rem;
+  width: 52px; height: 52px;
+  border-radius: 8px;
   border: 2px solid var(--purple);
   background: rgba(170,0,255,0.2);
   color: var(--purple); cursor: pointer;
+  touch-action: none;
 }
-.touch-ability-btn:active { background: rgba(170,0,255,0.5); }
-#fire-btn {
-  font-size: 1.2rem;
-  width: 70px; height: 70px;
-  border-radius: 50%;
-  border: 2px solid var(--red);
-  background: rgba(255,34,68,0.3);
-  cursor: pointer;
+.touch-ability-btn:active { background: rgba(170,0,255,0.5); transform: scale(0.92); }
+
+/* ===== SHOP / EXCHANGE ===== */
+.shop-scroll-list {
+  overflow-y: auto;
+  max-height: calc(100vh - 80px);
+  -webkit-overflow-scrolling: touch;
 }
-#fire-btn:active { background: rgba(255,34,68,0.6); }
+.exchange-content {
+  display: flex; flex-direction: column; gap: 1.2rem;
+  padding: 1rem 0;
+}
+.exchange-section {
+  display: flex; flex-direction: column; gap: 0.6rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(0,0,0,0.3);
+}
+.exchange-title {
+  font-size: 0.6rem;
+  color: var(--cyan);
+  text-align: center;
+  margin-bottom: 0.3rem;
+}
+.exchange-options {
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.exchange-btn {
+  font-size: 0.5rem !important;
+  padding: 0.5rem 0.8rem !important;
+}
+.exchange-result {
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.55rem;
+  color: var(--cyan);
+}
+.exchange-result.error { color: var(--red); }
 
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 6px; }
@@ -1114,6 +1149,125 @@ html, body {
 .btn-mission:hover {
   background: rgba(204,68,170,0.15);
   box-shadow: 0 0 12px rgba(204,68,170,0.5);
+}
+
+.btn-streak {
+  color: #ff8800;
+  border-color: #ff6600;
+  font-size: 0.46rem !important;
+  padding: 0.6rem 0.5rem !important;
+}
+.btn-streak:hover {
+  background: rgba(255,102,0,0.15);
+  box-shadow: 0 0 12px rgba(255,102,0,0.5);
+}
+
+/* Streak overlay */
+.streak-box {
+  background: var(--dark);
+  border: 2px solid #ff6600;
+  box-shadow: 0 0 30px rgba(255,102,0,0.3);
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-items: center;
+  width: min(92vw, 400px);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.streak-box h3 {
+  font-size: 0.7rem;
+  color: #ff8800;
+}
+.streak-info {
+  width: 100%;
+  text-align: center;
+}
+.streak-day-display {
+  font-size: 0.65rem;
+  color: #ffcc00;
+  margin-bottom: 0.4rem;
+}
+.streak-progress-bar-wrap {
+  width: 100%;
+  height: 10px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.streak-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6600, #ffcc00);
+  transition: width 0.5s ease;
+  border-radius: 5px;
+}
+.streak-progress-label {
+  font-size: 0.36rem;
+  color: #aaa;
+  margin-top: 0.2rem;
+}
+.streak-rewards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  gap: 0.3rem;
+  width: 100%;
+  margin: 0.3rem 0;
+}
+.streak-reward-cell {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 0.25rem 0.15rem;
+  text-align: center;
+  transition: all 0.2s;
+}
+.streak-reward-cell.claimed {
+  background: rgba(0,255,100,0.1);
+  border-color: rgba(0,255,100,0.4);
+  opacity: 0.7;
+}
+.streak-reward-cell.next {
+  border-color: #ffcc00;
+  background: rgba(255,200,0,0.15);
+  box-shadow: 0 0 8px rgba(255,200,0,0.3);
+}
+.streak-reward-day {
+  font-size: 0.28rem;
+  color: #aaa;
+}
+.streak-reward-icon {
+  font-size: 0.5rem;
+}
+.streak-reward-label {
+  font-size: 0.26rem;
+  color: #ccc;
+}
+.streak-next-reward {
+  font-size: 0.4rem;
+  color: #ffcc00;
+  text-align: center;
+}
+.streak-result {
+  width: 100%;
+  text-align: center;
+  padding: 0.6rem;
+  background: rgba(255,102,0,0.1);
+  border: 1px solid #ff6600;
+  border-radius: 8px;
+}
+.streak-result-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.streak-result-day {
+  font-size: 0.5rem;
+  color: #ffcc00;
+}
+.streak-result-reward {
+  font-size: 0.45rem;
+  color: #fff;
 }
 
 /* Right menu buttons */
@@ -1458,7 +1612,7 @@ html, body {
   .season-panel-title { font-size: 0.6rem; }
   .season-panel-end { font-size: 0.5rem; }
   .season-pulsar-label { font-size: 0.5rem; }
-  .btn-season, .btn-mission { font-size: 0.62rem !important; padding: 0.85rem 0.7rem !important; }
+  .btn-season, .btn-mission, .btn-streak { font-size: 0.62rem !important; padding: 0.85rem 0.7rem !important; }
   .menu-right { gap: 0.8rem; }
   .menu-right .btn { font-size: 0.72rem; padding: 0.85rem 1rem; }
   .menu-right .btn-large { font-size: 1rem; padding: 1.1rem 1.5rem; }
@@ -1482,7 +1636,7 @@ html, body {
   .season-panel-end { font-size: 0.58rem; }
   .season-pulsar-label { font-size: 0.58rem; }
   .season-pulsar-bar { height: 7px; }
-  .btn-season, .btn-mission { font-size: 0.72rem !important; padding: 1rem 0.8rem !important; }
+  .btn-season, .btn-mission, .btn-streak { font-size: 0.72rem !important; padding: 1rem 0.8rem !important; }
   .menu-right { gap: 1rem; }
   .menu-right .btn { font-size: 0.85rem; padding: 1rem 1.2rem; }
   .menu-right .btn-large { font-size: 1.15rem; padding: 1.3rem 1.8rem; }
@@ -1501,7 +1655,7 @@ html, body {
   }
   .menu-split { gap: 3rem; }
   .season-panel-title { font-size: 0.78rem; }
-  .btn-season, .btn-mission { font-size: 0.8rem !important; padding: 1.1rem 1rem !important; }
+  .btn-season, .btn-mission, .btn-streak { font-size: 0.8rem !important; padding: 1.1rem 1rem !important; }
   .menu-right .btn { font-size: 0.95rem; padding: 1.1rem 1.4rem; }
   .menu-right .btn-large { font-size: 1.3rem; padding: 1.5rem 2rem; }
   .menu-right .menu-btn-subtitle { font-size: 0.6rem; }

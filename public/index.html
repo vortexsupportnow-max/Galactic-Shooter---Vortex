@@ -109,14 +109,15 @@
             </div>
             <button class="btn btn-season" id="btn-pass">🌸 SPACE PASS</button>
             <button class="btn btn-mission" id="btn-missions">📋 MISSIONI</button>
+            <button class="btn btn-streak" id="btn-streak">🔥 STREAK<span class="menu-btn-subtitle" id="streak-button-status"></span></button>
           </div>
 
           <!-- RIGHT: Game buttons -->
           <div class="menu-right">
             <button class="btn btn-cyan btn-large" id="btn-play">▶ PLAY</button>
-            <button class="btn btn-purple" id="btn-collection">⚡ COLLECTION</button>
+            <button class="btn btn-purple" id="btn-collection">⚡ ABILITÀ</button>
             <button class="btn btn-pink" id="btn-skins">🌟 AURE</button>
-            <button class="btn btn-yellow" id="btn-crates">📦 CRATES</button>
+            <button class="btn btn-yellow" id="btn-crates">🛒 NEGOZIO</button>
             <button class="btn btn-green" id="btn-wheel">&#127922; WHEEL<span class="menu-btn-subtitle" id="wheel-button-status">LOADING...</span></button>
             <button class="btn btn-blue" id="btn-leaderboard">&#127942; TOP</button>
             <button class="btn btn-ghost" id="btn-logout">LOGOUT</button>
@@ -132,38 +133,40 @@
           <span class="patchnotes-badge">NOVITÀ</span>
           <h3 class="patchnotes-title">📋 PATCH NOTES</h3>
         </div>
-        <div class="patchnotes-version">v2.5 — JAPAN SEASON</div>
-        <div class="patchnotes-date">🗓 Maggio 2025</div>
+        <div class="patchnotes-version">V2.6, May Release</div>
+        <div class="patchnotes-date">🗓 Giugno 2025</div>
         <div class="patchnotes-list">
           <div class="patchnotes-section">
-            <div class="patchnotes-section-title">🌸 NUOVA STAGIONE</div>
+            <div class="patchnotes-section-title">📱 GAMEPLAY MOBILE</div>
             <ul>
-              <li>Stagione Japan attiva fino al 30 Giugno</li>
-              <li>Nuovo Space Pass con ricompense esclusive</li>
-              <li>Missioni giornaliere e settimanali stagionali</li>
+              <li>Rimosso il pulsante Fuoco: sparo automatico continuo</li>
+              <li>Joystick ottimizzato: zero delay negli input</li>
+              <li>Controlli semplificati per massima giocabilità</li>
             </ul>
           </div>
           <div class="patchnotes-section">
-            <div class="patchnotes-section-title">🎰 FORTUNE WHEEL</div>
+            <div class="patchnotes-section-title">🎨 UPDATE GRAFICO</div>
             <ul>
-              <li>Ruota della fortuna giornaliera gratuita</li>
-              <li>Premi: Coins, Gems, Ability Crates</li>
+              <li>Nuove animazioni di annuncio ondata</li>
+              <li>Effetti visivi potenziati durante il gameplay</li>
+              <li>Background dinamico che cambia con le wave</li>
             </ul>
           </div>
           <div class="patchnotes-section">
-            <div class="patchnotes-section-title">🌟 AURE &amp; CASSE</div>
+            <div class="patchnotes-section-title">🛒 NEGOZIO &amp; MENÙ</div>
             <ul>
-              <li>Nuove Aure cosmetiche per la nave</li>
-              <li>Casse Aure: Stellar e Nova</li>
-              <li>Abilità stagionali esclusive</li>
+              <li>La sezione Crates diventa il Negozio</li>
+              <li>Aggiunta conversione Gemme ↔ Monete</li>
+              <li>La sezione Collection diventa Abilità</li>
+              <li>Layout a scorrimento nel negozio</li>
             </ul>
           </div>
           <div class="patchnotes-section">
             <div class="patchnotes-section-title">⚙ MIGLIORAMENTI</div>
             <ul>
-              <li>Menu principale rinnovato con HUD espanso</li>
-              <li>Bottoni rapidi Profilo, News e Impostazioni</li>
-              <li>Ottimizzazioni generali di performance</li>
+              <li>Ottimizzazioni performance mobile</li>
+              <li>Touch-action ottimizzato per zero ritardo</li>
+              <li>Miglioramenti generali all'esperienza utente</li>
             </ul>
           </div>
         </div>
@@ -175,7 +178,7 @@
     <div id="screen-game" class="screen">
       <div class="game-wrapper">
         <canvas id="gameCanvas" width="480" height="700"></canvas>
-        <!-- Touch controls -->
+        <!-- Touch controls (optimized for mobile) -->
         <div id="touch-controls">
           <div id="joystick-zone">
             <div id="joystick-base">
@@ -183,10 +186,9 @@
             </div>
           </div>
           <div id="touch-right">
-            <button class="touch-ability-btn" data-slot="0">Q</button>
-            <button class="touch-ability-btn" data-slot="1">W</button>
-            <button class="touch-ability-btn" data-slot="2">E</button>
-            <button id="fire-btn" class="touch-fire-btn">🔥</button>
+            <button class="touch-ability-btn" data-slot="0" aria-label="Ability Slot 1">1</button>
+            <button class="touch-ability-btn" data-slot="1" aria-label="Ability Slot 2">2</button>
+            <button class="touch-ability-btn" data-slot="2" aria-label="Ability Slot 3">3</button>
           </div>
         </div>
       </div>
@@ -203,11 +205,11 @@
       </div>
     </div>
 
-    <!-- Collection Screen -->
+    <!-- Abilities Screen -->
     <div id="screen-collection" class="screen">
       <div class="screen-header">
         <button class="btn btn-ghost btn-back" id="collection-back">← BACK</button>
-        <h2 class="screen-title">COLLECTION</h2>
+        <h2 class="screen-title">ABILITÀ</h2>
         <div class="header-currency">
           🪙 <span id="coll-coins">0</span>
         </div>
@@ -239,19 +241,20 @@
       </div>
     </div>
 
-    <!-- Crates Screen -->
+    <!-- Negozio (Shop) Screen -->
     <div id="screen-crates" class="screen">
       <div class="screen-header">
         <button class="btn btn-ghost btn-back" id="crates-back">← BACK</button>
-        <h2 class="screen-title">CRATES</h2>
+        <h2 class="screen-title">🛒 NEGOZIO</h2>
         <div class="header-currency">
           🪙 <span id="crates-coins">0</span> &nbsp; 💎 <span id="crates-gems">0</span>
         </div>
       </div>
-      <div class="crates-content">
+      <div class="crates-content shop-scroll-list">
         <div class="crate-tabs">
           <button class="crate-tab active" data-tab="abilities">ABILITY CRATES</button>
           <button class="crate-tab" data-tab="skins">CASSE AURE</button>
+          <button class="crate-tab" data-tab="exchange">💱 CONVERSIONE</button>
         </div>
 
         <div id="crate-tab-abilities" class="crate-tab-content">
@@ -320,6 +323,29 @@
             <button class="btn btn-pink btn-large" id="open-skin-crate-btn">APRI CASSA AURA</button>
             <div id="skin-crate-result" class="skin-crate-result hidden"></div>
             <div class="crate-info" id="skin-crate-info"></div>
+          </div>
+        </div>
+
+        <!-- Currency Exchange Tab -->
+        <div id="crate-tab-exchange" class="crate-tab-content hidden">
+          <div class="exchange-content">
+            <div class="exchange-section">
+              <div class="exchange-title">💎 → 🪙 GEMME IN MONETE</div>
+              <div class="exchange-options">
+                <button class="btn btn-cyan exchange-btn" data-exchange="gems_to_coins_10">5 💎 → 250 🪙</button>
+                <button class="btn btn-cyan exchange-btn" data-exchange="gems_to_coins_25">10 💎 → 550 🪙</button>
+                <button class="btn btn-cyan exchange-btn" data-exchange="gems_to_coins_50">25 💎 → 1500 🪙</button>
+              </div>
+            </div>
+            <div class="exchange-section">
+              <div class="exchange-title">🪙 → 💎 MONETE IN GEMME</div>
+              <div class="exchange-options">
+                <button class="btn btn-purple exchange-btn" data-exchange="coins_to_gems_100">500 🪙 → 1 💎</button>
+                <button class="btn btn-purple exchange-btn" data-exchange="coins_to_gems_500">2200 🪙 → 5 💎</button>
+                <button class="btn btn-purple exchange-btn" data-exchange="coins_to_gems_1000">4000 🪙 → 10 💎</button>
+              </div>
+            </div>
+            <div id="exchange-result" class="exchange-result hidden"></div>
           </div>
         </div>
       </div>
@@ -425,6 +451,25 @@
         <div id="ability-info-desc" class="ability-info-desc"></div>
         <div id="ability-info-level" class="ability-info-level"></div>
         <button class="btn btn-ghost" id="ability-info-close">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Daily Streak Overlay -->
+    <div id="streak-overlay" class="overlay hidden">
+      <div class="streak-box">
+        <h3>🔥 STREAK GIORNALIERA</h3>
+        <div class="streak-info">
+          <div class="streak-day-display">GIORNO <span id="streak-day-num">0</span></div>
+          <div class="streak-progress-bar-wrap">
+            <div class="streak-progress-bar" id="streak-progress-bar" style="width:0%"></div>
+          </div>
+          <div class="streak-progress-label" id="streak-progress-label">0 / 30</div>
+        </div>
+        <div class="streak-rewards-grid" id="streak-rewards-grid"></div>
+        <div class="streak-next-reward" id="streak-next-reward"></div>
+        <button class="btn btn-yellow" id="streak-claim-btn">RISCUOTI</button>
+        <div class="streak-result hidden" id="streak-result"></div>
+        <button class="btn btn-ghost" id="streak-close">CHIUDI</button>
       </div>
     </div>
 
