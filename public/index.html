@@ -156,7 +156,6 @@
             <div class="patchnotes-section-title">🛒 NEGOZIO &amp; MENÙ</div>
             <ul>
               <li>La sezione Crates diventa il Negozio</li>
-              <li>Aggiunta conversione Gemme ↔ Monete</li>
               <li>La sezione Collection diventa Abilità</li>
               <li>Layout a scorrimento nel negozio</li>
             </ul>
@@ -254,7 +253,6 @@
         <div class="crate-tabs">
           <button class="crate-tab active" data-tab="abilities">ABILITY CRATES</button>
           <button class="crate-tab" data-tab="skins">CASSE AURE</button>
-          <button class="crate-tab" data-tab="exchange">💱 CONVERSIONE</button>
         </div>
 
         <div id="crate-tab-abilities" class="crate-tab-content">
@@ -327,27 +325,6 @@
         </div>
 
         <!-- Currency Exchange Tab -->
-        <div id="crate-tab-exchange" class="crate-tab-content hidden">
-          <div class="exchange-content">
-            <div class="exchange-section">
-              <div class="exchange-title">💎 → 🪙 GEMME IN MONETE</div>
-              <div class="exchange-options">
-                <button class="btn btn-cyan exchange-btn" data-exchange="gems_to_coins_10">5 💎 → 250 🪙</button>
-                <button class="btn btn-cyan exchange-btn" data-exchange="gems_to_coins_25">10 💎 → 550 🪙</button>
-                <button class="btn btn-cyan exchange-btn" data-exchange="gems_to_coins_50">25 💎 → 1500 🪙</button>
-              </div>
-            </div>
-            <div class="exchange-section">
-              <div class="exchange-title">🪙 → 💎 MONETE IN GEMME</div>
-              <div class="exchange-options">
-                <button class="btn btn-purple exchange-btn" data-exchange="coins_to_gems_100">500 🪙 → 1 💎</button>
-                <button class="btn btn-purple exchange-btn" data-exchange="coins_to_gems_500">2200 🪙 → 5 💎</button>
-                <button class="btn btn-purple exchange-btn" data-exchange="coins_to_gems_1000">4000 🪙 → 10 💎</button>
-              </div>
-            </div>
-            <div id="exchange-result" class="exchange-result hidden"></div>
-          </div>
-        </div>
       </div>
     </div>
 

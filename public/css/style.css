@@ -782,37 +782,6 @@ html, body {
   max-height: calc(100vh - 80px);
   -webkit-overflow-scrolling: touch;
 }
-.exchange-content {
-  display: flex; flex-direction: column; gap: 1.2rem;
-  padding: 1rem 0;
-}
-.exchange-section {
-  display: flex; flex-direction: column; gap: 0.6rem;
-  padding: 0.8rem;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  background: rgba(0,0,0,0.3);
-}
-.exchange-title {
-  font-size: 0.6rem;
-  color: var(--cyan);
-  text-align: center;
-  margin-bottom: 0.3rem;
-}
-.exchange-options {
-  display: flex; flex-direction: column; gap: 0.5rem;
-}
-.exchange-btn {
-  font-size: 0.5rem !important;
-  padding: 0.5rem 0.8rem !important;
-}
-.exchange-result {
-  text-align: center;
-  padding: 0.5rem;
-  font-size: 0.55rem;
-  color: var(--cyan);
-}
-.exchange-result.error { color: var(--red); }
 
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 6px; }

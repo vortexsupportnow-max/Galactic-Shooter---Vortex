@@ -356,55 +356,8 @@ function initCrateHandlers() {
   updateCrateDisplay(_selectedCrate);
   updateSkinCrateDisplay(_selectedSkinCrate);
 
-  // Exchange handlers
-  initExchangeHandlers();
 }
 
-const EXCHANGE_RATES = {
-  gems_to_coins_10:   { cost_gems: 5,  give_coins: 250 },
-  gems_to_coins_25:   { cost_gems: 10, give_coins: 550 },
-  gems_to_coins_50:   { cost_gems: 25, give_coins: 1500 },
-  coins_to_gems_100:  { cost_coins: 500,  give_gems: 1 },
-  coins_to_gems_500:  { cost_coins: 2200, give_gems: 5 },
-  coins_to_gems_1000: { cost_coins: 4000, give_gems: 10 }
-};
-
-function initExchangeHandlers() {
-  document.querySelectorAll('.exchange-btn').forEach(btn => {
-    btn.addEventListener('click', () => performExchange(btn.dataset.exchange));
-  });
-}
-
-async function performExchange(exchangeId) {
-  const rate = EXCHANGE_RATES[exchangeId];
-  if (!rate) return;
-
-  const resultEl = document.getElementById('exchange-result');
-  resultEl.classList.remove('hidden', 'error');
-
-  const res = await apiFetch('/game/exchange', {
-    method: 'POST',
-    body: JSON.stringify({ exchange_id: exchangeId })
-  });
-
-  if (res.success) {
-    resultEl.textContent = rate.give_coins
-      ? `✅ +${rate.give_coins} monete!`
-      : `✅ +${rate.give_gems} gemme!`;
-    resultEl.classList.remove('error');
-    updateCurrency();
-    // Update local display
-    if (_profileData) {
-      document.getElementById('crates-coins').textContent = formatNumber(res.data?.coins ?? _profileData.coins);
-      document.getElementById('crates-gems').textContent = formatNumber(res.data?.gems ?? _profileData.gems);
-    }
-  } else {
-    resultEl.textContent = `❌ ${res.error || 'Fondi insufficienti'}`;
-    resultEl.classList.add('error');
-  }
-
-  setTimeout(() => resultEl.classList.add('hidden'), 3000);
-}
 
 function updateCrateDisplay(type) {
   const def = CRATE_DEFS[type];
