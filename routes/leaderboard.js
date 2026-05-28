@@ -33,4 +33,15 @@ router.get('/waves', async (req, res) => {
   }
 });
 
+router.get('/boss-rush', async (req, res) => {
+  try {
+    const supabase = getDB();
+    const { data, error } = await supabase.rpc('get_boss_rush_leaderboard');
+    if (error) throw new Error(error.message);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

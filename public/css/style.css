@@ -1702,3 +1702,108 @@ html, body {
 .ability-info-name { font-size: 0.75rem; color: var(--white); }
 .ability-info-desc { font-size: 0.45rem; color: #ccccdd; line-height: 1.9; }
 .ability-info-level { font-size: 0.5rem; color: var(--yellow); }
+
+/* ===== BOSS RUSH MODE SELECT ===== */
+.mode-select-box {
+  max-width: 420px; width: 92%;
+  padding: 1.5rem 1.2rem;
+  gap: 1.2rem;
+}
+.mode-select-title {
+  font-size: 0.9rem; letter-spacing: 0.15em; color: var(--cyan);
+  text-align: center; margin: 0;
+}
+.mode-cards {
+  display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+}
+.mode-card {
+  flex: 1 1 140px; max-width: 180px;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid var(--gray);
+  border-radius: 10px;
+  padding: 1rem 0.8rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+  text-align: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.mode-card--normal { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0,255,255,0.2); }
+.mode-card--boss-rush { border-color: #ff3355; box-shadow: 0 0 12px rgba(255,51,85,0.2); }
+.mode-card--locked { opacity: 0.75; }
+.mode-card-icon { font-size: 2rem; line-height: 1; }
+.mode-card-name { font-size: 0.75rem; letter-spacing: 0.12em; color: var(--white); }
+.mode-card-desc { font-size: 0.4rem; color: #aaaacc; line-height: 1.7; }
+.mode-card-locked {
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  padding: 0.5rem;
+  background: rgba(255,51,85,0.08);
+  border: 1px solid rgba(255,51,85,0.3);
+  border-radius: 6px;
+  width: 100%;
+}
+.br-lock-icon { font-size: 1.1rem; }
+.br-lock-label { font-size: 0.38rem; color: #ff3355; letter-spacing: 0.08em; }
+.br-countdown {
+  font-size: 0.55rem; color: var(--yellow); letter-spacing: 0.1em;
+  font-family: var(--font);
+}
+.btn-red {
+  background: linear-gradient(135deg, #cc1133, #ff3355);
+  color: var(--white); border: none;
+  padding: 0.5rem 1.2rem;
+  font-size: 0.5rem; letter-spacing: 0.1em;
+  cursor: pointer; border-radius: 4px;
+  transition: opacity 0.2s;
+}
+.btn-red:hover { opacity: 0.85; }
+.btn-ghost {
+  background: transparent; color: var(--gray);
+  border: 1px solid var(--gray);
+  padding: 0.4rem 1.2rem;
+  font-size: 0.45rem; letter-spacing: 0.1em;
+  cursor: pointer; border-radius: 4px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.btn-ghost:hover { color: var(--white); border-color: var(--white); }
+
+/* ===== BOSS RUSH LEADERBOARD TAB ===== */
+.lb-tab--boss-rush { color: #ff3355 !important; }
+.lb-tab--boss-rush.active {
+  border-bottom-color: #ff3355 !important;
+  color: #ff3355 !important;
+}
+
+/* ===== BOSS RUSH SKIN FILTER ===== */
+.skin-filters {
+  display: flex; gap: 0.5rem; justify-content: center;
+  padding: 0.4rem 0 0.6rem;
+  flex-wrap: wrap;
+}
+.skin-filter-btn {
+  background: transparent;
+  border: 1px solid var(--gray);
+  color: var(--gray);
+  padding: 0.3rem 0.8rem;
+  font-size: 0.42rem; letter-spacing: 0.08em;
+  cursor: pointer; border-radius: 20px;
+  font-family: var(--font);
+  transition: color 0.2s, border-color 0.2s;
+}
+.skin-filter-btn:hover, .skin-filter-btn.active {
+  color: var(--white); border-color: var(--white);
+}
+.boss-rush-filter-btn.active { color: #ff3355; border-color: #ff3355; }
+
+/* ===== BOSS RUSH EXCLUSIVE SKIN TAG ===== */
+.skin-br-tag {
+  color: #ff3355 !important; border-color: #ff3355 !important;
+}
+.br-lock-label-card {
+  font-size: 0.38rem;
+  cursor: help;
+}
+.br-lock-obj {
+  display: block; margin-top: 0.15rem;
+  font-size: 0.35rem; color: #ffaacc;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 120px;
+}

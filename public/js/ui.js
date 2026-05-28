@@ -5,9 +5,14 @@ let _selectedAbilityForSlot = null;
 let _lbType = 'scores';
 let _lbFilter = 'all';
 let _collFilter = 'all';
+let _skinFilter = 'all';
+let _brAuraStatus = {};
 let _wheelCountdownTimer = null;
 let _wheelRotation = 0;
 let _wheelSpinning = false;
+let _brCountdownTimer = null;
+
+const BR_UNLOCK_DATE = new Date('2026-06-01T00:00:00Z');
 
 const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
@@ -488,11 +493,25 @@ function showLeaderboard() {
   document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
   document.querySelector('.lb-tab[data-type="scores"]').classList.add('active');
   document.querySelectorAll('.lb-filter').forEach(f => f.classList.remove('active'));
-  document.querySelector('.lb-filter[data-filter="all"]').classList.add('active');
+  const firstFilter = document.querySelector('.lb-filter[data-filter="all"]');
+  if (firstFilter) firstFilter.classList.add('active');
+  _syncLbTableVisibility();
   loadLeaderboard();
 }
 
+function _syncLbTableVisibility() {
+  const isBossRush = _lbType === 'boss_rush';
+  document.getElementById('lb-table-normal').classList.toggle('hidden', isBossRush);
+  document.getElementById('lb-table-boss-rush').classList.toggle('hidden', !isBossRush);
+  const filtersEl = document.getElementById('lb-filters-normal');
+  if (filtersEl) filtersEl.classList.toggle('hidden', isBossRush);
+}
+
 async function loadLeaderboard() {
+  if (_lbType === 'boss_rush') {
+    return loadBossRushLeaderboard();
+  }
+
   const tbody = document.getElementById('lb-tbody');
   tbody.innerHTML = '<tr><td colspan="4" class="loading">LOADING...</td></tr>';
 
@@ -525,12 +544,40 @@ async function loadLeaderboard() {
   }).join('');
 }
 
+async function loadBossRushLeaderboard() {
+  const tbody = document.getElementById('lb-tbody-boss-rush');
+  tbody.innerHTML = '<tr><td colspan="4" class="loading">LOADING...</td></tr>';
+  const res = await apiFetch('/leaderboard/boss-rush');
+  if (!res.success) {
+    tbody.innerHTML = '<tr><td colspan="4" class="loading">ERROR</td></tr>';
+    return;
+  }
+  const currentNick = getNickname();
+  if (!res.data || res.data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="loading">NO DATA</td></tr>';
+    return;
+  }
+  tbody.innerHTML = res.data.map((row, i) => {
+    const isCurrent = row.nickname === currentNick;
+    const totalSec = Math.floor((row.total_time_ms || 0) / 1000);
+    const mm = Math.floor(totalSec / 60).toString().padStart(2,'0');
+    const ss = (totalSec % 60).toString().padStart(2,'0');
+    return `<tr class="${isCurrent ? 'current-user' : ''}">
+      <td>${i+1}</td>
+      <td>${row.nickname}</td>
+      <td>${row.bosses_defeated} 💀</td>
+      <td>${mm}:${ss}</td>
+    </tr>`;
+  }).join('');
+}
+
 function initLeaderboardHandlers() {
   document.querySelectorAll('.lb-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       _lbType = tab.dataset.type;
+      _syncLbTableVisibility();
       loadLeaderboard();
     });
   });
@@ -557,16 +604,8 @@ function initCollectionHandlers() {
 }
 
 function initMenuHandlers() {
-  document.getElementById('btn-play').addEventListener('click', async () => {
-    // Fetch unlocked abilities + equipped skin first
-    const res = await apiFetch('/game/profile');
-    const ownedAbilityIds = res.success ? (res.data.abilities || []).map(a => a.ability_id) : [];
-    const equippedSkin    = res.success ? (res.data.equipped_skin || 'default') : 'default';
-    const skinBoosts      = getEquippedSkinBoosts(equippedSkin);
-    const skinColor       = SKINS[equippedSkin]?.color || null;
-    const skinTrail       = getEquippedSkinTrail(equippedSkin);
-    showScreen('game');
-    startGame([null, null, null], ownedAbilityIds, skinBoosts, skinColor, skinTrail);
+  document.getElementById('btn-play').addEventListener('click', () => {
+    openModeSelect();
   });
   document.getElementById('btn-collection').addEventListener('click', showCollection);
   document.getElementById('btn-crates').addEventListener('click', showCrateShop);
@@ -597,6 +636,93 @@ function openPatchNotes() {
 function initPatchNotesHandlers() {
   document.getElementById('patchnotes-close').addEventListener('click', () => {
     document.getElementById('patchnotes-overlay').classList.add('hidden');
+  });
+}
+
+// ===== MODE SELECT =====
+
+function openModeSelect() {
+  document.getElementById('mode-select-overlay').classList.remove('hidden');
+  _updateBossRushLock();
+  _startBRCountdown();
+}
+
+function closeModeSelect() {
+  document.getElementById('mode-select-overlay').classList.add('hidden');
+  _stopBRCountdown();
+}
+
+function _isBossRushUnlocked() {
+  return Date.now() >= BR_UNLOCK_DATE.getTime();
+}
+
+function _updateBossRushLock() {
+  const lockEl  = document.getElementById('boss-rush-lock');
+  const btnEl   = document.getElementById('mode-btn-boss-rush');
+  const cardEl  = document.getElementById('mode-card-boss-rush');
+  if (_isBossRushUnlocked()) {
+    if (lockEl) lockEl.classList.add('hidden');
+    if (btnEl)  btnEl.classList.remove('hidden');
+    if (cardEl) cardEl.classList.remove('mode-card--locked');
+  } else {
+    if (lockEl) lockEl.classList.remove('hidden');
+    if (btnEl)  btnEl.classList.add('hidden');
+    if (cardEl) cardEl.classList.add('mode-card--locked');
+  }
+}
+
+function _startBRCountdown() {
+  _stopBRCountdown();
+  function tick() {
+    const el = document.getElementById('br-countdown');
+    if (!el) return;
+    const diff = BR_UNLOCK_DATE.getTime() - Date.now();
+    if (diff <= 0) {
+      el.textContent = 'UNLOCKED!';
+      _updateBossRushLock();
+      return;
+    }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    el.textContent = d > 0
+      ? `${d}d ${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`
+      : `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  tick();
+  _brCountdownTimer = setInterval(tick, 1000);
+}
+
+function _stopBRCountdown() {
+  if (_brCountdownTimer) { clearInterval(_brCountdownTimer); _brCountdownTimer = null; }
+}
+
+function initModeSelectHandlers() {
+  document.getElementById('mode-select-close').addEventListener('click', closeModeSelect);
+
+  document.getElementById('mode-btn-normal').addEventListener('click', async () => {
+    closeModeSelect();
+    const res = await apiFetch('/game/profile');
+    const ownedAbilityIds = res.success ? (res.data.abilities || []).map(a => a.ability_id) : [];
+    const equippedSkin    = res.success ? (res.data.equipped_skin || 'default') : 'default';
+    const skinBoosts      = getEquippedSkinBoosts(equippedSkin);
+    const skinColor       = SKINS[equippedSkin]?.color || null;
+    const skinTrail       = getEquippedSkinTrail(equippedSkin);
+    showScreen('game');
+    startGame([null, null, null], ownedAbilityIds, skinBoosts, skinColor, skinTrail);
+  });
+
+  document.getElementById('mode-btn-boss-rush').addEventListener('click', async () => {
+    if (!_isBossRushUnlocked()) return;
+    closeModeSelect();
+    const res = await apiFetch('/game/profile');
+    const equippedSkin = res.success ? (res.data.equipped_skin || 'default') : 'default';
+    const skinBoosts   = getEquippedSkinBoosts(equippedSkin);
+    const skinColor    = SKINS[equippedSkin]?.color || null;
+    const skinTrail    = getEquippedSkinTrail(equippedSkin);
+    showScreen('game');
+    startBossRush(skinBoosts, skinColor, skinTrail);
   });
 }
 
@@ -1033,27 +1159,35 @@ function renderSkinGrid() {
   const owned     = new Set(_profileData?.skins || []);
   const equipped  = _profileData?.equipped_skin || 'default';
 
-  const all = Object.values(SKINS);
+  let all = Object.values(SKINS);
+
+  // Apply Boss Rush filter
+  if (_skinFilter === 'boss_rush') {
+    all = all.filter(s => s.boss_rush_exclusive);
+  }
+
   grid.innerHTML = '';
 
-  // Default skin card
-  const defCard = document.createElement('div');
-  defCard.className = `skin-card common ${equipped === 'default' ? 'equipped' : ''}`;
-  defCard.innerHTML = `
-    <div class="skin-rarity-tag">DEFAULT</div>
-    <div class="skin-emoji">🚀</div>
-    <div class="skin-name">DEFAULT</div>
-    <div class="skin-desc" style="color:#555">No boost</div>
-    ${equipped === 'default'
-      ? '<div class="skin-equipped-label">✓ EQUIPAGGIATA</div>'
-      : '<button class="skin-equip-btn" data-skin="default">EQUIP</button>'}
-  `;
-  if (equipped !== 'default') {
-    defCard.querySelector('.skin-equip-btn').addEventListener('click', e => {
-      e.stopPropagation(); equipSkin('default');
-    });
+  // Default skin card (only show in 'all' filter)
+  if (_skinFilter === 'all') {
+    const defCard = document.createElement('div');
+    defCard.className = `skin-card common ${equipped === 'default' ? 'equipped' : ''}`;
+    defCard.innerHTML = `
+      <div class="skin-rarity-tag">DEFAULT</div>
+      <div class="skin-emoji">🚀</div>
+      <div class="skin-name">DEFAULT</div>
+      <div class="skin-desc" style="color:#555">No boost</div>
+      ${equipped === 'default'
+        ? '<div class="skin-equipped-label">✓ EQUIPAGGIATA</div>'
+        : '<button class="skin-equip-btn" data-skin="default">EQUIP</button>'}
+    `;
+    if (equipped !== 'default') {
+      defCard.querySelector('.skin-equip-btn').addEventListener('click', e => {
+        e.stopPropagation(); equipSkin('default');
+      });
+    }
+    grid.appendChild(defCard);
   }
-  grid.appendChild(defCard);
 
   for (const skin of all) {
     const isOwned    = owned.has(skin.id);
@@ -1068,6 +1202,16 @@ function renderSkinGrid() {
     if (skin.boost.extra_lives > 0)     boostLines.push(`❤️ +${skin.boost.extra_lives} ${skin.boost.extra_lives === 1 ? 'life' : 'lives'}`);
     if (skin.boost.starting_shield)     boostLines.push(`🛡️ Start shielded`);
 
+    let lockLabel = '<div class="skin-locked-label">🔒 BLOCCATA</div>';
+    if (skin.boss_rush_exclusive) {
+      const obj = skin.unlock_objective || 'Obiettivo Boss Rush';
+      lockLabel = `<div class="skin-locked-label br-lock-label-card" title="${obj}">🔒 <span class="br-lock-obj">${obj}</span></div>`;
+    } else if (skin.season_exclusive) {
+      lockLabel = '<div class="skin-locked-label">🌸 SOLO DAL PASS</div>';
+    } else if (skin.streak_exclusive) {
+      lockLabel = '<div class="skin-locked-label">🔥 STREAK 30 GIORNI</div>';
+    }
+
     card.innerHTML = `
       <div class="skin-rarity-tag">${skin.rarity.toUpperCase()}</div>
       <div class="skin-emoji">${skin.emoji}</div>
@@ -1076,15 +1220,12 @@ function renderSkinGrid() {
       <div class="skin-boosts">${boostLines.join(' · ')}</div>
       ${skin.season_exclusive ? '<div class="skin-season-tag">🌸 JAPAN SEASON</div>' : ''}
       ${skin.streak_exclusive ? '<div class="skin-season-tag" style="color:#ff6600;border-color:#ff6600">🔥 STREAK EXCLUSIVE</div>' : ''}
+      ${skin.boss_rush_exclusive ? '<div class="skin-season-tag skin-br-tag">⚡ BOSS RUSH</div>' : ''}
       ${isOwned
         ? isEquipped
           ? '<div class="skin-equipped-label">✓ EQUIPAGGIATA</div>'
           : `<button class="skin-equip-btn" data-skin="${skin.id}">EQUIP</button>`
-        : skin.season_exclusive
-          ? '<div class="skin-locked-label">🌸 SOLO DAL PASS</div>'
-          : skin.streak_exclusive
-            ? '<div class="skin-locked-label">🔥 STREAK 30 GIORNI</div>'
-            : '<div class="skin-locked-label">🔒 BLOCCATA</div>'}
+        : lockLabel}
     `;
 
     if (isOwned && !isEquipped) {
@@ -1094,6 +1235,17 @@ function renderSkinGrid() {
     }
     grid.appendChild(card);
   }
+}
+
+function initSkinFilterHandlers() {
+  document.querySelectorAll('.skin-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.skin-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _skinFilter = btn.dataset.filter;
+      renderSkinGrid();
+    });
+  });
 }
 
 async function equipSkin(skinId) {

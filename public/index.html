@@ -126,6 +126,33 @@
       </div>
     </div>
 
+    <!-- Mode Select Overlay -->
+    <div id="mode-select-overlay" class="overlay hidden">
+      <div class="overlay-box mode-select-box">
+        <h3 class="mode-select-title">⚡ SELECT MODE</h3>
+        <div class="mode-cards">
+          <div class="mode-card mode-card--normal" id="mode-card-normal">
+            <div class="mode-card-icon">🚀</div>
+            <div class="mode-card-name">NORMALE</div>
+            <div class="mode-card-desc">Onde infinite di nemici.<br>Sopravvivi il più a lungo possibile.</div>
+            <button class="btn btn-cyan" id="mode-btn-normal">PLAY</button>
+          </div>
+          <div class="mode-card mode-card--boss-rush" id="mode-card-boss-rush">
+            <div class="mode-card-icon">💀</div>
+            <div class="mode-card-name">BOSS RUSH</div>
+            <div class="mode-card-desc">5 boss cosmici in sequenza.<br>Nessun respawn. Solo il migliore sopravvive.</div>
+            <div class="mode-card-locked" id="boss-rush-lock">
+              <div class="br-lock-icon">🔒</div>
+              <div class="br-lock-label">SI SBLOCCA IL 1 GIUGNO 2026</div>
+              <div class="br-countdown" id="br-countdown">--:--:--</div>
+            </div>
+            <button class="btn btn-red hidden" id="mode-btn-boss-rush">PLAY BOSS RUSH</button>
+          </div>
+        </div>
+        <button class="btn btn-ghost" id="mode-select-close">ANNULLA</button>
+      </div>
+    </div>
+
     <!-- Patch Notes Overlay -->
     <div id="patchnotes-overlay" class="overlay hidden">
       <div class="overlay-box patchnotes-box">
@@ -235,6 +262,11 @@
         </div>
       </div>
 
+      <div class="skin-filters" id="skin-filters">
+        <button class="skin-filter-btn active" data-filter="all">ALL</button>
+        <button class="skin-filter-btn boss-rush-filter-btn" data-filter="boss_rush">⚡ BOSS RUSH</button>
+      </div>
+
       <div class="skin-grid" id="skin-grid">
         <div class="loading">LOADING...</div>
       </div>
@@ -337,14 +369,15 @@
       <div class="lb-tabs">
         <button class="lb-tab active" data-type="scores">SCORE</button>
         <button class="lb-tab" data-type="waves">WAVE</button>
+        <button class="lb-tab lb-tab--boss-rush" data-type="boss_rush">⚡ BOSS RUSH</button>
       </div>
-      <div class="lb-filters">
+      <div class="lb-filters" id="lb-filters-normal">
         <button class="lb-filter active" data-filter="all">ALL TIME</button>
         <button class="lb-filter" data-filter="weekly">WEEKLY</button>
         <button class="lb-filter" data-filter="daily">DAILY</button>
       </div>
       <div class="lb-table-wrapper">
-        <table class="lb-table">
+        <table class="lb-table" id="lb-table-normal">
           <thead>
             <tr>
               <th>#</th>
@@ -354,6 +387,19 @@
             </tr>
           </thead>
           <tbody id="lb-tbody">
+            <tr><td colspan="4" class="loading">LOADING...</td></tr>
+          </tbody>
+        </table>
+        <table class="lb-table hidden" id="lb-table-boss-rush">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>PILOT</th>
+              <th>BOSS</th>
+              <th>TEMPO</th>
+            </tr>
+          </thead>
+          <tbody id="lb-tbody-boss-rush">
             <tr><td colspan="4" class="loading">LOADING...</td></tr>
           </tbody>
         </table>
@@ -487,6 +533,7 @@
   <script src="/js/entities.js"></script>
   <script src="/js/hud.js"></script>
   <script src="/js/game.js"></script>
+  <script src="/js/boss_rush.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/ui.js"></script>
   <script src="/js/season_pass.js"></script>

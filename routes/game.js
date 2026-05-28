@@ -71,7 +71,13 @@ const SKINS = {
   rising_sun:        { id: 'rising_sun',         name: 'Rising Sun',        rarity: 'epic',      season_exclusive: true, boost: { coins_mult: 1.00, gems_mult: 1.10, score_mult: 1.20, extra_lives: 0, starting_shield: false } },
   torii_gate:        { id: 'torii_gate',         name: 'Torii Gate',        rarity: 'legendary', season_exclusive: true, boost: { coins_mult: 1.25, gems_mult: 1.25, score_mult: 1.00, extra_lives: 1, starting_shield: true  } },
   // Streak-exclusive (day 30 reward — NOT obtainable from crates)
-  streak_inferno:    { id: 'streak_inferno',     name: 'Streak Inferno',    rarity: 'legendary', streak_exclusive: true, boost: { coins_mult: 1.35, gems_mult: 1.35, score_mult: 1.30, extra_lives: 2, starting_shield: true  } }
+  streak_inferno:    { id: 'streak_inferno',     name: 'Streak Inferno',    rarity: 'legendary', streak_exclusive: true, boost: { coins_mult: 1.35, gems_mult: 1.35, score_mult: 1.30, extra_lives: 2, starting_shield: true  } },
+  // Boss Rush Exclusive auras
+  br_singularity:    { id: 'br_singularity',     name: 'SINGULARITY',       rarity: 'legendary', boss_rush_exclusive: true, boost: { coins_mult: 1.00, gems_mult: 1.00, score_mult: 1.40, extra_lives: 0, starting_shield: false } },
+  br_nova_crown:     { id: 'br_nova_crown',      name: 'NOVA CROWN',        rarity: 'legendary', boss_rush_exclusive: true, boost: { coins_mult: 1.40, gems_mult: 1.40, score_mult: 1.00, extra_lives: 0, starting_shield: false } },
+  br_void_wraith:    { id: 'br_void_wraith',     name: 'VOID WRAITH',       rarity: 'legendary', boss_rush_exclusive: true, boost: { coins_mult: 1.00, gems_mult: 1.00, score_mult: 1.35, extra_lives: 1, starting_shield: false } },
+  br_binary_star:    { id: 'br_binary_star',     name: 'BINARY STAR',       rarity: 'legendary', boss_rush_exclusive: true, boost: { coins_mult: 1.20, gems_mult: 1.20, score_mult: 1.20, extra_lives: 0, starting_shield: true  } },
+  br_eternal_nemesis:{ id: 'br_eternal_nemesis', name: 'ETERNAL NEMESIS',   rarity: 'legendary', boss_rush_exclusive: true, boost: { coins_mult: 1.30, gems_mult: 1.30, score_mult: 1.50, extra_lives: 2, starting_shield: true  } }
 };
 
 const SKINS_BY_RARITY = {
@@ -1207,6 +1213,102 @@ router.post('/claim-pass-tier', async (req, res) => {
     }
 
     res.json({ success: true, data: { tier, reward, rewardDesc } });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+// ── Boss Rush Mode ────────────────────────────────────────────────────────────
+
+// Aura unlock objective IDs and their condition checks
+const BR_AURA_CONDITIONS = {
+  br_singularity:    stats => stats.fastest_boss_streak >= 5,
+  br_nova_crown:     stats => stats.no_ability_runs >= 1,
+  br_void_wraith:    stats => stats.no_hit_phase2_count >= 1,
+  br_binary_star:    stats => Object.values(stats.boss_kill_counts || {}).some(v => v >= 50),
+  br_eternal_nemesis: stats => stats.total_bosses_killed >= 100
+};
+
+router.post('/save-boss-rush-score', async (req, res) => {
+  try {
+    const { bossesDefeated, totalTimeMs, score, bossKillCounts, noAbilitiesUsed, noHitPhase2, fastBossStreak } = req.body;
+    const supabase = getDB();
+    const userId = req.user.userId;
+
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('nickname, coins, gems')
+      .eq('id', userId)
+      .single();
+    if (userErr) throw new Error(userErr.message);
+
+    // Save run score
+    await supabase
+      .from('boss_rush_scores')
+      .insert({ user_id: userId, nickname: user.nickname, bosses_defeated: bossesDefeated || 0, total_time_ms: totalTimeMs || 0, score: score || 0 });
+
+    // Upsert boss rush stats
+    const { data: existing } = await supabase
+      .from('boss_rush_stats')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    const prevCounts = existing?.boss_kill_counts || {};
+    const newCounts = { ...prevCounts };
+    for (const [bossId, kills] of Object.entries(bossKillCounts || {})) {
+      newCounts[bossId] = (newCounts[bossId] || 0) + kills;
+    }
+
+    const newStats = {
+      user_id:              userId,
+      total_bosses_killed:  (existing?.total_bosses_killed || 0) + (bossesDefeated || 0),
+      total_runs:           (existing?.total_runs || 0) + 1,
+      no_ability_runs:      (existing?.no_ability_runs || 0) + (noAbilitiesUsed ? 1 : 0),
+      no_hit_phase2_count:  (existing?.no_hit_phase2_count || 0) + (noHitPhase2 ? 1 : 0),
+      fastest_boss_streak:  Math.max(existing?.fastest_boss_streak || 0, fastBossStreak || 0),
+      boss_kill_counts:     newCounts,
+      updated_at:           new Date().toISOString()
+    };
+
+    await supabase.from('boss_rush_stats').upsert(newStats, { onConflict: 'user_id' });
+
+    // Check aura unlocks
+    const auraUnlocked = [];
+    for (const [auraId, checkFn] of Object.entries(BR_AURA_CONDITIONS)) {
+      if (checkFn(newStats)) {
+        const { data: alreadyUnlocked } = await supabase
+          .from('user_skins').select('skin_id').eq('user_id', userId).eq('skin_id', auraId).maybeSingle();
+        if (!alreadyUnlocked) {
+          await supabase.from('user_skins').insert({ user_id: userId, skin_id: auraId });
+          auraUnlocked.push(auraId);
+        }
+      }
+    }
+
+    // Small coins/gems reward for boss rush
+    const coinsEarned = Math.floor((score || 0) / 100);
+    const gemsEarned  = bossesDefeated || 0;
+    await supabase.from('users').update({ coins: user.coins + coinsEarned, gems: user.gems + gemsEarned }).eq('id', userId);
+
+    res.json({ success: true, data: { coinsEarned, gemsEarned, auraUnlocked } });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
+router.get('/boss-rush-stats', async (req, res) => {
+  try {
+    const supabase = getDB();
+    const userId = req.user.userId;
+    const { data: stats } = await supabase.from('boss_rush_stats').select('*').eq('user_id', userId).maybeSingle();
+    const { data: skins  } = await supabase.from('user_skins').select('skin_id').eq('user_id', userId);
+    const ownedSkins = (skins || []).map(s => s.skin_id);
+    const auraStatus = {};
+    for (const auraId of Object.keys(BR_AURA_CONDITIONS)) {
+      auraStatus[auraId] = ownedSkins.includes(auraId);
+    }
+    res.json({ success: true, data: { stats: stats || {}, auraStatus } });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }

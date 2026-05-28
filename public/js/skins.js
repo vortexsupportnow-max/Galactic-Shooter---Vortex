@@ -119,6 +119,53 @@ const SKINS = {
     streak_exclusive: true,
     boost: { coins_mult: 1.35, gems_mult: 1.35, score_mult: 1.30, extra_lives: 2, starting_shield: true },
     trail: { colors: ['#ff6600', '#ff2200', '#ffaa00', '#ffff44', '#ffffff'], count: 5, speed: 3.0, size: 5, decay: 0.015, spread: 10 }
+  },
+
+  // ── Boss Rush Exclusive Auras (unlockable via in-game objectives) ─────────────
+  br_singularity: {
+    id: 'br_singularity', name: 'SINGULARITY', rarity: 'legendary',
+    color: '#111111', emoji: '🕳️',
+    description: 'Aura nera con distorsione spaziale pulsante',
+    boss_rush_exclusive: true,
+    unlock_objective: 'Sconfiggi 5 boss consecutivi in meno di 2 minuti ciascuno',
+    boost: { coins_mult: 1.00, gems_mult: 1.00, score_mult: 1.40, extra_lives: 0, starting_shield: false },
+    trail: { colors: ['#000000', '#330033', '#660066', '#220022', '#440044'], count: 6, speed: 1.0, size: 6, decay: 0.01, spread: 12 }
+  },
+  br_nova_crown: {
+    id: 'br_nova_crown', name: 'NOVA CROWN', rarity: 'legendary',
+    color: '#ffcc00', emoji: '👑',
+    description: 'Aura dorata con esplosioni solari agli angoli',
+    boss_rush_exclusive: true,
+    unlock_objective: 'Completa una run intera senza mai usare un\'abilità',
+    boost: { coins_mult: 1.40, gems_mult: 1.40, score_mult: 1.00, extra_lives: 0, starting_shield: false },
+    trail: { colors: ['#ffcc00', '#ffee44', '#ffffff', '#ffaa00', '#ff8800'], count: 6, speed: 2.8, size: 5, decay: 0.012, spread: 11 }
+  },
+  br_void_wraith: {
+    id: 'br_void_wraith', name: 'VOID WRAITH', rarity: 'legendary',
+    color: '#4400aa', emoji: '🌑',
+    description: 'Aura viola scuro con tentacoli d\'ombra animati',
+    boss_rush_exclusive: true,
+    unlock_objective: 'Subisci zero danni durante una fase 2 di qualsiasi boss',
+    boost: { coins_mult: 1.00, gems_mult: 1.00, score_mult: 1.35, extra_lives: 1, starting_shield: false },
+    trail: { colors: ['#4400aa', '#220066', '#6600cc', '#aa00ff', '#000000'], count: 6, speed: 2.2, size: 5, decay: 0.015, spread: 10 }
+  },
+  br_binary_star: {
+    id: 'br_binary_star', name: 'BINARY STAR', rarity: 'legendary',
+    color: '#aaeeff', emoji: '⭐',
+    description: 'Doppia aura bianca e azzurra che orbita il giocatore',
+    boss_rush_exclusive: true,
+    unlock_objective: 'Sconfiggi lo stesso boss per 50 volte totali nel corso delle run',
+    boost: { coins_mult: 1.20, gems_mult: 1.20, score_mult: 1.20, extra_lives: 0, starting_shield: true },
+    trail: { colors: ['#ffffff', '#aaeeff', '#66ccff', '#ffffff', '#aaddff'], count: 6, speed: 2.5, size: 4, decay: 0.013, spread: 9 }
+  },
+  br_eternal_nemesis: {
+    id: 'br_eternal_nemesis', name: 'ETERNAL NEMESIS', rarity: 'legendary',
+    color: '#ff0000', emoji: '💀',
+    description: 'Aura rossa con frammenti di boss abbattuti che orbitano',
+    boss_rush_exclusive: true,
+    unlock_objective: 'Sconfiggi almeno 100 boss totali in modalità Boss Rush',
+    boost: { coins_mult: 1.30, gems_mult: 1.30, score_mult: 1.50, extra_lives: 2, starting_shield: true },
+    trail: { colors: ['#ff0000', '#cc0000', '#ff4400', '#ff8800', '#660000'], count: 7, speed: 3.5, size: 6, decay: 0.010, spread: 13 }
   }
 };
 
