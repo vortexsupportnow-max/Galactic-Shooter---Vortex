@@ -126,10 +126,10 @@ class BossRushGame extends GalacticGame {
 
     // Update player
     const p = gs.player;
-    const spd = (p.speedBoost ? 5.5 : 3.5) * (p.joystickVX !== undefined ? 1 : 1);
-    if (this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A']) p.x -= (p.speedBoost ? 5.5 : 3.5) * dt/16.667;
-    if (this.keys['ArrowRight'] || this.keys['d'] || this.keys['D']) p.x += (p.speedBoost ? 5.5 : 3.5) * dt/16.667;
-    if (p.joystickVX) p.x += p.joystickVX * (p.speedBoost ? 5.5 : 3.5) * dt/16.667;
+    const spd = (p.speedBoost ? 5.5 : 3.5) * dt/16.667;
+    if (this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A']) p.x -= spd;
+    if (this.keys['ArrowRight'] || this.keys['d'] || this.keys['D']) p.x += spd;
+    if (p.joystickVX) p.x += p.joystickVX * spd;
     p.x = Math.max(18, Math.min(462, p.x));
 
     // Update timers
