@@ -420,5 +420,50 @@ const ABILITIES = {
       gs.storm = { timer: (10 + level) * 1000, interval: 300, lastStrike: 0, damage: 60 + level * 15 };
       Sounds.abilityUse();
     }
+  },
+
+  // ── Boss Rush Exclusive Abilities ────────────────────────────────────────────
+  void_pulse: {
+    id: 'void_pulse', name: 'VOID PULSE', rarity: 'legendary', icon: 'void_pulse',
+    description: 'Deals 15% of boss max HP as void damage. Boss Rush only.',
+    boss_rush_only: true,
+    maxLevel: 1,
+    apply(gs, level) {
+      if (!gs.boss) return;
+      const dmg = Math.floor(gs.boss.maxHp * 0.15);
+      gs.boss.hp = Math.max(1, gs.boss.hp - dmg);
+      gs.particles.emit(gs.boss.x, gs.boss.y, 60, '#9900ff', { speed: 7, decay: 0.025 });
+      // Void pulse shockwave effect
+      gs.voidPulseEffect = { x: gs.boss.x, y: gs.boss.y, radius: 0, maxRadius: 180, timer: 600 };
+      Sounds.abilityUse();
+    }
+  },
+  phase_lock: {
+    id: 'phase_lock', name: 'PHASE LOCK', rarity: 'legendary', icon: 'phase_lock',
+    description: 'Freezes boss in current phase for 4s, blocking phase 2 transition. Boss Rush only.',
+    boss_rush_only: true,
+    maxLevel: 1,
+    apply(gs, level) {
+      if (!gs.boss) return;
+      gs.boss.phaseLocked = true;
+      gs.boss.phaseLockTimer = 4000;
+      gs.particles.emit(gs.boss.x, gs.boss.y, 40, '#00ffff', { speed: 5, decay: 0.03 });
+      Sounds.abilityUse();
+    }
+  },
+  core_breach: {
+    id: 'core_breach', name: 'CORE BREACH', rarity: 'legendary', icon: 'core_breach',
+    description: 'Exposes boss core for 6s — all damage to boss multiplied ×3. Boss Rush only.',
+    boss_rush_only: true,
+    maxLevel: 1,
+    apply(gs, level) {
+      if (!gs.boss) return;
+      gs.boss.coreBreached = true;
+      gs.boss.coreBreachTimer = 6000;
+      gs.boss.coreDamageMult = 3;
+      gs.particles.emit(gs.boss.x, gs.boss.y, 50, '#ff4400', { speed: 6, decay: 0.02 });
+      gs.coreBreach = { x: gs.boss.x, y: gs.boss.y, timer: 6000 };
+      Sounds.abilityUse();
+    }
   }
 };

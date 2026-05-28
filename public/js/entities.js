@@ -673,6 +673,653 @@ class Boss {
   }
 }
 
+// ===== COSMIC BOSS BASE CLASS (Boss Rush) =====
+class CosmicBoss {
+  constructor(type) {
+    this.type = type;
+    this.x = 240; this.y = -100;
+    this.width = 80; this.height = 80;
+    this.maxHp = 3000;
+    this.hp = this.maxHp;
+    this.speed = 1.2;
+    this.dead = false;
+    this.stunned = false; this.frozen = false;
+    this.phase = 1;
+    this.patternTimer = 0;
+    this.patternInterval = 3500;
+    this.attackPattern = 0;
+    this.moveDir = 1;
+    this.arrived = false;
+    this.targetY = 110;
+    this.lastShot = 0;
+    this.fireRate = 900;
+    this.enraged = false;
+    this.phaseLocked = false;
+    this.phaseLockTimer = 0;
+    this.coreBreached = false;
+    this.coreBreachTimer = 0;
+    this.coreDamageMult = 1;
+    this.phaseJustChanged = false;
+    this.phaseFlashTimer = 0;
+    this._time = 0;
+  }
+
+  get isPhase2() {
+    if (this.phaseLocked) return false;
+    return this.hp / this.maxHp < 0.5;
+  }
+
+  takeDamage(amount) {
+    const mult = this.coreBreached ? this.coreDamageMult : 1;
+    const dmg = amount * mult;
+    this.hp = Math.max(0, this.hp - dmg);
+    if (this.hp <= 0) this.dead = true;
+  }
+
+  update(dt, bullets) {
+    this._time += dt;
+    const dtF = dt / 16.667;
+    if (!this.arrived) {
+      this.y += 2.5 * dtF;
+      if (this.y >= this.targetY) { this.y = this.targetY; this.arrived = true; }
+      return;
+    }
+
+    if (this.stunned || this.frozen) return;
+
+    // Phase lock timer
+    if (this.phaseLocked) {
+      this.phaseLockTimer -= dt;
+      if (this.phaseLockTimer <= 0) { this.phaseLocked = false; this.phaseLockTimer = 0; }
+    }
+
+    // Core breach timer
+    if (this.coreBreached) {
+      this.coreBreachTimer -= dt;
+      if (this.coreBreachTimer <= 0) { this.coreBreached = false; this.coreBreachTimer = 0; this.coreDamageMult = 1; }
+    }
+
+    // Phase transition detection
+    if (!this.enraged && this.hp / this.maxHp < 0.5 && !this.phaseLocked) {
+      this.enraged = true;
+      this.phase = 2;
+      this.phaseJustChanged = true;
+      this.phaseFlashTimer = 1500;
+      this.onPhase2Start();
+    }
+
+    if (this.phaseFlashTimer > 0) this.phaseFlashTimer -= dt;
+
+    const spd = this.speed * (this.isPhase2 ? 1.6 : 1);
+    this.x += spd * this.moveDir * dtF;
+    if (this.x > 430 || this.x < 50) this.moveDir *= -1;
+
+    this.patternTimer += dt;
+    if (this.patternTimer >= this.patternInterval) {
+      this.patternTimer = 0;
+      this.attackPattern = (this.attackPattern + 1) % this._patternCount();
+    }
+
+    this.lastShot += dt;
+    const fr = this.isPhase2 ? this.fireRate * 0.6 : this.fireRate;
+    if (this.lastShot >= fr) {
+      this.lastShot = 0;
+      this.fireBullets(bullets);
+    }
+  }
+
+  onPhase2Start() {}
+  _patternCount() { return 3; }
+  fireBullets(bullets) {}
+
+  drawBase(ctx) {
+    // Phase 2 aura
+    if (this.isPhase2) {
+      const pulse = 0.3 + Math.sin(Date.now() * 0.006) * 0.2;
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = this._phase2Color || '#ff0044';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 52, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Core breach overlay
+    if (this.coreBreached) {
+      const t = Date.now() * 0.008;
+      ctx.save();
+      ctx.globalAlpha = 0.5 + Math.sin(t) * 0.3;
+      ctx.strokeStyle = '#ff4400';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 40, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = '#ff4400';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Phase lock indicator
+    if (this.phaseLocked) {
+      ctx.save();
+      ctx.globalAlpha = 0.6;
+      ctx.strokeStyle = '#00ffff';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 48, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Phase transition flash
+    if (this.phaseFlashTimer > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.8, this.phaseFlashTimer / 800);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  drawHealthBar(ctx) {
+    const bw = 200; const bh = 12;
+    const bx = 240 - bw/2; const by = 30;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(bx, by, bw, bh);
+    const hpPct = this.hp / this.maxHp;
+    const color = hpPct > 0.5 ? '#00ff88' : hpPct > 0.25 ? '#ffaa00' : '#ff2244';
+    ctx.fillStyle = color;
+    ctx.fillRect(bx, by, bw * hpPct, bh);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '7px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText(this._bossName() + (this.phase === 2 ? ' [PHASE 2]' : ''), 240, 27);
+  }
+
+  _bossName() { return 'COSMIC BOSS'; }
+}
+
+// ── 1. NEBULOX – Nebula Spiral Boss ─────────────────────────────────────────
+class BossNebulox extends CosmicBoss {
+  constructor() {
+    super('nebulox');
+    this.maxHp = 2800; this.hp = this.maxHp;
+    this._phase2Color = '#9900ff';
+    this.spiralAngle = 0;
+    this.fireRate = 850;
+  }
+  _bossName() { return 'NEBULOX'; }
+  _patternCount() { return 3; }
+  onPhase2Start() { this.spiralAngle = 0; }
+
+  fireBullets(bullets) {
+    const p = this.attackPattern;
+    if (p === 0) this._spiral(bullets);
+    else if (p === 1) this._burst(bullets);
+    else this._aimed(bullets);
+  }
+
+  _spiral(bullets) {
+    const arms = this.isPhase2 ? 4 : 2;
+    const spd = this.isPhase2 ? 3.5 : 2.5;
+    for (let a = 0; a < arms; a++) {
+      const angle = this.spiralAngle + (a * Math.PI * 2 / arms);
+      bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 18, 'enemy'));
+    }
+    this.spiralAngle += 0.25;
+  }
+
+  _burst(bullets) {
+    const count = this.isPhase2 ? 16 : 10;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const spd = this.isPhase2 ? 3 : 2.2;
+      bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 15, 'enemy'));
+    }
+  }
+
+  _aimed(bullets) {
+    const count = this.isPhase2 ? 5 : 3;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.PI/2 + (i - Math.floor(count/2)) * 0.22;
+      const spd = this.isPhase2 ? 4 : 3;
+      bullets.push(new Bullet(this.x + (i-2)*14, this.y+36, Math.cos(angle)*spd, Math.sin(angle)*spd, 20, 'enemy'));
+    }
+  }
+
+  draw(ctx) {
+    this.drawBase(ctx);
+    // Body: swirling nebula
+    const t = Date.now() * 0.002;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(t * 0.5);
+    const grad = ctx.createRadialGradient(0, 0, 8, 0, 0, 40);
+    grad.addColorStop(0, '#cc44ff');
+    grad.addColorStop(0.5, '#6600cc');
+    grad.addColorStop(1, 'rgba(50,0,80,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, 40, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#aa44ff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Tentacles
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + t;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(Math.cos(a+0.5)*28, Math.sin(a+0.5)*28, Math.cos(a)*44, Math.sin(a)*44);
+      ctx.strokeStyle = `rgba(170,68,255,0.5)`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    ctx.restore();
+    this.drawHealthBar(ctx);
+  }
+}
+
+// ── 2. VOID TYRANT – Void Teleporter Boss ────────────────────────────────────
+class BossVoidTyrant extends CosmicBoss {
+  constructor() {
+    super('void_tyrant');
+    this.maxHp = 3200; this.hp = this.maxHp;
+    this._phase2Color = '#000066';
+    this.teleportTimer = 5000;
+    this.fireRate = 800;
+  }
+  _bossName() { return 'VOID TYRANT'; }
+  _patternCount() { return 3; }
+  onPhase2Start() { this.teleportTimer = 2500; }
+
+  update(dt, bullets) {
+    super.update(dt, bullets);
+    if (!this.arrived) return;
+    this.teleportTimer -= dt;
+    if (this.teleportTimer <= 0) {
+      this.x = 60 + Math.random() * 360;
+      this.teleportTimer = this.isPhase2 ? 2000 : 5000;
+    }
+  }
+
+  fireBullets(bullets) {
+    const p = this.attackPattern;
+    if (p === 0) this._circle(bullets);
+    else if (p === 1) this._wallShot(bullets);
+    else this._voidBlast(bullets);
+  }
+
+  _circle(bullets) {
+    const count = this.isPhase2 ? 14 : 10;
+    for (let i = 0; i < count; i++) {
+      const angle = (i/count)*Math.PI*2;
+      const spd = 3;
+      bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 18, 'enemy'));
+    }
+  }
+
+  _wallShot(bullets) {
+    const cols = this.isPhase2 ? 8 : 5;
+    for (let i = 0; i < cols; i++) {
+      const x = 30 + i * (420 / (cols-1));
+      bullets.push(new Bullet(x, this.y+20, 0, this.isPhase2 ? 4 : 3, 20, 'enemy'));
+    }
+  }
+
+  _voidBlast(bullets) {
+    const count = this.isPhase2 ? 6 : 3;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.PI/2 + (Math.random()-0.5)*0.8;
+      const spd = 3.5 + Math.random();
+      bullets.push(new Bullet(this.x, this.y+30, Math.cos(angle)*spd, Math.sin(angle)*spd, 25, 'enemy'));
+    }
+  }
+
+  draw(ctx) {
+    this.drawBase(ctx);
+    const t = Date.now() * 0.003;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    // Void core
+    const g = ctx.createRadialGradient(0, 0, 4, 0, 0, 38);
+    g.addColorStop(0, '#000000');
+    g.addColorStop(0.4, '#0000aa');
+    g.addColorStop(1, 'rgba(0,0,80,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, 38, 0, Math.PI*2);
+    ctx.fill();
+    // Orbiting triangles
+    for (let i = 0; i < 3; i++) {
+      const a = t + (i/3)*Math.PI*2;
+      const ox = Math.cos(a)*28; const oy = Math.sin(a)*28;
+      ctx.save();
+      ctx.translate(ox, oy);
+      ctx.rotate(a);
+      ctx.fillStyle = '#3333ff';
+      ctx.beginPath();
+      ctx.moveTo(0,-7); ctx.lineTo(6,5); ctx.lineTo(-6,5); ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.strokeStyle = '#4444ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0,0,36,0,Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+    this.drawHealthBar(ctx);
+  }
+}
+
+// ── 3. STAR CRUSHER – Asteroid/Rock Boss ─────────────────────────────────────
+class BossStarCrusher extends CosmicBoss {
+  constructor() {
+    super('star_crusher');
+    this.maxHp = 3500; this.hp = this.maxHp;
+    this._phase2Color = '#ff8800';
+    this.fireRate = 1000;
+    this.spinAngle = 0;
+  }
+  _bossName() { return 'STAR CRUSHER'; }
+  _patternCount() { return 3; }
+  onPhase2Start() { this.speed = 2.5; }
+
+  update(dt, bullets) {
+    super.update(dt, bullets);
+    this.spinAngle += dt * 0.002;
+  }
+
+  fireBullets(bullets) {
+    const p = this.attackPattern;
+    if (p === 0) this._rockShower(bullets);
+    else if (p === 1) this._boulderBurst(bullets);
+    else this._spinShot(bullets);
+  }
+
+  _rockShower(bullets) {
+    const count = this.isPhase2 ? 8 : 5;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.PI/2 + (Math.random()-0.5)*1.2;
+      const spd = 2 + Math.random() * 2;
+      bullets.push(new Bullet(this.x + (Math.random()-0.5)*80, this.y+20, Math.cos(angle)*spd, Math.sin(angle)*spd, 22, 'enemy'));
+    }
+  }
+
+  _boulderBurst(bullets) {
+    const count = this.isPhase2 ? 10 : 6;
+    for (let i = 0; i < count; i++) {
+      const angle = (i/count)*Math.PI*2;
+      bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*2.5, Math.sin(angle)*2.5, 28, 'enemy'));
+    }
+  }
+
+  _spinShot(bullets) {
+    const arms = this.isPhase2 ? 6 : 4;
+    for (let i = 0; i < arms; i++) {
+      const angle = this.spinAngle + (i/arms)*Math.PI*2;
+      const spd = this.isPhase2 ? 3.5 : 2.8;
+      bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 20, 'enemy'));
+    }
+  }
+
+  draw(ctx) {
+    this.drawBase(ctx);
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.spinAngle);
+    // Rocky octagon shape
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i/8)*Math.PI*2 - Math.PI/8;
+      const r = 36 + (i%2)*6;
+      i===0 ? ctx.moveTo(Math.cos(a)*r, Math.sin(a)*r) : ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+    }
+    ctx.closePath();
+    ctx.fillStyle = '#885533';
+    ctx.fill();
+    ctx.strokeStyle = '#ffaa44';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // Cracks
+    ctx.strokeStyle = '#ffcc66';
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 4; i++) {
+      const a = (i/4)*Math.PI*2;
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.lineTo(Math.cos(a)*24, Math.sin(a)*24);
+      ctx.stroke();
+    }
+    ctx.restore();
+    this.drawHealthBar(ctx);
+  }
+}
+
+// ── 4. CHRONOS REX – Time/Clockwork Boss ─────────────────────────────────────
+class BossChronosRex extends CosmicBoss {
+  constructor() {
+    super('chronos_rex');
+    this.maxHp = 3000; this.hp = this.maxHp;
+    this._phase2Color = '#ffff00';
+    this.clockAngle = 0;
+    this.fireRate = 700;
+    this.reverseTimer = 0;
+    this.reverseActive = false;
+  }
+  _bossName() { return 'CHRONOS REX'; }
+  _patternCount() { return 3; }
+  onPhase2Start() { this.reverseTimer = 3000; this.reverseActive = true; }
+
+  update(dt, bullets) {
+    super.update(dt, bullets);
+    this.clockAngle += dt * 0.003;
+    if (this.reverseActive) {
+      this.reverseTimer -= dt;
+      if (this.reverseTimer <= 0) { this.reverseActive = false; }
+    }
+  }
+
+  fireBullets(bullets) {
+    const p = this.attackPattern;
+    if (p === 0) this._clockBurst(bullets);
+    else if (p === 1) this._timeWall(bullets);
+    else this._reverseSalvo(bullets);
+  }
+
+  _clockBurst(bullets) {
+    const count = this.isPhase2 ? 12 : 8;
+    for (let i = 0; i < count; i++) {
+      const angle = this.clockAngle + (i/count)*Math.PI*2;
+      const spd = this.isPhase2 ? 3.5 : 2.5;
+      bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 18, 'enemy'));
+    }
+  }
+
+  _timeWall(bullets) {
+    const rows = this.isPhase2 ? 3 : 2;
+    const cols = 6;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = 40 + c * 80;
+        const spd = 2.5 + r * 0.5;
+        bullets.push(new Bullet(x, this.y + r*25, 0, spd, 15, 'enemy'));
+      }
+    }
+  }
+
+  _reverseSalvo(bullets) {
+    const count = this.isPhase2 ? 6 : 4;
+    for (let i = 0; i < count; i++) {
+      const angle = -Math.PI/2 + (i-(count/2))*0.25;
+      const spd = this.isPhase2 ? 4 : 3;
+      // Bullets travel upward (reversed — come from bottom edge)
+      bullets.push(new Bullet(this.x + (i-(count/2))*20, 720, Math.cos(angle)*spd, Math.sin(angle)*spd - 6, 22, 'enemy'));
+    }
+  }
+
+  draw(ctx) {
+    this.drawBase(ctx);
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    // Clock face
+    ctx.beginPath();
+    ctx.arc(0, 0, 38, 0, Math.PI*2);
+    ctx.fillStyle = '#221100';
+    ctx.fill();
+    ctx.strokeStyle = '#ffdd44';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // Hour markers
+    for (let i = 0; i < 12; i++) {
+      const a = (i/12)*Math.PI*2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*28, Math.sin(a)*28);
+      ctx.lineTo(Math.cos(a)*34, Math.sin(a)*34);
+      ctx.strokeStyle = '#ffdd44';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    // Hands
+    ctx.strokeStyle = '#ff4400';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(Math.cos(this.clockAngle)*26, Math.sin(this.clockAngle)*26);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffcc00';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(Math.cos(this.clockAngle*12)*18, Math.sin(this.clockAngle*12)*18);
+    ctx.stroke();
+    ctx.restore();
+    this.drawHealthBar(ctx);
+  }
+}
+
+// ── 5. ASTRAL SENTINEL – Guardian Boss ───────────────────────────────────────
+class BossAstralSentinel extends CosmicBoss {
+  constructor() {
+    super('astral_sentinel');
+    this.maxHp = 4000; this.hp = this.maxHp;
+    this._phase2Color = '#00ffff';
+    this.shieldAngle = 0;
+    this.shieldActive = true;
+    this.shieldHp = 500;
+    this.fireRate = 950;
+  }
+  _bossName() { return 'ASTRAL SENTINEL'; }
+  _patternCount() { return 3; }
+  onPhase2Start() { this.shieldActive = false; this.fireRate = 450; }
+
+  update(dt, bullets) {
+    super.update(dt, bullets);
+    this.shieldAngle += dt * 0.002;
+  }
+
+  fireBullets(bullets) {
+    const p = this.attackPattern;
+    if (p === 0) this._guardianBeam(bullets);
+    else if (p === 1) this._pulseWave(bullets);
+    else this._sentinelBarrage(bullets);
+  }
+
+  _guardianBeam(bullets) {
+    const count = this.isPhase2 ? 5 : 3;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.PI/2 + (i - Math.floor(count/2))*0.3;
+      bullets.push(new Bullet(this.x + (i-2)*12, this.y+32, Math.cos(angle)*3.5, Math.sin(angle)*3.5, 22, 'enemy'));
+    }
+  }
+
+  _pulseWave(bullets) {
+    const count = this.isPhase2 ? 18 : 12;
+    for (let i = 0; i < count; i++) {
+      const angle = (i/count)*Math.PI*2 + this.shieldAngle;
+      const spd = this.isPhase2 ? 3.5 : 2.5;
+      bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 16, 'enemy'));
+    }
+  }
+
+  _sentinelBarrage(bullets) {
+    const cols = this.isPhase2 ? 7 : 4;
+    for (let i = 0; i < cols; i++) {
+      const x = 40 + i*(400/(cols-1));
+      const spd = this.isPhase2 ? 4 : 3;
+      bullets.push(new Bullet(x, this.y+20, (Math.random()-0.5)*1.5, spd, 20, 'enemy'));
+    }
+  }
+
+  draw(ctx) {
+    this.drawBase(ctx);
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    // Core
+    const g = ctx.createRadialGradient(0,0,6,0,0,36);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.3, '#88ffff');
+    g.addColorStop(1, 'rgba(0,180,180,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0,0,36,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Orbiting shield segments
+    if (this.shieldActive) {
+      for (let i = 0; i < 4; i++) {
+        const a = this.shieldAngle + (i/4)*Math.PI*2;
+        const sx = Math.cos(a)*50; const sy = Math.sin(a)*50;
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(a + Math.PI/2);
+        ctx.fillStyle = '#004488';
+        ctx.fillRect(-10, -4, 20, 8);
+        ctx.strokeStyle = '#00aaff';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-10,-4,20,8);
+        ctx.restore();
+      }
+    }
+    // Star shape
+    ctx.save();
+    ctx.rotate(this.shieldAngle*0.3);
+    ctx.strokeStyle = '#aaffff';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) {
+      const a = (i/8)*Math.PI*2;
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.lineTo(Math.cos(a)*34, Math.sin(a)*34);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.restore();
+    this.drawHealthBar(ctx);
+  }
+}
+
+// Boss type registry for Boss Rush
+const COSMIC_BOSSES = [BossNebulox, BossVoidTyrant, BossStarCrusher, BossChronosRex, BossAstralSentinel];
+const COSMIC_BOSS_IDS = ['nebulox', 'void_tyrant', 'star_crusher', 'chronos_rex', 'astral_sentinel'];
+
+function createCosmicBoss(typeIndex) {
+  const BossClass = COSMIC_BOSSES[typeIndex % COSMIC_BOSSES.length];
+  return new BossClass();
+}
+
 // ===== EXPLOSION EFFECT =====
 class Explosion {
   constructor(x, y, size = 1) {

@@ -189,6 +189,64 @@ RETURNS VOID LANGUAGE sql AS $$
   ON CONFLICT (user_id, achievement_id) DO NOTHING;
 $$;
 
+-- ── Boss Rush Mode ───────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS boss_rush_scores (
+  id               BIGSERIAL PRIMARY KEY,
+  user_id          BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  nickname         TEXT NOT NULL,
+  bosses_defeated  INTEGER NOT NULL DEFAULT 0,
+  total_time_ms    BIGINT NOT NULL DEFAULT 0,
+  score            INTEGER NOT NULL DEFAULT 0,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS boss_rush_stats (
+  id                       BIGSERIAL PRIMARY KEY,
+  user_id                  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+  total_bosses_killed      INTEGER NOT NULL DEFAULT 0,
+  total_runs               INTEGER NOT NULL DEFAULT 0,
+  no_ability_runs          INTEGER NOT NULL DEFAULT 0,
+  no_hit_phase2_count      INTEGER NOT NULL DEFAULT 0,
+  fastest_boss_streak      INTEGER NOT NULL DEFAULT 0,
+  boss_kill_counts         JSONB NOT NULL DEFAULT '{}',
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE IF EXISTS boss_rush_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS boss_rush_stats  ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "backend_all" ON boss_rush_scores;
+DROP POLICY IF EXISTS "backend_all" ON boss_rush_stats;
+
+CREATE POLICY "backend_all" ON boss_rush_scores FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "backend_all" ON boss_rush_stats  FOR ALL USING (true) WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_boss_rush_scores_user_id    ON boss_rush_scores(user_id);
+CREATE INDEX IF NOT EXISTS idx_boss_rush_scores_bosses_desc ON boss_rush_scores(bosses_defeated DESC);
+CREATE INDEX IF NOT EXISTS idx_boss_rush_stats_user_id     ON boss_rush_stats(user_id);
+
+-- Leaderboard: best boss rush run per user (most bosses, then fastest time)
+CREATE OR REPLACE FUNCTION get_boss_rush_leaderboard()
+RETURNS TABLE(
+  nickname        TEXT,
+  bosses_defeated INTEGER,
+  total_time_ms   BIGINT,
+  score           INTEGER,
+  created_at      TIMESTAMPTZ,
+  user_id         BIGINT
+) LANGUAGE sql STABLE AS $$
+  SELECT nickname, bosses_defeated, total_time_ms, score, created_at, user_id
+  FROM (
+    SELECT DISTINCT ON (s.user_id)
+      s.nickname, s.bosses_defeated, s.total_time_ms, s.score, s.created_at, s.user_id
+    FROM boss_rush_scores s
+    ORDER BY s.user_id, s.bosses_defeated DESC, s.total_time_ms ASC
+  ) best
+  ORDER BY bosses_defeated DESC, total_time_ms ASC
+  LIMIT 100;
+$$;
+
 -- ── Database Cleanup & Optimization ─────────────────────────────────────────
 -- Trim scores: keep only the top `p_keep` scores (by score DESC) per user.
 -- Called automatically after every game save from the Node.js backend

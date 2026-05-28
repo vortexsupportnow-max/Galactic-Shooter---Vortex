@@ -12,8 +12,9 @@ function showScreen(name) {
   }
 
   // Stop game when leaving game screen
-  if (name !== 'game' && gameInstance) {
-    gameInstance.stop();
+  if (name !== 'game') {
+    if (gameInstance) gameInstance.stop();
+    if (window.bossRushInstance) window.bossRushInstance.stop();
   }
 }
 
@@ -54,11 +55,13 @@ async function init() {
   // Init all handlers
   initAuthHandlers();
   initMenuHandlers();
+  initModeSelectHandlers();
   initSlotSelectHandlers();
   initCrateHandlers();
   initLeaderboardHandlers();
   initCollectionHandlers();
   initSkinHandlers();
+  initSkinFilterHandlers();
   initSettingsHandlers();
   initTutorialHandlers();
   initWheelHandlers();
