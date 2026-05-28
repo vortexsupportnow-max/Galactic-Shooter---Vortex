@@ -1227,11 +1227,11 @@ async function requireDeveloper(req, res, next) {
     const supabase = getDB();
     const { data: user } = await supabase.from('users').select('role').eq('id', req.user.userId).maybeSingle();
     if (!user || user.role !== 'developer') {
-      return res.json({ success: false, error: 'Boss Rush is restricted to developers.' });
+      return res.status(403).json({ success: false, error: 'Boss Rush is restricted to developers.' });
     }
     next();
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 }
 
