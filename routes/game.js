@@ -407,7 +407,7 @@ async function fetchUserProfileData(supabase, userId) {
   const [userResult, abilitiesResult, achievementsResult, skinsResult, passResult, missionsResult] = await Promise.all([
     supabase
       .from('users')
-      .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at, last_wheel_spin_at, free_mystery_crates, free_void_crates, equipped_skin, free_skin_crates, streak_current, streak_last_claim')
+      .select('id, nickname, coins, gems, games_played, max_score, max_wave, created_at, last_wheel_spin_at, free_mystery_crates, free_void_crates, equipped_skin, free_skin_crates, streak_current, streak_last_claim, role')
       .eq('id', userId)
       .maybeSingle(),
     supabase
@@ -439,6 +439,7 @@ async function fetchUserProfileData(supabase, userId) {
 
   return {
     ...userResult.data,
+    role: userResult.data.role || 'player',
     free_mystery_crates: userResult.data.free_mystery_crates || 0,
     free_void_crates: userResult.data.free_void_crates || 0,
     equipped_skin: userResult.data.equipped_skin || 'default',
@@ -1220,6 +1221,20 @@ router.post('/claim-pass-tier', async (req, res) => {
 
 // ── Boss Rush Mode ────────────────────────────────────────────────────────────
 
+// Middleware: restrict Boss Rush endpoints to developer role only
+async function requireDeveloper(req, res, next) {
+  try {
+    const supabase = getDB();
+    const { data: user } = await supabase.from('users').select('role').eq('id', req.user.userId).maybeSingle();
+    if (!user || user.role !== 'developer') {
+      return res.json({ success: false, error: 'Boss Rush is restricted to developers.' });
+    }
+    next();
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+}
+
 // Aura unlock objective IDs and their condition checks
 const BR_AURA_CONDITIONS = {
   br_singularity:    stats => stats.fastest_boss_streak >= 5,
@@ -1229,7 +1244,7 @@ const BR_AURA_CONDITIONS = {
   br_eternal_nemesis: stats => stats.total_bosses_killed >= 100
 };
 
-router.post('/save-boss-rush-score', async (req, res) => {
+router.post('/save-boss-rush-score', requireDeveloper, async (req, res) => {
   try {
     const { bossesDefeated, totalTimeMs, score, bossKillCounts, noAbilitiesUsed, noHitPhase2, fastBossStreak } = req.body;
     const supabase = getDB();
@@ -1297,7 +1312,7 @@ router.post('/save-boss-rush-score', async (req, res) => {
   }
 });
 
-router.get('/boss-rush-stats', async (req, res) => {
+router.get('/boss-rush-stats', requireDeveloper, async (req, res) => {
   try {
     const supabase = getDB();
     const userId = req.user.userId;
