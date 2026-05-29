@@ -130,7 +130,7 @@ class GalacticGame {
 
   start(abilitySlots = [null, null, null], unlockedAbilityIds = [], skinBoosts = null, skinColor = null, skinTrail = null) {
     if (this.animId) cancelAnimationFrame(this.animId);
-    if (this.surrenderBtn) this.surrenderBtn.disabled = false;
+    if (this.surrenderBtn) { this.surrenderBtn.disabled = false; this.surrenderBtn.style.display = 'none'; }
 
     const player = new Player(480, 700);
 
@@ -208,6 +208,7 @@ class GalacticGame {
   _pauseToggle() {
     if (!this.gs || this.gs.gameOver) return;
     this.gs.paused = !this.gs.paused;
+    if (this.surrenderBtn) this.surrenderBtn.style.display = this.gs.paused ? 'block' : 'none';
   }
 
   _loop(now) {
@@ -944,7 +945,7 @@ class GalacticGame {
 
   async _onGameOver() {
     const gs = this.gs;
-    if (this.surrenderBtn) this.surrenderBtn.disabled = true;
+    if (this.surrenderBtn) { this.surrenderBtn.disabled = true; this.surrenderBtn.style.display = 'none'; }
 
     // Save score
     const token = getToken();
