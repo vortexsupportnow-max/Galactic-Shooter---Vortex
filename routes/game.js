@@ -1154,6 +1154,79 @@ router.post('/claim-mission-reward', async (req, res) => {
   }
 });
 
+router.post('/claim-all-mission-rewards', async (req, res) => {
+  try {
+    const supabase = getDB();
+    const userId = req.user.userId;
+    const currentWeek = getCurrentSeasonWeek();
+
+    const { data: progRows, error: progErr } = await supabase.from('user_mission_progress')
+      .select('mission_id, completed, reward_claimed')
+      .eq('user_id', userId)
+      .eq('completed', true)
+      .eq('reward_claimed', false);
+    if (progErr) throw new Error(progErr.message);
+
+    const claimableMissions = SEASON_MISSIONS.filter(m =>
+      m.week <= currentWeek &&
+      progRows?.some(p => p.mission_id === m.id)
+    );
+
+    if (!claimableMissions.length) {
+      return res.json({ success: false, error: 'No mission rewards to claim' });
+    }
+
+    const missionIds = claimableMissions.map(m => m.id);
+    const pulsarEarned = claimableMissions.reduce((sum, m) => sum + (m.pulsar || 0), 0);
+    const coinsEarned = claimableMissions.reduce((sum, m) => sum + (m.reward_coins || 0), 0);
+    const gemsEarned = claimableMissions.reduce((sum, m) => sum + (m.reward_gems || 0), 0);
+
+    const { data: passRow } = await supabase.from('user_season_pass')
+      .select('pulsar')
+      .eq('user_id', userId)
+      .eq('season_id', SEASON_ID)
+      .maybeSingle();
+
+    const totalPulsar = (passRow?.pulsar || 0) + pulsarEarned;
+    if (passRow) {
+      await supabase.from('user_season_pass')
+        .update({ pulsar: totalPulsar })
+        .eq('user_id', userId)
+        .eq('season_id', SEASON_ID);
+    } else {
+      await supabase.from('user_season_pass')
+        .insert({ user_id: userId, season_id: SEASON_ID, pulsar: totalPulsar, claimed_tiers: [] });
+    }
+
+    if (coinsEarned > 0 || gemsEarned > 0) {
+      const { data: userRow } = await supabase.from('users').select('coins, gems').eq('id', userId).single();
+      await supabase.from('users').update({
+        coins: (userRow?.coins || 0) + coinsEarned,
+        gems: (userRow?.gems || 0) + gemsEarned
+      }).eq('id', userId);
+    }
+
+    await supabase.from('user_mission_progress')
+      .update({ reward_claimed: true })
+      .eq('user_id', userId)
+      .in('mission_id', missionIds);
+
+    res.json({
+      success: true,
+      data: {
+        claimedCount: missionIds.length,
+        missionIds,
+        pulsarEarned,
+        totalPulsar,
+        coinsEarned,
+        gemsEarned
+      }
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 router.post('/claim-pass-tier', async (req, res) => {
   try {
     const { tier } = req.body;

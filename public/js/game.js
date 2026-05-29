@@ -13,7 +13,10 @@ class GalacticGame {
     this.stars = this._initStars();
 
     this._boundLoop = this._loop.bind(this);
+    this._onSurrenderClick = this._onSurrenderClick.bind(this);
     this._setupInput();
+    this.surrenderBtn = document.getElementById('btn-surrender');
+    if (this.surrenderBtn) this.surrenderBtn.addEventListener('click', this._onSurrenderClick);
 
     // Scale canvas to fill the screen while keeping 480×700 aspect ratio
     this._resizeCanvas = this._resizeCanvas.bind(this);
@@ -127,6 +130,7 @@ class GalacticGame {
 
   start(abilitySlots = [null, null, null], unlockedAbilityIds = [], skinBoosts = null, skinColor = null, skinTrail = null) {
     if (this.animId) cancelAnimationFrame(this.animId);
+    if (this.surrenderBtn) this.surrenderBtn.disabled = false;
 
     const player = new Player(480, 700);
 
@@ -188,6 +192,17 @@ class GalacticGame {
     if (this.animId) cancelAnimationFrame(this.animId);
     this.animId = null;
     this.gs = null;
+    if (this.surrenderBtn) this.surrenderBtn.disabled = true;
+  }
+
+  _onSurrenderClick() {
+    if (!this.gs || this.gs.gameOver) return;
+    const confirmed = window.confirm('Vuoi arrenderti? Punteggio e progressi verranno salvati.');
+    if (!confirmed) return;
+    this.gs.paused = false;
+    this.gs.gameOver = true;
+    this.gs.surrendered = true;
+    this._onGameOver();
   }
 
   _pauseToggle() {
@@ -929,6 +944,7 @@ class GalacticGame {
 
   async _onGameOver() {
     const gs = this.gs;
+    if (this.surrenderBtn) this.surrenderBtn.disabled = true;
 
     // Save score
     const token = getToken();
