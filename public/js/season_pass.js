@@ -265,8 +265,7 @@ async function claimMissionReward(missionId) {
 
 async function claimAllMissionRewards() {
   const res = await apiFetch('/game/claim-all-mission-rewards', {
-    method: 'POST',
-    body: '{}'
+    method: 'POST'
   });
   if (res.success) {
     const { claimedCount, pulsarEarned, totalPulsar, coinsEarned, gemsEarned } = res.data;
