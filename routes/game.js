@@ -139,6 +139,7 @@ const STREAK_REWARDS = [
   { day: 29, type: 'coins',   amount: 3000 },
   { day: 30, type: 'skin',    skinId: 'streak_inferno' }
 ];
+const CLAIM_ALL_MISSIONS_LOCKS = new Set();
 
 // ── Season Pass ───────────────────────────────────────────────────────────────
 
@@ -1155,9 +1156,13 @@ router.post('/claim-mission-reward', async (req, res) => {
 });
 
 router.post('/claim-all-mission-rewards', async (req, res) => {
+  const userId = req.user.userId;
+  if (CLAIM_ALL_MISSIONS_LOCKS.has(userId)) {
+    return res.json({ success: false, error: 'Claim already in progress' });
+  }
+  CLAIM_ALL_MISSIONS_LOCKS.add(userId);
   try {
     const supabase = getDB();
-    const userId = req.user.userId;
     const currentWeek = getCurrentSeasonWeek();
 
     const { data: progRows, error: progErr } = await supabase.from('user_mission_progress')
@@ -1224,6 +1229,8 @@ router.post('/claim-all-mission-rewards', async (req, res) => {
     });
   } catch (err) {
     res.json({ success: false, error: err.message });
+  } finally {
+    CLAIM_ALL_MISSIONS_LOCKS.delete(userId);
   }
 });
 
