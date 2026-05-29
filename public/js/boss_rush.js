@@ -181,7 +181,7 @@ class BossRushGame extends GalacticGame {
     // Player shoots boss
     if (gs.boss) {
       for (const b of gs.bullets) {
-        if (b.type !== 'player') continue;
+        if (b.owner !== 'player') continue;
         if (b.dead) continue;
         if (Math.abs(b.x - gs.boss.x) < 44 && Math.abs(b.y - gs.boss.y) < 44) {
           b.dead = true;
@@ -208,7 +208,7 @@ class BossRushGame extends GalacticGame {
     // Enemy bullets hit player
     if (p.invulnTimer <= 0 && !p.shielded) {
       for (const b of gs.bullets) {
-        if (b.type !== 'enemy') continue;
+        if (b.owner !== 'enemy') continue;
         if (b.dead) continue;
         if (Math.abs(b.x - p.x) < 14 && Math.abs(b.y - p.y) < 14) {
           b.dead = true;
