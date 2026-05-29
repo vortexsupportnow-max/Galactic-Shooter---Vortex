@@ -171,10 +171,25 @@ async function loadMissions() {
   // Server returns missions already merged with progress data (use id not mission_id)
   const missions = data.missions || [];
   const currentWeek = data.current_week || 1;
+  const claimableCount = missions.filter(m =>
+    m.week <= currentWeek &&
+    m.unlocked !== false &&
+    m.completed &&
+    !m.reward_claimed
+  ).length;
 
   content.innerHTML = `
     <div class="missions-week-info">📅 Settimana ${currentWeek} / 7 · ⚡ ${formatNumber(data.pulsar || 0)} Pulsar totali</div>
+    <div class="missions-actions">
+      <button id="claimAllMissionsBtn" class="btn btn-season mission-claim-all-btn" ${claimableCount > 0 ? '' : 'disabled'}>
+        RISCATTA TUTTE (${claimableCount})
+      </button>
+    </div>
   `;
+  const claimAllMissionsBtn = document.getElementById('claimAllMissionsBtn');
+  if (claimAllMissionsBtn && claimableCount > 0) {
+    claimAllMissionsBtn.addEventListener('click', claimAllMissionRewards);
+  }
 
   const listEl = document.createElement('div');
   listEl.className = 'missions-list';
@@ -245,6 +260,25 @@ async function claimMissionReward(missionId) {
     updateCurrency();
   } else {
     alert(res.error || 'Errore nel riscattare la missione');
+  }
+}
+
+async function claimAllMissionRewards() {
+  const res = await apiFetch('/game/claim-all-mission-rewards', {
+    method: 'POST'
+  });
+  if (res.success) {
+    const { claimedCount, pulsarEarned, totalPulsar, coinsEarned, gemsEarned } = res.data;
+    let msg = `✅ Riscattate ${claimedCount} missioni!\n⚡ +${pulsarEarned} Pulsar`;
+    if (coinsEarned > 0) msg += `\n🪙 +${formatNumber(coinsEarned)} Monete`;
+    if (gemsEarned > 0) msg += `\n💎 +${gemsEarned} Gemme`;
+    msg += `\n\nTotale: ${formatNumber(totalPulsar)} Pulsar`;
+    alert(msg);
+    loadMissions();
+    updateMenuPassPanel({ pulsar: totalPulsar });
+    updateCurrency();
+  } else {
+    alert(res.error || 'Nessuna missione riscattabile');
   }
 }
 
