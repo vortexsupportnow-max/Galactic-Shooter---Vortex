@@ -67,6 +67,9 @@ ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS free_skin_crates INTEGER NO
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS streak_current INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS streak_last_claim DATE;
 
+-- Developer role column (see db/schema_roles.sql for full role management)
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'player';
+
 -- ── Japan Season / Space Pass ─────────────────────────────────────────────────
 
 -- Tracks each user's season pass progress (pulsar earned, tiers claimed)

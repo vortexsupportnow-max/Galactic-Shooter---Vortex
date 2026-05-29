@@ -653,7 +653,9 @@ function closeModeSelect() {
 }
 
 function _isBossRushUnlocked() {
-  return Date.now() >= BR_UNLOCK_DATE.getTime();
+  const dateUnlocked = Date.now() >= BR_UNLOCK_DATE.getTime();
+  const isDeveloper = _profileData && _profileData.role === 'developer';
+  return dateUnlocked || isDeveloper;
 }
 
 function _updateBossRushLock() {
