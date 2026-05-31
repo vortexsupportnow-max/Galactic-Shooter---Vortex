@@ -16,7 +16,7 @@ class BossRushGame extends GalacticGame {
     if (this.animId) cancelAnimationFrame(this.animId);
 
     const player = new Player(480, 700);
-    player.lives = 1; // no respawns
+    player.lives = 3;
     const boosts = skinBoosts || {};
     if (boosts.extra_lives > 0) player.lives += boosts.extra_lives;
     if (boosts.starting_shield) { player.shielded = true; player.shieldTimer = 5000; }
@@ -219,9 +219,17 @@ class BossRushGame extends GalacticGame {
           gs.particles.emit(p.x, p.y, 8, '#ff2244', { speed: 4, decay: 0.04 });
           if (p.hp <= 0) {
             p.hp = 0;
-            gs.gameOver = true;
-            this._onBossRushGameOver();
-            return;
+            p.lives--;
+            if (p.lives > 0) {
+              p.hp = p.maxHp;
+              p.shielded = true;
+              p.shieldTimer = 3000;
+              p.invulnTimer = 3000;
+            } else {
+              gs.gameOver = true;
+              this._onBossRushGameOver();
+              return;
+            }
           }
         }
       }
@@ -299,17 +307,13 @@ class BossRushGame extends GalacticGame {
     Sounds.levelup && Sounds.levelup();
     gs.boss = null;
 
-    // Grant boss rush ability (first 3 bosses each give one unique ability)
-    const abilityIdx = gs.bossesDefeated - 1;
-    if (abilityIdx < BR_ABILITY_IDS.length) {
-      const abilityId = BR_ABILITY_IDS[abilityIdx];
-      // Find first empty slot
-      for (let s = 0; s < 3; s++) {
-        if (!gs.abilitySlots[s]) {
-          gs.abilitySlots[s] = { id: abilityId, level: 1 };
-          gs.abilitiesEarned.push(abilityId);
-          break;
-        }
+    // Grant all 3 boss rush abilities on each boss kill
+    const slotCount = Math.min(BR_ABILITY_IDS.length, gs.abilitySlots.length);
+    for (let i = 0; i < slotCount; i++) {
+      const abilityId = BR_ABILITY_IDS[i];
+      gs.abilitySlots[i] = { id: abilityId, level: 1 };
+      if (!gs.abilitiesEarned.includes(abilityId)) {
+        gs.abilitiesEarned.push(abilityId);
       }
     }
 
@@ -516,6 +520,12 @@ class BossRushGame extends GalacticGame {
     ctx.strokeRect(8, 24, 100, 8);
     ctx.fillStyle = '#aaa';
     ctx.fillText(`HP`, 114, 31);
+
+    // Lives
+    for (let i = 0; i < gs.player.lives; i++) {
+      ctx.fillStyle = '#ff2244';
+      ctx.fillRect(8 + i * 12, 36, 8, 8);
+    }
 
     // Boss counter
     ctx.textAlign = 'right';
