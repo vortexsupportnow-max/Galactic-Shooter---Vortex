@@ -596,14 +596,14 @@ class Boss {
     if (this.stunned || this.frozen) return;
 
     const speedMult = timeSlow ? 0.5 : 1;
-    const spd = this.speed * speedMult * (this.isPhase2 ? 1.5 : 1);
+    const spd = this.speed * speedMult * (this.isPhase2 ? 1.3 : 1);
 
     this.x += spd * this.moveDir * dtF;
     if (this.x > 430 || this.x < 50) this.moveDir *= -1;
 
     if (!this.enraged && this.isPhase2) {
       this.enraged = true;
-      this.fireRate = 500;
+      this.fireRate = 650;
     }
 
     this.patternTimer += dt;
@@ -626,16 +626,16 @@ class Boss {
   }
 
   spreadPattern(bullets) {
-    const count = this.isPhase2 ? 7 : 5;
+    const count = this.isPhase2 ? 6 : 5;
     for (let i = 0; i < count; i++) {
       const angle = (Math.PI / (count - 1)) * i + Math.PI / 4;
-      const spd = this.isPhase2 ? 4 : 3;
+      const spd = this.isPhase2 ? 3.5 : 3;
       bullets.push(new Bullet(this.x, this.y + 30, Math.cos(angle) * spd, Math.sin(angle) * spd, 20, 'enemy'));
     }
   }
 
   circlePattern(bullets) {
-    const count = this.isPhase2 ? 12 : 8;
+    const count = this.isPhase2 ? 10 : 8;
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
       const spd = 3;
@@ -644,7 +644,7 @@ class Boss {
   }
 
   aimedPattern(bullets) {
-    const count = this.isPhase2 ? 4 : 2;
+    const count = this.isPhase2 ? 3 : 2;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 0.5 - Math.PI * 0.25 + Math.PI / 2;
       bullets.push(new Bullet(this.x + (i - count/2) * 20, this.y + 30,
@@ -750,7 +750,7 @@ class CosmicBoss {
 
     if (this.phaseFlashTimer > 0) this.phaseFlashTimer -= dt;
 
-    const spd = this.speed * (this.isPhase2 ? 1.6 : 1);
+    const spd = this.speed * (this.isPhase2 ? 1.3 : 1);
     this.x += spd * this.moveDir * dtF;
     if (this.x > 430 || this.x < 50) this.moveDir *= -1;
 
@@ -761,7 +761,7 @@ class CosmicBoss {
     }
 
     this.lastShot += dt;
-    const fr = this.isPhase2 ? this.fireRate * 0.6 : this.fireRate;
+    const fr = this.isPhase2 ? this.fireRate * 0.75 : this.fireRate;
     if (this.lastShot >= fr) {
       this.lastShot = 0;
       this.fireBullets(bullets);
@@ -869,8 +869,8 @@ class BossNebulox extends CosmicBoss {
   }
 
   _spiral(bullets) {
-    const arms = this.isPhase2 ? 4 : 2;
-    const spd = this.isPhase2 ? 3.5 : 2.5;
+    const arms = this.isPhase2 ? 3 : 2;
+    const spd = this.isPhase2 ? 3.0 : 2.5;
     for (let a = 0; a < arms; a++) {
       const angle = this.spiralAngle + (a * Math.PI * 2 / arms);
       bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 18, 'enemy'));
@@ -879,19 +879,19 @@ class BossNebulox extends CosmicBoss {
   }
 
   _burst(bullets) {
-    const count = this.isPhase2 ? 16 : 10;
+    const count = this.isPhase2 ? 13 : 10;
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
-      const spd = this.isPhase2 ? 3 : 2.2;
+      const spd = this.isPhase2 ? 2.6 : 2.2;
       bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 15, 'enemy'));
     }
   }
 
   _aimed(bullets) {
-    const count = this.isPhase2 ? 5 : 3;
+    const count = this.isPhase2 ? 4 : 3;
     for (let i = 0; i < count; i++) {
       const angle = Math.PI/2 + (i - Math.floor(count/2)) * 0.22;
-      const spd = this.isPhase2 ? 4 : 3;
+      const spd = this.isPhase2 ? 3.5 : 3;
       bullets.push(new Bullet(this.x + (i-2)*14, this.y+36, Math.cos(angle)*spd, Math.sin(angle)*spd, 20, 'enemy'));
     }
   }
@@ -948,7 +948,7 @@ class BossVoidTyrant extends CosmicBoss {
     this.teleportTimer -= dt;
     if (this.teleportTimer <= 0) {
       this.x = 60 + Math.random() * 360;
-      this.teleportTimer = this.isPhase2 ? 2000 : 5000;
+      this.teleportTimer = this.isPhase2 ? 2500 : 5000;
     }
   }
 
@@ -960,7 +960,7 @@ class BossVoidTyrant extends CosmicBoss {
   }
 
   _circle(bullets) {
-    const count = this.isPhase2 ? 14 : 10;
+    const count = this.isPhase2 ? 12 : 10;
     for (let i = 0; i < count; i++) {
       const angle = (i/count)*Math.PI*2;
       const spd = 3;
@@ -969,15 +969,15 @@ class BossVoidTyrant extends CosmicBoss {
   }
 
   _wallShot(bullets) {
-    const cols = this.isPhase2 ? 8 : 5;
+    const cols = this.isPhase2 ? 6 : 5;
     for (let i = 0; i < cols; i++) {
       const x = 30 + i * (420 / (cols-1));
-      bullets.push(new Bullet(x, this.y+20, 0, this.isPhase2 ? 4 : 3, 20, 'enemy'));
+      bullets.push(new Bullet(x, this.y+20, 0, this.isPhase2 ? 3.5 : 3, 20, 'enemy'));
     }
   }
 
   _voidBlast(bullets) {
-    const count = this.isPhase2 ? 6 : 3;
+    const count = this.isPhase2 ? 5 : 3;
     for (let i = 0; i < count; i++) {
       const angle = Math.PI/2 + (Math.random()-0.5)*0.8;
       const spd = 3.5 + Math.random();
@@ -1048,7 +1048,7 @@ class BossStarCrusher extends CosmicBoss {
   }
 
   _rockShower(bullets) {
-    const count = this.isPhase2 ? 8 : 5;
+    const count = this.isPhase2 ? 6 : 5;
     for (let i = 0; i < count; i++) {
       const angle = Math.PI/2 + (Math.random()-0.5)*1.2;
       const spd = 2 + Math.random() * 2;
@@ -1057,7 +1057,7 @@ class BossStarCrusher extends CosmicBoss {
   }
 
   _boulderBurst(bullets) {
-    const count = this.isPhase2 ? 10 : 6;
+    const count = this.isPhase2 ? 8 : 6;
     for (let i = 0; i < count; i++) {
       const angle = (i/count)*Math.PI*2;
       bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*2.5, Math.sin(angle)*2.5, 28, 'enemy'));
@@ -1065,10 +1065,10 @@ class BossStarCrusher extends CosmicBoss {
   }
 
   _spinShot(bullets) {
-    const arms = this.isPhase2 ? 6 : 4;
+    const arms = this.isPhase2 ? 5 : 4;
     for (let i = 0; i < arms; i++) {
       const angle = this.spinAngle + (i/arms)*Math.PI*2;
-      const spd = this.isPhase2 ? 3.5 : 2.8;
+      const spd = this.isPhase2 ? 3.0 : 2.8;
       bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 20, 'enemy'));
     }
   }
@@ -1138,10 +1138,10 @@ class BossChronosRex extends CosmicBoss {
   }
 
   _clockBurst(bullets) {
-    const count = this.isPhase2 ? 12 : 8;
+    const count = this.isPhase2 ? 10 : 8;
     for (let i = 0; i < count; i++) {
       const angle = this.clockAngle + (i/count)*Math.PI*2;
-      const spd = this.isPhase2 ? 3.5 : 2.5;
+      const spd = this.isPhase2 ? 3.0 : 2.5;
       bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 18, 'enemy'));
     }
   }
@@ -1159,10 +1159,10 @@ class BossChronosRex extends CosmicBoss {
   }
 
   _reverseSalvo(bullets) {
-    const count = this.isPhase2 ? 6 : 4;
+    const count = this.isPhase2 ? 5 : 4;
     for (let i = 0; i < count; i++) {
       const angle = -Math.PI/2 + (i-(count/2))*0.25;
-      const spd = this.isPhase2 ? 4 : 3;
+      const spd = this.isPhase2 ? 3.5 : 3;
       // Bullets travel upward (reversed — come from bottom edge)
       bullets.push(new Bullet(this.x + (i-(count/2))*20, 720, Math.cos(angle)*spd, Math.sin(angle)*spd - 6, 22, 'enemy'));
     }
@@ -1221,7 +1221,7 @@ class BossAstralSentinel extends CosmicBoss {
   }
   _bossName() { return 'ASTRAL SENTINEL'; }
   _patternCount() { return 3; }
-  onPhase2Start() { this.shieldActive = false; this.fireRate = 450; }
+  onPhase2Start() { this.shieldActive = false; this.fireRate = 600; }
 
   update(dt, bullets) {
     super.update(dt, bullets);
@@ -1236,7 +1236,7 @@ class BossAstralSentinel extends CosmicBoss {
   }
 
   _guardianBeam(bullets) {
-    const count = this.isPhase2 ? 5 : 3;
+    const count = this.isPhase2 ? 4 : 3;
     for (let i = 0; i < count; i++) {
       const angle = Math.PI/2 + (i - Math.floor(count/2))*0.3;
       bullets.push(new Bullet(this.x + (i-2)*12, this.y+32, Math.cos(angle)*3.5, Math.sin(angle)*3.5, 22, 'enemy'));
@@ -1244,19 +1244,19 @@ class BossAstralSentinel extends CosmicBoss {
   }
 
   _pulseWave(bullets) {
-    const count = this.isPhase2 ? 18 : 12;
+    const count = this.isPhase2 ? 14 : 12;
     for (let i = 0; i < count; i++) {
       const angle = (i/count)*Math.PI*2 + this.shieldAngle;
-      const spd = this.isPhase2 ? 3.5 : 2.5;
+      const spd = this.isPhase2 ? 3.0 : 2.5;
       bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 16, 'enemy'));
     }
   }
 
   _sentinelBarrage(bullets) {
-    const cols = this.isPhase2 ? 7 : 4;
+    const cols = this.isPhase2 ? 5 : 4;
     for (let i = 0; i < cols; i++) {
       const x = 40 + i*(400/(cols-1));
-      const spd = this.isPhase2 ? 4 : 3;
+      const spd = this.isPhase2 ? 3.5 : 3;
       bullets.push(new Bullet(x, this.y+20, (Math.random()-0.5)*1.5, spd, 20, 'enemy'));
     }
   }
