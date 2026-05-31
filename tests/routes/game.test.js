@@ -423,6 +423,23 @@ describe('POST /api/game/upgrade-ability', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.coinsSpent).toBe(12000);
   });
+
+  it('computes correct cost for season-exclusive abilities', async () => {
+    let fromIdx = 0;
+    const tables = [
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn().mockResolvedValue({ data: { level: 2 } }) },
+      { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { coins: 99999 }, error: null }) },
+      { update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }) },
+      { update: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }) }) }
+    ];
+    const supabase = { from: jest.fn(() => tables[fromIdx++] || tables[3]) };
+    getDB.mockReturnValue(supabase);
+
+    // 'sakura_storm' is epic, currentLevel=2 → cost = (2+1) * 500 * 4 = 6000
+    const res = await request(app).post('/api/game/upgrade-ability').send({ abilityId: 'sakura_storm' });
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.coinsSpent).toBe(6000);
+  });
 });
 
 // ─── POST /api/game/open-crate ────────────────────────────────────────────────

@@ -5,6 +5,9 @@ const BR_PAUSE_BETWEEN_BOSSES = 5000; // ms
 const BR_BOSS_TIME_BONUS_MAX = 60000; // 60s per boss — full bonus
 const BR_ABILITY_IDS = ['void_pulse', 'phase_lock', 'core_breach'];
 const BR_BOSS_BASE_SCORE = 8000;
+const BR_DAMAGE_SCORE_PER_HP = 8;
+const BR_NO_HIT_BOSS_BONUS = 2000;
+const BR_FAST_STREAK_BONUS_STEP = 1500;
 
 class BossRushGame extends GalacticGame {
   constructor() {
@@ -64,6 +67,26 @@ class BossRushGame extends GalacticGame {
       totalTimeMs: 0,
       bossAnnounceName: '',
       comboTimer: 0,
+      scoreBreakdown: {
+        damageScore: 0,
+        bossKillScore: 0,
+        timeBonusScore: 0,
+        noHitBossBonus: 0,
+        fastStreakBonus: 0
+      },
+      bossDamageTotal: 0,
+      gotHitThisBoss: false
+    };
+
+    const runState = this.gs;
+    runState.registerBossDamage = dmg => {
+      if (!runState.boss) return;
+      const safeDmg = Math.max(0, Number(dmg) || 0);
+      if (safeDmg <= 0) return;
+      const points = Math.floor(safeDmg * BR_DAMAGE_SCORE_PER_HP);
+      runState.score += points;
+      runState.bossDamageTotal += safeDmg;
+      runState.scoreBreakdown.damageScore += points;
     };
 
     this._spawnNextBoss();
@@ -89,6 +112,7 @@ class BossRushGame extends GalacticGame {
     gs.bossAnnounceName = gs.boss._bossName();
     gs.betweenBosses = false;
     gs.betweenBossTimer = 0;
+    gs.gotHitThisBoss = false;
   }
 
   // Override _loop to use boss rush update/render
@@ -185,7 +209,9 @@ class BossRushGame extends GalacticGame {
         if (b.dead) continue;
         if (Math.abs(b.x - gs.boss.x) < 44 && Math.abs(b.y - gs.boss.y) < 44) {
           b.dead = true;
+          const prevHp = gs.boss.hp;
           gs.boss.takeDamage(b.damage);
+          if (gs.registerBossDamage) gs.registerBossDamage(prevHp - gs.boss.hp);
           gs.particles.emit(b.x, b.y, 4, '#ff8844', { speed: 3, decay: 0.06 });
           if (gs.boss.hp <= 0 && !gs.boss.dead) gs.boss.dead = true;
         }
@@ -213,6 +239,7 @@ class BossRushGame extends GalacticGame {
         if (Math.abs(b.x - p.x) < 14 && Math.abs(b.y - p.y) < 14) {
           b.dead = true;
           p.hp -= b.damage;
+          gs.gotHitThisBoss = true;
           if (gs.phase2Entered && !gs.phase2HitThisPhase) {
             gs.phase2HitThisPhase = true;
           }
@@ -286,7 +313,10 @@ class BossRushGame extends GalacticGame {
     // Time bonus
     const elapsed = Date.now() - gs.bossStartTime;
     const timeBonus = Math.max(0, Math.floor(BR_BOSS_TIME_BONUS_MAX - elapsed));
-    gs.score += BR_BOSS_BASE_SCORE + timeBonus;
+    let bossScore = BR_BOSS_BASE_SCORE + timeBonus;
+
+    gs.scoreBreakdown.bossKillScore += BR_BOSS_BASE_SCORE;
+    gs.scoreBreakdown.timeBonusScore += timeBonus;
 
     // Track fast kill streak (under 2 min = 120000 ms)
     if (elapsed < 120000) {
@@ -300,6 +330,17 @@ class BossRushGame extends GalacticGame {
     if (gs.phase2Entered && !gs.phase2HitThisPhase) {
       gs.noHitPhase2 = true;
     }
+    if (!gs.gotHitThisBoss) {
+      bossScore += BR_NO_HIT_BOSS_BONUS;
+      gs.scoreBreakdown.noHitBossBonus += BR_NO_HIT_BOSS_BONUS;
+    }
+    if (gs.currentFastStreak >= 2) {
+      const streakBonus = (gs.currentFastStreak - 1) * BR_FAST_STREAK_BONUS_STEP;
+      bossScore += streakBonus;
+      gs.scoreBreakdown.fastStreakBonus += streakBonus;
+    }
+
+    gs.score += bossScore;
 
     gs.explosions.push(new Explosion(boss.x, boss.y, 3));
     gs.particles.emit(boss.x, boss.y, 80, '#ff00aa', { speed: 8, decay: 0.015 });
@@ -582,16 +623,18 @@ class BossRushGame extends GalacticGame {
     ctx.fillText(`BOSSES DEFEATED: ${gs.bossesDefeated}`, 240, 268);
     ctx.fillStyle = '#ffff00';
     ctx.fillText(`SCORE: ${formatNumber(gs.score)}`, 240, 290);
+    ctx.fillStyle = '#ff8800';
+    ctx.fillText(`DMG: ${formatNumber(Math.floor(gs.bossDamageTotal))}`, 240, 312);
 
     const totalSec = Math.floor(gs.totalTimeMs / 1000);
     const mm = Math.floor(totalSec / 60).toString().padStart(2,'0');
     const ss = (totalSec % 60).toString().padStart(2,'0');
     ctx.fillStyle = '#00ffff';
-    ctx.fillText(`TIME: ${mm}:${ss}`, 240, 312);
+    ctx.fillText(`TIME: ${mm}:${ss}`, 240, 334);
 
     ctx.fillStyle = '#aaaaaa';
     ctx.font = '7px "Press Start 2P"';
-    ctx.fillText('TAP/PRESS TO RETURN', 240, 348);
+    ctx.fillText('TAP/PRESS TO RETURN', 240, 360);
     ctx.restore();
   }
 
