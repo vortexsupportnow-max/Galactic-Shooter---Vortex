@@ -308,7 +308,8 @@ class BossRushGame extends GalacticGame {
     gs.boss = null;
 
     // Grant all 3 boss rush abilities on each boss kill
-    for (let i = 0; i < BR_ABILITY_IDS.length; i++) {
+    const slotCount = Math.min(BR_ABILITY_IDS.length, gs.abilitySlots.length);
+    for (let i = 0; i < slotCount; i++) {
       const abilityId = BR_ABILITY_IDS[i];
       gs.abilitySlots[i] = { id: abilityId, level: 1 };
       if (!gs.abilitiesEarned.includes(abilityId)) {
