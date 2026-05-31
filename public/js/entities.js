@@ -1212,16 +1212,16 @@ class BossChronosRex extends CosmicBoss {
 class BossAstralSentinel extends CosmicBoss {
   constructor() {
     super('astral_sentinel');
-    this.maxHp = 4000; this.hp = this.maxHp;
+    this.maxHp = 3200; this.hp = this.maxHp;
     this._phase2Color = '#00ffff';
     this.shieldAngle = 0;
     this.shieldActive = true;
     this.shieldHp = 500;
-    this.fireRate = 950;
+    this.fireRate = 1100;
   }
   _bossName() { return 'ASTRAL SENTINEL'; }
   _patternCount() { return 3; }
-  onPhase2Start() { this.shieldActive = false; this.fireRate = 600; }
+  onPhase2Start() { this.shieldActive = false; this.fireRate = 800; }
 
   update(dt, bullets) {
     super.update(dt, bullets);
@@ -1239,15 +1239,15 @@ class BossAstralSentinel extends CosmicBoss {
     const count = this.isPhase2 ? 4 : 3;
     for (let i = 0; i < count; i++) {
       const angle = Math.PI/2 + (i - Math.floor(count/2))*0.3;
-      bullets.push(new Bullet(this.x + (i-2)*12, this.y+32, Math.cos(angle)*3.5, Math.sin(angle)*3.5, 22, 'enemy'));
+      bullets.push(new Bullet(this.x + (i-2)*12, this.y+32, Math.cos(angle)*3.5, Math.sin(angle)*3.5, 18, 'enemy'));
     }
   }
 
   _pulseWave(bullets) {
-    const count = this.isPhase2 ? 14 : 12;
+    const count = this.isPhase2 ? 12 : 10;
     for (let i = 0; i < count; i++) {
       const angle = (i/count)*Math.PI*2 + this.shieldAngle;
-      const spd = this.isPhase2 ? 3.0 : 2.5;
+      const spd = this.isPhase2 ? 2.6 : 2.2;
       bullets.push(new Bullet(this.x, this.y, Math.cos(angle)*spd, Math.sin(angle)*spd, 16, 'enemy'));
     }
   }
@@ -1256,7 +1256,7 @@ class BossAstralSentinel extends CosmicBoss {
     const cols = this.isPhase2 ? 5 : 4;
     for (let i = 0; i < cols; i++) {
       const x = 40 + i*(400/(cols-1));
-      const spd = this.isPhase2 ? 3.5 : 3;
+      const spd = this.isPhase2 ? 3.2 : 2.8;
       bullets.push(new Bullet(x, this.y+20, (Math.random()-0.5)*1.5, spd, 20, 'enemy'));
     }
   }
