@@ -474,6 +474,8 @@ class Enemy {
 
     const speedMult = timeSlow ? 0.5 : 1;
     const spd = this.speed * speedMult;
+    const minX = this.width / 2;
+    const maxX = 480 - this.width / 2;
 
     switch (this.type) {
       case 'basic':
@@ -487,7 +489,8 @@ class Enemy {
       case 'heavy':
         this.y += spd * 0.7 * dtF;
         this.x += spd * this.bounceDir * dtF;
-        if (this.x > 450 || this.x < 30) this.bounceDir *= -1;
+        if (this.x > maxX) { this.x = maxX; this.bounceDir = -1; }
+        else if (this.x < minX) { this.x = minX; this.bounceDir = 1; }
         break;
       case 'shooter':
         if (this.y < this.targetY) {
@@ -496,10 +499,12 @@ class Enemy {
           // Hover in place with a slow side-to-side drift
           this.zigzagTimer += dt;
           this.x += Math.sin(this.zigzagTimer * 0.0008) * 0.6 * dtF;
-          this.x = Math.max(30, Math.min(450, this.x));
+          this.x = Math.max(minX, Math.min(maxX, this.x));
         }
         break;
     }
+
+    this.x = Math.max(minX, Math.min(maxX, this.x));
 
     // Only shooter type fires bullets
     if (this.canShoot) {
@@ -597,9 +602,12 @@ class Boss {
 
     const speedMult = timeSlow ? 0.5 : 1;
     const spd = this.speed * speedMult * (this.isPhase2 ? 1.3 : 1);
+    const minX = this.width / 2;
+    const maxX = 480 - this.width / 2;
 
     this.x += spd * this.moveDir * dtF;
-    if (this.x > 430 || this.x < 50) this.moveDir *= -1;
+    if (this.x > maxX) { this.x = maxX; this.moveDir = -1; }
+    else if (this.x < minX) { this.x = minX; this.moveDir = 1; }
 
     if (!this.enraged && this.isPhase2) {
       this.enraged = true;
@@ -751,8 +759,11 @@ class CosmicBoss {
     if (this.phaseFlashTimer > 0) this.phaseFlashTimer -= dt;
 
     const spd = this.speed * (this.isPhase2 ? 1.3 : 1);
+    const minX = this.width / 2;
+    const maxX = 480 - this.width / 2;
     this.x += spd * this.moveDir * dtF;
-    if (this.x > 430 || this.x < 50) this.moveDir *= -1;
+    if (this.x > maxX) { this.x = maxX; this.moveDir = -1; }
+    else if (this.x < minX) { this.x = minX; this.moveDir = 1; }
 
     this.patternTimer += dt;
     if (this.patternTimer >= this.patternInterval) {

@@ -431,7 +431,11 @@ const ABILITIES = {
     apply(gs, level) {
       if (!gs.boss) return;
       const dmg = Math.floor(gs.boss.maxHp * 0.15);
+      const prevHp = gs.boss.hp;
       gs.boss.hp = Math.max(1, gs.boss.hp - dmg);
+      if (typeof gs.registerBossDamage === 'function') {
+        gs.registerBossDamage(prevHp - gs.boss.hp);
+      }
       gs.particles.emit(gs.boss.x, gs.boss.y, 60, '#9900ff', { speed: 7, decay: 0.025 });
       // Void pulse shockwave effect
       gs.voidPulseEffect = { x: gs.boss.x, y: gs.boss.y, radius: 0, maxRadius: 180, timer: 600 };

@@ -104,6 +104,17 @@ const SKIN_CRATE_TYPES = {
 const SEASON_EXCLUSIVE_ABILITIES = ['bushido_blade', 'sakura_storm'];
 const SEASON_EXCLUSIVE_SKINS     = ['rising_sun', 'torii_gate'];
 const STREAK_EXCLUSIVE_SKINS     = ['streak_inferno'];
+const ABILITY_RARITY_OVERRIDES = {
+  bushido_blade: 'rare',
+  sakura_storm: 'epic'
+};
+
+function getAbilityRarity(abilityId) {
+  for (const [rarity, ids] of Object.entries(ABILITIES_BY_RARITY)) {
+    if (ids.includes(abilityId)) return rarity;
+  }
+  return ABILITY_RARITY_OVERRIDES[abilityId] || 'common';
+}
 
 // ── Daily Login Streak ────────────────────────────────────────────────────────
 // Rewards for specific streak days. Days not listed give a default small coins reward.
@@ -689,10 +700,7 @@ router.post('/upgrade-ability', async (req, res) => {
     if (currentLevel >= maxLevel) return res.json({ success: false, error: 'Already max level' });
 
     const rarityMultipliers = { common: 1, rare: 2, epic: 4, legendary: 8 };
-    let rarity = 'common';
-    for (const [r, ids] of Object.entries(ABILITIES_BY_RARITY)) {
-      if (ids.includes(abilityId)) { rarity = r; break; }
-    }
+    const rarity = getAbilityRarity(abilityId);
     const cost = (currentLevel + 1) * 500 * rarityMultipliers[rarity];
 
     const { data: user } = await supabase
