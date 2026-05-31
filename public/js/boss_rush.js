@@ -78,14 +78,15 @@ class BossRushGame extends GalacticGame {
       gotHitThisBoss: false
     };
 
-    this.gs.registerBossDamage = dmg => {
-      if (!this.gs || !this.gs.boss) return;
+    const runState = this.gs;
+    runState.registerBossDamage = dmg => {
+      if (!runState.boss) return;
       const safeDmg = Math.max(0, Number(dmg) || 0);
       if (safeDmg <= 0) return;
       const points = Math.floor(safeDmg * BR_DAMAGE_SCORE_PER_HP);
-      this.gs.score += points;
-      this.gs.bossDamageTotal += safeDmg;
-      this.gs.scoreBreakdown.damageScore += points;
+      runState.score += points;
+      runState.bossDamageTotal += safeDmg;
+      runState.scoreBreakdown.damageScore += points;
     };
 
     this._spawnNextBoss();

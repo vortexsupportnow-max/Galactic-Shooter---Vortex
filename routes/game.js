@@ -110,10 +110,11 @@ const ABILITY_RARITY_OVERRIDES = {
 };
 
 function getAbilityRarity(abilityId) {
+  if (ABILITY_RARITY_OVERRIDES[abilityId]) return ABILITY_RARITY_OVERRIDES[abilityId];
   for (const [rarity, ids] of Object.entries(ABILITIES_BY_RARITY)) {
     if (ids.includes(abilityId)) return rarity;
   }
-  return ABILITY_RARITY_OVERRIDES[abilityId] || 'common';
+  return 'common';
 }
 
 // ── Daily Login Streak ────────────────────────────────────────────────────────
