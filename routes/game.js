@@ -1310,20 +1310,6 @@ router.post('/claim-pass-tier', async (req, res) => {
 
 // ── Boss Rush Mode ────────────────────────────────────────────────────────────
 
-// Middleware: restrict Boss Rush endpoints to developer role only
-async function requireDeveloper(req, res, next) {
-  try {
-    const supabase = getDB();
-    const { data: user } = await supabase.from('users').select('role').eq('id', req.user.userId).maybeSingle();
-    if (!user || user.role !== 'developer') {
-      return res.status(403).json({ success: false, error: 'Boss Rush is restricted to developers.' });
-    }
-    next();
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-}
-
 // Aura unlock objective IDs and their condition checks
 const BR_AURA_CONDITIONS = {
   br_singularity:    stats => stats.fastest_boss_streak >= 5,
@@ -1333,7 +1319,7 @@ const BR_AURA_CONDITIONS = {
   br_eternal_nemesis: stats => stats.total_bosses_killed >= 100
 };
 
-router.post('/save-boss-rush-score', requireDeveloper, async (req, res) => {
+router.post('/save-boss-rush-score', async (req, res) => {
   try {
     const { bossesDefeated, totalTimeMs, score, bossKillCounts, noAbilitiesUsed, noHitPhase2, fastBossStreak } = req.body;
     const supabase = getDB();
@@ -1401,7 +1387,7 @@ router.post('/save-boss-rush-score', requireDeveloper, async (req, res) => {
   }
 });
 
-router.get('/boss-rush-stats', requireDeveloper, async (req, res) => {
+router.get('/boss-rush-stats', async (req, res) => {
   try {
     const supabase = getDB();
     const userId = req.user.userId;
