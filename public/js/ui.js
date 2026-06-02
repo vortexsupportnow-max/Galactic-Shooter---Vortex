@@ -290,6 +290,7 @@ async function loadCrateShop() {
 const CRATE_DEFS = {
   mystery: {
     icon: '📦', name: 'MYSTERY CRATE', cost: 10,
+    count: 1,
     odds: [
       { cls: 'common',    label: '■ COMMON: 50%' },
       { cls: 'rare',      label: '■ RARE: 30%' },
@@ -299,6 +300,7 @@ const CRATE_DEFS = {
   },
   galactic: {
     icon: '🌌', name: 'GALACTIC CRATE', cost: 50,
+    count: 2,
     odds: [
       { cls: 'common',    label: '■ COMMON: 20%' },
       { cls: 'rare',      label: '■ RARE: 40%' },
@@ -308,6 +310,7 @@ const CRATE_DEFS = {
   },
   void: {
     icon: '🕳️', name: 'VOID CRATE', cost: 150,
+    count: 3,
     odds: [
       { cls: 'rare',      label: '■ RARE: 10%' },
       { cls: 'epic',      label: '■ EPIC: 50%' },
@@ -382,7 +385,8 @@ function updateCrateDisplay(type) {
 
   const info = document.getElementById('crate-info');
   const freeLine = freeCrates > 0 ? `<div class="rarity-chance legendary">★ FREE CRATES AVAILABLE: ${freeCrates}</div>` : '';
-  info.innerHTML = freeLine + def.odds.map(o => `<div class="rarity-chance ${o.cls}">${o.label}</div>`).join('');
+  const countLine = def.count > 1 ? `<div class="rarity-chance epic">★ GIVES ${def.count} ABILITIES PER OPEN</div>` : '';
+  info.innerHTML = freeLine + countLine + def.odds.map(o => `<div class="rarity-chance ${o.cls}">${o.label}</div>`).join('');
 
   document.getElementById('crate-result').classList.add('hidden');
 }
@@ -439,45 +443,50 @@ async function openCrate() {
     return;
   }
 
-  const { abilityId, rarity, level, alreadyOwned, usedFreeCrate, coinsCompensation } = res.data;
+  const { results, usedFreeCrate } = res.data;
 
-  // Run the suspense animation now that we know the rarity
-  await animateCrateOpening(rarity);
+  // Show each ability result one at a time
+  for (const item of results) {
+    const { abilityId, rarity, level, alreadyOwned, coinsCompensation } = item;
 
-  // Reveal result
-  const ability = ABILITIES[abilityId];
-  const resultEl = document.getElementById('crate-result');
+    // Run the suspense animation for this ability
+    await animateCrateOpening(rarity);
 
-  const icon = GameAssets.drawAbilityIcon(abilityId, rarity);
-  icon.style.width = '40px'; icon.style.height = '40px';
+    // Reveal result
+    const ability = ABILITIES[abilityId];
+    const resultEl = document.getElementById('crate-result');
 
-  resultEl.innerHTML = `<div style="font-size:0.5rem;margin-bottom:0.5rem">${rarity.toUpperCase()}</div>`;
-  resultEl.appendChild(icon);
-  resultEl.innerHTML += `
-    <div style="font-size:0.6rem;margin-top:0.5rem">${ability ? ability.name : abilityId}</div>
-    <div style="font-size:0.45rem;margin-top:0.3rem;color:#aaa">
-      ${alreadyOwned ? `UPGRADED TO LV ${level}` : 'NEW ABILITY!'}
-      ${usedFreeCrate ? '<br>FREE CRATE USED' : ''}
-      ${coinsCompensation ? `<br>COMPENSATION: ${formatNumber(coinsCompensation)} COINS` : ''}
-    </div>
-    <div class="crate-continue-hint">[ PREMI UN TASTO O CLICCA PER CONTINUARE ]</div>
-  `;
+    const icon = GameAssets.drawAbilityIcon(abilityId, rarity);
+    icon.style.width = '40px'; icon.style.height = '40px';
 
-  // Force browser reflow to restart CSS animation
-  resultEl.className = 'crate-result hidden';
-  void resultEl.offsetWidth;
-  resultEl.className = `crate-result ${rarity}`;
+    resultEl.innerHTML = `<div style="font-size:0.5rem;margin-bottom:0.5rem">${rarity.toUpperCase()}</div>`;
+    resultEl.appendChild(icon);
+    resultEl.innerHTML += `
+      <div style="font-size:0.6rem;margin-top:0.5rem">${ability ? ability.name : abilityId}</div>
+      <div style="font-size:0.45rem;margin-top:0.3rem;color:#aaa">
+        ${alreadyOwned ? `UPGRADED TO LV ${level}` : 'NEW ABILITY!'}
+        ${usedFreeCrate ? '<br>FREE CRATE USED' : ''}
+        ${coinsCompensation ? `<br>COMPENSATION: ${formatNumber(coinsCompensation)} COINS` : ''}
+      </div>
+      <div class="crate-continue-hint">[ PREMI UN TASTO O CLICCA PER CONTINUARE ]</div>
+    `;
 
-  // Wait for the user to acknowledge the result before continuing
-  await new Promise(resolve => {
-    const dismiss = () => {
-      document.removeEventListener('keydown', dismiss);
-      resultEl.removeEventListener('click', dismiss);
-      resolve();
-    };
-    document.addEventListener('keydown', dismiss);
-    resultEl.addEventListener('click', dismiss);
-  });
+    // Force browser reflow to restart CSS animation
+    resultEl.className = 'crate-result hidden';
+    void resultEl.offsetWidth;
+    resultEl.className = `crate-result ${rarity}`;
+
+    // Wait for the user to acknowledge the result before continuing
+    await new Promise(resolve => {
+      const dismiss = () => {
+        document.removeEventListener('keydown', dismiss);
+        resultEl.removeEventListener('click', dismiss);
+        resolve();
+      };
+      document.addEventListener('keydown', dismiss);
+      resultEl.addEventListener('click', dismiss);
+    });
+  }
 
   btn.textContent = 'OPEN CRATE';
   btn.disabled = false;

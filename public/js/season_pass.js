@@ -188,7 +188,10 @@ async function loadMissions() {
   `;
   const claimAllMissionsBtn = document.getElementById('claimAllMissionsBtn');
   if (claimAllMissionsBtn && claimableCount > 0) {
-    claimAllMissionsBtn.addEventListener('click', claimAllMissionRewards);
+    claimAllMissionsBtn.addEventListener('click', async () => {
+      claimAllMissionsBtn.disabled = true;
+      try { await claimAllMissionRewards(); } finally { claimAllMissionsBtn.disabled = false; }
+    });
   }
 
   const listEl = document.createElement('div');
@@ -234,7 +237,11 @@ async function loadMissions() {
     `;
 
     if (completed && !claimed) {
-      card.querySelector('.mission-claim-btn').addEventListener('click', () => claimMissionReward(m.id));
+      const claimBtn = card.querySelector('.mission-claim-btn');
+      claimBtn.addEventListener('click', async () => {
+        claimBtn.disabled = true;
+        try { await claimMissionReward(m.id); } finally { claimBtn.disabled = false; }
+      });
     }
 
     listEl.appendChild(card);
