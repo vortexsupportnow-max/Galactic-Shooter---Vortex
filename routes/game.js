@@ -6,6 +6,7 @@ const router = express.Router();
 const CRATE_TYPES = {
   mystery: {
     cost: 10,
+    abilitiesCount: 1,
     pool: [
       ...Array(50).fill('common'),
       ...Array(30).fill('rare'),
@@ -15,6 +16,7 @@ const CRATE_TYPES = {
   },
   galactic: {
     cost: 50,
+    abilitiesCount: 2,
     pool: [
       ...Array(20).fill('common'),
       ...Array(40).fill('rare'),
@@ -24,6 +26,7 @@ const CRATE_TYPES = {
   },
   void: {
     cost: 150,
+    abilitiesCount: 3,
     pool: [
       ...Array(10).fill('rare'),
       ...Array(50).fill('epic'),
@@ -152,6 +155,7 @@ const STREAK_REWARDS = [
   { day: 30, type: 'skin',    skinId: 'streak_inferno' }
 ];
 const CLAIM_ALL_MISSIONS_LOCKS = new Set();
+const CLAIM_MISSION_LOCKS = new Set();
 
 // ── Season Pass ───────────────────────────────────────────────────────────────
 
@@ -763,40 +767,52 @@ router.post('/open-crate', async (req, res) => {
       await supabase.from('users').update({ gems: user.gems - crate.cost }).eq('id', userId);
     }
 
-    const rarity = crate.pool[Math.floor(Math.random() * crate.pool.length)];
-    const pool = ABILITIES_BY_RARITY[rarity];
-    const abilityId = pool[Math.floor(Math.random() * pool.length)];
+    const abilitiesCount = crate.abilitiesCount || 1;
+    const results = [];
+    let totalCoinsCompensation = 0;
+    // Re-fetch user coins after the gem deduction for compensation calculations
+    let currentCoins = user.coins || 0;
 
-    const { data: existing } = await supabase
-      .from('user_abilities')
-      .select('level')
-      .eq('user_id', userId)
-      .eq('ability_id', abilityId)
-      .maybeSingle();
+    for (let i = 0; i < abilitiesCount; i++) {
+      const rarity = crate.pool[Math.floor(Math.random() * crate.pool.length)];
+      const pool = ABILITIES_BY_RARITY[rarity];
+      const abilityId = pool[Math.floor(Math.random() * pool.length)];
 
-    let newLevel = 1;
-    let coinsCompensation = 0;
-    if (existing) {
-      if (existing.level < 10) {
-        await supabase
-          .from('user_abilities')
-          .update({ level: existing.level + 1 })
-          .eq('user_id', userId)
-          .eq('ability_id', abilityId);
-        newLevel = existing.level + 1;
-      } else if (usingFreeCrate) {
-        coinsCompensation = MAXED_ABILITY_COMPENSATION[rarity] || 1000;
-        await supabase.from('users').update({ coins: (user.coins || 0) + coinsCompensation }).eq('id', userId);
-        newLevel = existing.level;
+      const { data: existing } = await supabase
+        .from('user_abilities')
+        .select('level')
+        .eq('user_id', userId)
+        .eq('ability_id', abilityId)
+        .maybeSingle();
+
+      let newLevel = 1;
+      let coinsCompensation = 0;
+      if (existing) {
+        if (existing.level < 10) {
+          await supabase
+            .from('user_abilities')
+            .update({ level: existing.level + 1 })
+            .eq('user_id', userId)
+            .eq('ability_id', abilityId);
+          newLevel = existing.level + 1;
+        } else {
+          coinsCompensation = MAXED_ABILITY_COMPENSATION[rarity] || 1000;
+          currentCoins += coinsCompensation;
+          totalCoinsCompensation += coinsCompensation;
+          newLevel = existing.level;
+        }
       } else {
-        await supabase.from('users').update({ gems: user.gems - crate.cost + Math.floor(crate.cost / 2) }).eq('id', userId);
-        newLevel = existing.level;
+        await supabase.from('user_abilities').insert({ user_id: userId, ability_id: abilityId, level: 1 });
       }
-    } else {
-      await supabase.from('user_abilities').insert({ user_id: userId, ability_id: abilityId, level: 1 });
+
+      results.push({ abilityId, rarity, level: newLevel, alreadyOwned: !!existing, coinsCompensation });
     }
 
-    res.json({ success: true, data: { abilityId, rarity, level: newLevel, alreadyOwned: !!existing, usedFreeCrate: usingFreeCrate, coinsCompensation } });
+    if (totalCoinsCompensation > 0) {
+      await supabase.from('users').update({ coins: currentCoins }).eq('id', userId);
+    }
+
+    res.json({ success: true, data: { results, usedFreeCrate: usingFreeCrate } });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
@@ -1100,10 +1116,15 @@ router.get('/season-pass', async (req, res) => {
 });
 
 router.post('/claim-mission-reward', async (req, res) => {
+  const userId = req.user.userId;
+  const { missionId } = req.body;
+  const lockKey = `${userId}:${missionId}`;
+  if (CLAIM_MISSION_LOCKS.has(lockKey)) {
+    return res.json({ success: false, error: 'Claim already in progress' });
+  }
+  CLAIM_MISSION_LOCKS.add(lockKey);
   try {
-    const { missionId } = req.body;
     const supabase = getDB();
-    const userId = req.user.userId;
 
     const mission = SEASON_MISSIONS.find(m => m.id === missionId);
     if (!mission) return res.json({ success: false, error: 'Unknown mission' });
@@ -1162,6 +1183,8 @@ router.post('/claim-mission-reward', async (req, res) => {
     } });
   } catch (err) {
     res.json({ success: false, error: err.message });
+  } finally {
+    CLAIM_MISSION_LOCKS.delete(lockKey);
   }
 });
 

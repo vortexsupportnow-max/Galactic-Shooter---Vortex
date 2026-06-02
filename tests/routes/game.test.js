@@ -479,10 +479,10 @@ describe('POST /api/game/open-crate', () => {
 
     const res = await request(app).post('/api/game/open-crate').send({});
     expect(res.body.success).toBe(true);
-    expect(res.body.data).toHaveProperty('abilityId');
-    expect(res.body.data).toHaveProperty('rarity');
-    expect(res.body.data.level).toBe(1);
-    expect(res.body.data.alreadyOwned).toBe(false);
+    expect(res.body.data.results[0]).toHaveProperty('abilityId');
+    expect(res.body.data.results[0]).toHaveProperty('rarity');
+    expect(res.body.data.results[0].level).toBe(1);
+    expect(res.body.data.results[0].alreadyOwned).toBe(false);
   });
 
   it('upgrades existing ability level when already owned and below max level', async () => {
@@ -498,8 +498,8 @@ describe('POST /api/game/open-crate', () => {
 
     const res = await request(app).post('/api/game/open-crate').send({});
     expect(res.body.success).toBe(true);
-    expect(res.body.data.alreadyOwned).toBe(true);
-    expect(res.body.data.level).toBe(4);
+    expect(res.body.data.results[0].alreadyOwned).toBe(true);
+    expect(res.body.data.results[0].level).toBe(4);
   });
 
   it('refunds 5 gems when ability is already at max level', async () => {
@@ -518,8 +518,8 @@ describe('POST /api/game/open-crate', () => {
 
     const res = await request(app).post('/api/game/open-crate').send({});
     expect(res.body.success).toBe(true);
-    expect(res.body.data.level).toBe(10);
-    expect(res.body.data.alreadyOwned).toBe(true);
+    expect(res.body.data.results[0].level).toBe(10);
+    expect(res.body.data.results[0].alreadyOwned).toBe(true);
   });
 });
 
@@ -619,7 +619,7 @@ describe('POST /api/game/open-crate with free crates', () => {
     const res = await request(app).post('/api/game/open-crate').send({ crateType: 'mystery' });
     expect(res.body.success).toBe(true);
     expect(res.body.data.usedFreeCrate).toBe(true);
-    expect(res.body.data.coinsCompensation).toBeGreaterThan(0);
+    expect(res.body.data.results[0].coinsCompensation).toBeGreaterThan(0);
   });
 });
 
