@@ -770,7 +770,7 @@ router.post('/open-crate', async (req, res) => {
     const abilitiesCount = crate.abilitiesCount || 1;
     const results = [];
     let totalCoinsCompensation = 0;
-    // Re-fetch user coins after the gem deduction for compensation calculations
+    // Use cached coins value; sufficient since gem deduction is tracked separately
     let currentCoins = user.coins || 0;
 
     for (let i = 0; i < abilitiesCount; i++) {
@@ -795,10 +795,15 @@ router.post('/open-crate', async (req, res) => {
             .eq('user_id', userId)
             .eq('ability_id', abilityId);
           newLevel = existing.level + 1;
-        } else {
+        } else if (usingFreeCrate) {
           coinsCompensation = MAXED_ABILITY_COMPENSATION[rarity] || 1000;
           currentCoins += coinsCompensation;
           totalCoinsCompensation += coinsCompensation;
+          newLevel = existing.level;
+        } else {
+          // Refund a proportional share of the gem cost for each maxed ability
+          const gemRefundPerAbility = Math.floor(crate.cost / abilitiesCount / 2);
+          await supabase.from('users').update({ gems: user.gems - crate.cost + gemRefundPerAbility }).eq('id', userId);
           newLevel = existing.level;
         }
       } else {
