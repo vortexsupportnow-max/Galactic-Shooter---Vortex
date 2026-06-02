@@ -770,8 +770,10 @@ router.post('/open-crate', async (req, res) => {
     const abilitiesCount = crate.abilitiesCount || 1;
     const results = [];
     let totalCoinsCompensation = 0;
+    let totalGemRefund = 0;
     // Use cached coins value; sufficient since gem deduction is tracked separately
     let currentCoins = user.coins || 0;
+    const gemRefundPerAbility = Math.floor(crate.cost / abilitiesCount / 2);
 
     for (let i = 0; i < abilitiesCount; i++) {
       const rarity = crate.pool[Math.floor(Math.random() * crate.pool.length)];
@@ -801,9 +803,8 @@ router.post('/open-crate', async (req, res) => {
           totalCoinsCompensation += coinsCompensation;
           newLevel = existing.level;
         } else {
-          // Refund a proportional share of the gem cost for each maxed ability
-          const gemRefundPerAbility = Math.floor(crate.cost / abilitiesCount / 2);
-          await supabase.from('users').update({ gems: user.gems - crate.cost + gemRefundPerAbility }).eq('id', userId);
+          // Accumulate gem refund; applied in a single update after the loop
+          totalGemRefund += gemRefundPerAbility;
           newLevel = existing.level;
         }
       } else {
@@ -815,6 +816,9 @@ router.post('/open-crate', async (req, res) => {
 
     if (totalCoinsCompensation > 0) {
       await supabase.from('users').update({ coins: currentCoins }).eq('id', userId);
+    }
+    if (totalGemRefund > 0) {
+      await supabase.from('users').update({ gems: user.gems - crate.cost + totalGemRefund }).eq('id', userId);
     }
 
     res.json({ success: true, data: { results, usedFreeCrate: usingFreeCrate } });

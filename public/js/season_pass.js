@@ -190,7 +190,7 @@ async function loadMissions() {
   if (claimAllMissionsBtn && claimableCount > 0) {
     claimAllMissionsBtn.addEventListener('click', async () => {
       claimAllMissionsBtn.disabled = true;
-      await claimAllMissionRewards();
+      try { await claimAllMissionRewards(); } finally { claimAllMissionsBtn.disabled = false; }
     });
   }
 
@@ -240,7 +240,7 @@ async function loadMissions() {
       const claimBtn = card.querySelector('.mission-claim-btn');
       claimBtn.addEventListener('click', async () => {
         claimBtn.disabled = true;
-        await claimMissionReward(m.id);
+        try { await claimMissionReward(m.id); } finally { claimBtn.disabled = false; }
       });
     }
 
