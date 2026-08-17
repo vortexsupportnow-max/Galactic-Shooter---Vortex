@@ -50,7 +50,7 @@ async function handleLogin() {
     setToken(res.data.token);
     setNickname(res.data.nickname);
     showMainMenu();
-    maybeShowTutorial();
+    runWelcomeFlow();
   } else {
     errEl.textContent = res.error || 'LOGIN FAILED';
   }
@@ -81,7 +81,7 @@ async function handleRegister() {
     setToken(res.data.token);
     setNickname(res.data.nickname);
     showMainMenu();
-    maybeShowTutorial();
+    runWelcomeFlow();
   } else {
     errEl.textContent = res.error || 'REGISTER FAILED';
   }

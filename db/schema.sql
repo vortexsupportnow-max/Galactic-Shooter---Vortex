@@ -1,6 +1,17 @@
 -- ============================================================
 -- Galactic Shooter – Supabase (PostgreSQL) Schema
--- Run this once in the Supabase SQL Editor
+-- Run this once in the Supabase SQL Editor. It is idempotent.
+--
+-- THE THREE SQL FILES ARE COMPLEMENTARY — keep all of them.
+-- Run order on a fresh project:
+--   1. db/schema.sql        (this file: tables, indexes, functions)
+--   2. db/schema_roles.sql  (optional: developer role helpers)
+--   3. db/schema_rls.sql    (last: locks the database down)
+--
+-- ⚠ RE-RUNNING THIS FILE AFTER schema_rls.sql RE-OPENS THE DATABASE.
+-- The "backend_all" policies near the bottom grant the public anon key full
+-- read/write access, and re-running recreates them. If you ever re-run this
+-- file on a locked-down project, run db/schema_rls.sql again straight after.
 -- ============================================================
 
 -- ── Tables ──────────────────────────────────────────────────
@@ -70,13 +81,13 @@ ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS streak_last_claim DATE;
 -- Developer role column (see db/schema_roles.sql for full role management)
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'player';
 
--- ── Japan Season / Space Pass ─────────────────────────────────────────────────
+-- ── Seasons / Space Pass ──────────────────────────────────────────────────────
 
 -- Tracks each user's season pass progress (pulsar earned, tiers claimed)
 CREATE TABLE IF NOT EXISTS user_season_pass (
   id           BIGSERIAL PRIMARY KEY,
   user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  season_id    TEXT NOT NULL DEFAULT 'japan_s1',
+  season_id    TEXT NOT NULL DEFAULT 'italy_s2',
   pulsar       INTEGER NOT NULL DEFAULT 0,
   claimed_tiers TEXT[] NOT NULL DEFAULT '{}',
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -99,6 +110,10 @@ CREATE TABLE IF NOT EXISTS user_mission_progress (
 -- ── Indexes ──────────────────────────────────────────────────
 
 CREATE INDEX IF NOT EXISTS idx_users_nickname          ON users(nickname);
+-- Nicknames are the login identity and are shown on the leaderboard: without this,
+-- "Player" and "player" are two different accounts and impersonation is trivial.
+-- (If this fails, existing rows already collide — rename them, then re-run.)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_nickname_lower ON users(LOWER(nickname));
 CREATE INDEX IF NOT EXISTS idx_scores_user_id          ON scores(user_id);
 CREATE INDEX IF NOT EXISTS idx_scores_score_desc       ON scores(score DESC);
 CREATE INDEX IF NOT EXISTS idx_scores_wave_desc        ON scores(wave DESC);
@@ -110,9 +125,13 @@ CREATE INDEX IF NOT EXISTS idx_user_season_pass_user_id ON user_season_pass(user
 CREATE INDEX IF NOT EXISTS idx_user_mission_progress_user_id ON user_mission_progress(user_id);
 
 -- ── Row-Level Security ────────────────────────────────────────
--- The Node.js backend is the only caller (server-side, trusted).
--- We enable RLS but create a single permissive policy so the
--- anon key used by the backend can read/write freely.
+-- The policies below are permissive for EVERY role, including `anon`. They only
+-- exist so a deployment using SUPABASE_ANON_KEY keeps working.
+--
+-- ⚠ A Supabase anon key is public by design: while these policies are in place,
+-- anyone holding it can read password hashes and edit balances directly.
+-- Switch the backend to SUPABASE_SERVICE_ROLE_KEY and then run db/schema_rls.sql,
+-- which drops these policies and locks the tables to service_role only.
 
 ALTER TABLE users          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_abilities ENABLE ROW LEVEL SECURITY;

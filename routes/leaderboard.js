@@ -1,8 +1,10 @@
 const express = require('express');
 const { getDB } = require('../db/database');
+const { fail } = require('../lib/respond');
 
 const router = express.Router();
 
+// Only these three values ever reach the RPC — anything else is treated as 'all'.
 function filterDate(filter) {
   if (filter === 'daily') return new Date(Date.now() - 86400000).toISOString();
   if (filter === 'weekly') return new Date(Date.now() - 7 * 86400000).toISOString();
@@ -17,7 +19,7 @@ router.get('/scores', async (req, res) => {
     if (error) throw new Error(error.message);
     res.json({ success: true, data });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, 'leaderboard/scores');
   }
 });
 
@@ -29,7 +31,7 @@ router.get('/waves', async (req, res) => {
     if (error) throw new Error(error.message);
     res.json({ success: true, data });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, 'leaderboard/waves');
   }
 });
 
@@ -40,7 +42,7 @@ router.get('/boss-rush', async (req, res) => {
     if (error) throw new Error(error.message);
     res.json({ success: true, data });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, 'leaderboard/boss-rush');
   }
 });
 

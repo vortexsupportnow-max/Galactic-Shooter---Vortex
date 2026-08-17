@@ -83,7 +83,7 @@ async function init() {
     if (res.success) {
       setNickname(res.data.nickname);
       showMainMenu();
-      maybeShowTutorial();
+      runWelcomeFlow();
       return;
     } else {
       clearToken();

@@ -128,7 +128,7 @@ class GalacticGame {
     zone.addEventListener('touchend', onEnd);
   }
 
-  start(abilitySlots = [null, null, null], unlockedAbilityIds = [], skinBoosts = null, skinColor = null, skinTrail = null) {
+  start(abilitySlots = [null, null, null], unlockedAbilityIds = [], skinBoosts = null, skinColor = null, skinTrail = null, skinStripes = null) {
     if (this.animId) cancelAnimationFrame(this.animId);
     if (this.surrenderBtn) {
       this.surrenderBtn.disabled = false;
@@ -145,6 +145,7 @@ class GalacticGame {
       player.shieldTimer = 5000;
     }
     player.skinColor = skinColor || null;
+    player.skinStripes = skinStripes || null;
 
     this.gs = {
       wave: 1,
@@ -181,6 +182,8 @@ class GalacticGame {
       singularity: null,
       turret: null,
       sakuraStorm: null,
+      pestoField: null,
+      pizza: null,
       abilitiesUsed: 0,
       waveAnnounce: 1500,
       keys: this.keys
@@ -301,6 +304,60 @@ class GalacticGame {
         gs.particles.emit(x, 0, 3, '#ff88cc', { speed: 3, decay: 0.025 });
       }
       if (gs.sakuraStorm.timer <= 0) gs.sakuraStorm = null;
+    }
+
+    // Pesto Genovese – lingering slow field, keeps refreshing the slow on everything
+    // on screen (including enemies that spawn while it lasts)
+    if (gs.pestoField) {
+      gs.pestoField.timer -= dt;
+      const mult = gs.pestoField.slowMult;
+      for (const e of gs.enemies) { e.slowMult = mult; e.slowTimer = 150; }
+      if (gs.boss) { gs.boss.slowMult = mult; gs.boss.slowTimer = 150; }
+      if (Math.random() < dt / 160) {
+        const sp = gs.pestoField.splats[Math.floor(Math.random() * gs.pestoField.splats.length)];
+        gs.particles.emit(sp.x, sp.y, 2, '#6dbb3c', { speed: 1, decay: 0.03, gravity: 0.04 });
+      }
+      if (gs.pestoField.timer <= 0) gs.pestoField = null;
+    }
+
+    // Pizza Gigante – flies up, damages once and knocks everything backwards
+    if (gs.pizza) {
+      const pz = gs.pizza;
+      pz.timer -= dt;
+      pz.y += pz.vy * dtF;
+      pz.angle += 0.05 * dtF;
+
+      for (const e of gs.enemies) {
+        const dx = e.x - pz.x, dy = e.y - pz.y;
+        if (Math.sqrt(dx*dx + dy*dy) < pz.radius + e.width / 2) {
+          if (!pz.hit.has(e)) {
+            pz.hit.add(e);
+            e.hp -= pz.damage;
+            gs.particles.emit(e.x, e.y, 10, '#f0b429', { speed: 4, decay: 0.03 });
+          }
+          e.knockVy = pz.knockback;
+          e.knockTimer = 400;
+        }
+      }
+
+      if (gs.boss) {
+        const dx = gs.boss.x - pz.x, dy = gs.boss.y - pz.y;
+        if (Math.sqrt(dx*dx + dy*dy) < pz.radius + gs.boss.width / 2) {
+          if (!pz.bossHit) {
+            pz.bossHit = true;
+            gs.boss.hp -= pz.damage;
+            gs.particles.emit(gs.boss.x, gs.boss.y, 25, '#f0b429', { speed: 5, decay: 0.025 });
+            Sounds.explosion(false);
+          }
+          gs.boss.knockVy = pz.knockback * 0.6;
+          gs.boss.knockTimer = 400;
+          if (gs.boss.hp <= 0) this._killBoss();
+        }
+      }
+
+      gs.particles.emit(pz.x + (Math.random() - 0.5) * pz.radius, pz.y + pz.radius * 0.5, 1, '#e8532a', { speed: 1, decay: 0.05 });
+
+      if (pz.timer <= 0 || pz.y < -pz.radius) gs.pizza = null;
     }
 
     // Singularity
@@ -732,6 +789,68 @@ class GalacticGame {
     Sounds.abilityUse();
   }
 
+  // Italia Season: green pesto splats on the battlefield floor
+  _drawPestoField(ctx, field) {
+    const fade = Math.min(1, field.timer / 1000);
+    ctx.save();
+    for (const sp of field.splats) {
+      ctx.globalAlpha = 0.32 * fade;
+      ctx.fillStyle = '#3f8f26';
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2);
+      ctx.fill();
+      // irregular blobs around the main splat
+      for (let i = 0; i < 4; i++) {
+        const a = sp.rot + (i / 4) * Math.PI * 2;
+        ctx.globalAlpha = 0.22 * fade;
+        ctx.fillStyle = '#6dbb3c';
+        ctx.beginPath();
+        ctx.arc(sp.x + Math.cos(a) * sp.r * 0.8, sp.y + Math.sin(a) * sp.r * 0.7, sp.r * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // Italia Season: the giant pizza projectile
+  _drawPizza(ctx, pz) {
+    ctx.save();
+    ctx.translate(pz.x, pz.y);
+    ctx.rotate(pz.angle);
+
+    // Crust
+    ctx.fillStyle = '#c98b3a';
+    ctx.beginPath(); ctx.arc(0, 0, pz.radius, 0, Math.PI * 2); ctx.fill();
+    // Cheese
+    ctx.fillStyle = '#f2c14e';
+    ctx.beginPath(); ctx.arc(0, 0, pz.radius * 0.82, 0, Math.PI * 2); ctx.fill();
+    // Tomato base peeking through
+    ctx.fillStyle = '#e8532a';
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath(); ctx.arc(0, 0, pz.radius * 0.82, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Pepperoni + basil
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      const d = pz.radius * (i % 2 === 0 ? 0.5 : 0.28);
+      ctx.fillStyle = '#c0221c';
+      ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, pz.radius * 0.12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3f8f26';
+      ctx.beginPath(); ctx.arc(Math.cos(a + 0.4) * pz.radius * 0.68, Math.sin(a + 0.4) * pz.radius * 0.68, pz.radius * 0.06, 0, Math.PI * 2); ctx.fill();
+    }
+
+    ctx.restore();
+
+    // Heat glow
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.strokeStyle = '#ffcc55';
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(pz.x, pz.y, pz.radius + 5, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
   _render(now) {
     const ctx = this.ctx;
     const gs = this.gs;
@@ -780,6 +899,9 @@ class GalacticGame {
       ctx.restore();
     }
 
+    // Pesto field (under everything else)
+    if (gs.pestoField) this._drawPestoField(ctx, gs.pestoField);
+
     // Draw power-ups
     for (const pu of gs.powerUps) pu.draw(ctx);
 
@@ -788,6 +910,9 @@ class GalacticGame {
 
     // Draw boss
     if (gs.boss) gs.boss.draw(ctx);
+
+    // Pizza gigante (over enemies and boss)
+    if (gs.pizza) this._drawPizza(ctx, gs.pizza);
 
     // Draw turret
     if (gs.turret) {
@@ -992,9 +1117,9 @@ class GalacticGame {
 // Global instance
 let gameInstance = null;
 
-function startGame(abilitySlots, unlockedAbilityIds, skinBoosts, skinColor, skinTrail) {
+function startGame(abilitySlots, unlockedAbilityIds, skinBoosts, skinColor, skinTrail, skinStripes) {
   if (!gameInstance) gameInstance = new GalacticGame();
-  gameInstance.start(abilitySlots || [null, null, null], unlockedAbilityIds || [], skinBoosts || null, skinColor || null, skinTrail || null);
+  gameInstance.start(abilitySlots || [null, null, null], unlockedAbilityIds || [], skinBoosts || null, skinColor || null, skinTrail || null, skinStripes || null);
 }
 
 function stopGame() {

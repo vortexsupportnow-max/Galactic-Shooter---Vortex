@@ -351,6 +351,19 @@ class Player {
     // Player ship
     ctx.drawImage(GameAssets.player, this.x - 20, this.y - 20);
 
+    // Flag skins: vertical stripe aura (e.g. Tricolore)
+    if (this.skinStripes && this.skinStripes.length) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(this.x, this.y, 26, 0, Math.PI * 2); ctx.clip();
+      ctx.globalAlpha = 0.3;
+      const bandW = 52 / this.skinStripes.length;
+      this.skinStripes.forEach((c, i) => {
+        ctx.fillStyle = c;
+        ctx.fillRect(this.x - 26 + i * bandW, this.y - 26, bandW + 0.5, 52);
+      });
+      ctx.restore();
+    }
+
     // Skin color glow overlay
     if (this.skinColor) {
       ctx.save();
@@ -463,16 +476,38 @@ class Enemy {
     this.zigzagTimer = 0;
     this.zigzagDir = Math.random() > 0.5 ? 1 : -1;
     this.bounceDir = Math.random() > 0.5 ? 1 : -1;
+
+    // Pesto slow field / pizza knockback (Italia Season abilities)
+    this.slowTimer = 0; this.slowMult = 1;
+    this.knockTimer = 0; this.knockVy = 0;
+  }
+
+  // Pushed upward (away from the player) with a decaying impulse
+  _applyKnockback(dt, dtF) {
+    if (this.knockTimer <= 0) return;
+    this.knockTimer -= dt;
+    this.y -= this.knockVy * dtF;
+    this.knockVy *= Math.pow(0.92, dtF);
+    if (this.knockTimer <= 0) this.knockVy = 0;
   }
 
   update(dt, bullets, timeSlow, player) {
     const dtF = dt / 16.667;
+
+    // Knockback keeps pushing even while stunned/frozen
+    this._applyKnockback(dt, dtF);
+
+    if (this.slowTimer > 0) {
+      this.slowTimer -= dt;
+      if (this.slowTimer <= 0) this.slowMult = 1;
+    }
+
     if (this.stunned || this.frozen) {
       if (this.stunTimer > 0) { this.stunTimer -= dt; if (this.stunTimer <= 0) { this.stunned = false; this.frozen = false; } }
       return;
     }
 
-    const speedMult = timeSlow ? 0.5 : 1;
+    const speedMult = (timeSlow ? 0.5 : 1) * (this.slowTimer > 0 ? this.slowMult : 1);
     const spd = this.speed * speedMult;
     const minX = this.width / 2;
     const maxX = 480 - this.width / 2;
@@ -508,7 +543,7 @@ class Enemy {
 
     // Only shooter type fires bullets
     if (this.canShoot) {
-      this.lastShot += dt;
+      this.lastShot += dt * (this.slowTimer > 0 ? this.slowMult : 1);
       if (this.lastShot >= this.fireRate) {
         this.lastShot = 0;
         bullets.push(new Bullet(this.x, this.y + this.height / 2, 0, 5, this.damage, 'enemy'));
@@ -524,6 +559,17 @@ class Enemy {
       ctx.globalAlpha = 0.5;
       ctx.fillStyle = '#44aaff';
       ctx.fillRect(this.x - this.width/2 - 2, this.y - this.height/2 - 2, this.width + 4, this.height + 4);
+      ctx.restore();
+    }
+
+    // Pesto: dripping green coating
+    if (this.slowTimer > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = '#4caf2f';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.width / 2 + 3, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
 
@@ -586,6 +632,10 @@ class Boss {
     this.fireRate = 800;
     this.bulletCount = 0;
     this.enraged = false;
+
+    // Pesto slow field / pizza knockback (Italia Season abilities)
+    this.slowTimer = 0; this.slowMult = 1;
+    this.knockTimer = 0; this.knockVy = 0;
   }
 
   get isPhase2() { return this.hp / this.maxHp < 0.5; }
@@ -598,9 +648,25 @@ class Boss {
       return;
     }
 
+    // Knockback pushes the boss up, then it slides back to its hover line
+    if (this.knockTimer > 0) {
+      this.knockTimer -= dt;
+      this.y -= this.knockVy * dtF;
+      this.knockVy *= Math.pow(0.9, dtF);
+      if (this.knockTimer <= 0) this.knockVy = 0;
+      this.y = Math.max(40, this.y);
+    } else if (this.y < this.targetY) {
+      this.y = Math.min(this.targetY, this.y + 0.8 * dtF);
+    }
+
+    if (this.slowTimer > 0) {
+      this.slowTimer -= dt;
+      if (this.slowTimer <= 0) this.slowMult = 1;
+    }
+
     if (this.stunned || this.frozen) return;
 
-    const speedMult = timeSlow ? 0.5 : 1;
+    const speedMult = (timeSlow ? 0.5 : 1) * (this.slowTimer > 0 ? this.slowMult : 1);
     const spd = this.speed * speedMult * (this.isPhase2 ? 1.3 : 1);
     const minX = this.width / 2;
     const maxX = 480 - this.width / 2;
@@ -615,7 +681,7 @@ class Boss {
     }
 
     this.patternTimer += dt;
-    this.lastShot += dt;
+    this.lastShot += dt * (this.slowTimer > 0 ? this.slowMult : 1);
 
     if (this.lastShot >= this.fireRate) {
       this.lastShot = 0;
@@ -674,6 +740,17 @@ class Boss {
       ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.005) * 0.2;
       ctx.fillStyle = '#ff0044';
       ctx.fillRect(this.x - 36, this.y - 36, 72, 72);
+      ctx.restore();
+    }
+
+    // Pesto: dripping green coating
+    if (this.slowTimer > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = '#4caf2f';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 38, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
 

@@ -93,12 +93,12 @@ const SKINS = {
     trail: { colors: ['#ffaa00', '#ffdd44', '#ffffff', '#ffcc88', '#ff8800'], count: 4, speed: 2.5, size: 5, decay: 0.018, spread: 10 }
   },
 
-  // ── Japan Season (pass-exclusive) ───────────────────────────────────────────
+  // ── Japan Season — Season 1 (pass-exclusive, archived) ──────────────────────
   rising_sun: {
     id: 'rising_sun', name: 'Rising Sun', rarity: 'epic',
     color: '#ff4400', emoji: '🌅',
     description: '+20% score, +10% gems',
-    season_exclusive: true,
+    season_exclusive: true, season_tag: '🌸 JAPAN SEASON',
     boost: { coins_mult: 1.00, gems_mult: 1.10, score_mult: 1.20, extra_lives: 0, starting_shield: false },
     trail: { colors: ['#ff4400', '#ff0000', '#ffcc00', '#ffffff'], count: 3, speed: 2.0, size: 4, decay: 0.022, spread: 7 }
   },
@@ -106,9 +106,30 @@ const SKINS = {
     id: 'torii_gate', name: 'Torii Gate', rarity: 'legendary',
     color: '#ff0033', emoji: '⛩️',
     description: '+25% coins/gems, start shielded, +1 life',
-    season_exclusive: true,
+    season_exclusive: true, season_tag: '🌸 JAPAN SEASON',
     boost: { coins_mult: 1.25, gems_mult: 1.25, score_mult: 1.00, extra_lives: 1, starting_shield: true },
     trail: { colors: ['#ff0033', '#cc0000', '#ffffff', '#ffcccc', '#ff6688'], count: 4, speed: 2.2, size: 5, decay: 0.018, spread: 9 }
+  },
+
+  // ── Italia Season — Season 2 (pass-exclusive) ───────────────────────────────
+  tricolore: {
+    id: 'tricolore', name: 'Tricolore', rarity: 'epic',
+    // Emoji fallback for plain-text spots; the skin grid draws the CSS flag instead,
+    // because Windows renders the 🇮🇹 emoji as the letters "IT".
+    color: '#009246', emoji: '🟩⬜🟥',
+    description: '+20% score, +10% gems',
+    season_exclusive: true, season_tag: '🟩⬜🟥 ITALIA SEASON',
+    stripes: ['#009246', '#ffffff', '#ce2b37'],
+    boost: { coins_mult: 1.00, gems_mult: 1.10, score_mult: 1.20, extra_lives: 0, starting_shield: false },
+    trail: { colors: ['#009246', '#ffffff', '#ce2b37'], count: 3, speed: 2.0, size: 4, decay: 0.022, spread: 7 }
+  },
+  colosseo: {
+    id: 'colosseo', name: 'Colosseo', rarity: 'legendary',
+    color: '#d4af37', emoji: '🏛️',
+    description: '+25% coins/gems, start shielded, +1 life',
+    season_exclusive: true, season_tag: '🟩⬜🟥 ITALIA SEASON',
+    boost: { coins_mult: 1.25, gems_mult: 1.25, score_mult: 1.00, extra_lives: 1, starting_shield: true },
+    trail: { colors: ['#d4af37', '#f5e6a8', '#b08d2f', '#e8d8a0', '#8a6d1f'], count: 4, speed: 2.2, size: 5, decay: 0.018, spread: 9 }
   },
 
   // ── Streak Exclusive (day 30 reward — NOT obtainable from crates) ──────────
@@ -200,4 +221,10 @@ function getEquippedSkinBoosts(skinId) {
 function getEquippedSkinTrail(skinId) {
   if (!skinId || skinId === 'default' || !SKINS[skinId]) return null;
   return SKINS[skinId].trail || null;
+}
+
+// Flag-style skins paint vertical stripes around the ship instead of a flat tint
+function getEquippedSkinStripes(skinId) {
+  if (!skinId || skinId === 'default' || !SKINS[skinId]) return null;
+  return SKINS[skinId].stripes || null;
 }

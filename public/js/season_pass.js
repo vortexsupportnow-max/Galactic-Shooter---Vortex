@@ -7,15 +7,15 @@ const SEASON_PASS_TIERS = [
   { tier: 3,  pulsar: 3500,  reward: { label: '🪙 2,500 MONETE' } },
   { tier: 4,  pulsar: 5000,  reward: { label: '💎 40 GEMME' } },
   { tier: 5,  pulsar: 6500,  reward: { label: '🪙 4,000 MONETE' } },
-  { tier: 6,  pulsar: 8000,  reward: { label: '⚔️ BUSHIDO BLADE' } },
+  { tier: 6,  pulsar: 8000,  reward: { label: '🌿 PESTO GENOVESE' } },
   { tier: 7,  pulsar: 9500,  reward: { label: '💎 60 GEMME' } },
   { tier: 8,  pulsar: 11000, reward: { label: '🪙 6,000 MONETE' } },
-  { tier: 9,  pulsar: 13000, reward: { label: '🌅 AURA: RISING SUN' } },
+  { tier: 9,  pulsar: 13000, reward: { label: '<span class="it-flag"></span> AURA: TRICOLORE' } },
   { tier: 10, pulsar: 15000, reward: { label: '💎 80 GEMME' } },
   { tier: 11, pulsar: 17000, reward: { label: '🪙 8,000 MONETE' } },
   { tier: 12, pulsar: 19000, reward: { label: '💎 100 GEMME' } },
   { tier: 13, pulsar: 21000, reward: { label: '🪙 10,000 MONETE' } },
-  { tier: 14, pulsar: 23000, reward: { label: '🌸 SAKURA STORM' } },
+  { tier: 14, pulsar: 23000, reward: { label: '🍕 PIZZA GIGANTE' } },
   { tier: 15, pulsar: 25000, reward: { label: '💎 120 GEMME' } },
   { tier: 16, pulsar: 27000, reward: { label: '🪙 12,000 MONETE' } },
   { tier: 17, pulsar: 29000, reward: { label: '💎 150 GEMME' } },
@@ -31,12 +31,34 @@ const SEASON_PASS_TIERS = [
   { tier: 27, pulsar: 47500, reward: { label: '💎 350 GEMME' } },
   { tier: 28, pulsar: 48500, reward: { label: '🪙 45,000 MONETE' } },
   { tier: 29, pulsar: 49500, reward: { label: '💎 400 GEMME' } },
-  { tier: 30, pulsar: 50000, reward: { label: '⛩️ AURA: TORII GATE ★' } }
+  { tier: 30, pulsar: 50000, reward: { label: '🏛️ AURA: COLOSSEO ★' } }
 ];
 
 const PASS_MAX_PULSAR = 50000;
 
 const DIFFICULTY_LABELS = { easy: 'FACILE', medium: 'MEDIO', hard: 'DIFFICILE', epic: 'EPICA' };
+
+// ── Season intro ─────────────────────────────────────────────────────────────
+// Shown once per player per season. `id` must match the backend SEASON_ID so a
+// new season automatically re-arms the intro for everyone.
+// `emblemHtml` is a CSS flag, not the 🇮🇹 emoji: Windows renders that emoji as
+// the bare letters "IT". Same reason for `flag: true` on the Tricolore card.
+const SEASON_INTRO = {
+  id: 'italy_s2',
+  emblemHtml: '<span class="it-flag"></span>',
+  title: 'ITALIA SEASON',
+  number: 2,
+  tagline: 'Sette settimane di missioni tricolori, due abilità esclusive e due aure che non torneranno.',
+  items: [
+    { emoji: '🌿', name: 'PESTO GENOVESE', rarity: 'rare',      tier: 6,  desc: 'Impantana i nemici nel pesto' },
+    { emoji: '🍕', name: 'PIZZA GIGANTE',  rarity: 'epic',      tier: 14, desc: 'Danno ad area e nemici sbalzati' },
+    { flag: true,  name: 'TRICOLORE',      rarity: 'epic',      tier: 9,  desc: 'Aura a bandiera · +20% score' },
+    { emoji: '🏛️', name: 'COLOSSEO',       rarity: 'legendary', tier: 30, desc: 'Aura dorata · scudo e vita extra' }
+  ]
+};
+
+const SEASON_INTRO_FLAKE_COLORS = ['#009246', '#f4f5f0', '#ce2b37'];
+const SEASON_INTRO_FLAKE_COUNT = 26;
 
 let _passData = null;
 
@@ -65,6 +87,112 @@ function updateMenuPassPanel(passData) {
   if (fillEl)   fillEl.style.width = `${getPulsarPercent(pulsar)}%`;
 }
 
+function getSeasonDaysLeft(passData) {
+  if (!passData || !passData.season_end) return null;
+  return Math.max(0, Math.ceil((new Date(passData.season_end) - Date.now()) / 86400000));
+}
+
+// ── Season Intro ─────────────────────────────────────────────────────────────
+
+function seasonIntroSeenKey() {
+  return `gs_season_intro_${SEASON_INTRO.id}_${getNickname() || 'guest'}`;
+}
+
+function buildSeasonIntroConfetti() {
+  const wrap = document.getElementById('season-intro-confetti');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  for (let i = 0; i < SEASON_INTRO_FLAKE_COUNT; i++) {
+    const flake = document.createElement('div');
+    flake.className = 'season-intro-flake';
+    flake.style.left = `${Math.random() * 100}%`;
+    flake.style.background = SEASON_INTRO_FLAKE_COLORS[i % SEASON_INTRO_FLAKE_COLORS.length];
+    flake.style.animationDuration = `${2.8 + Math.random() * 2.6}s`;
+    // Start after the tricolore wipe clears, then keep falling on a loop.
+    flake.style.animationDelay = `${1 + Math.random() * 3}s`;
+    wrap.appendChild(flake);
+  }
+}
+
+function renderSeasonIntro(passData) {
+  document.getElementById('season-intro-emblem').innerHTML = '<span class="it-flag it-flag--lg"></span>';
+  document.getElementById('season-intro-title').textContent = passData?.season_name || SEASON_INTRO.title;
+
+  const daysLeft = getSeasonDaysLeft(passData);
+  document.getElementById('season-intro-sub').textContent =
+    daysLeft === null
+      ? `Stagione ${SEASON_INTRO.number}`
+      : `Stagione ${SEASON_INTRO.number} · ${daysLeft} giorni di gioco`;
+
+  document.getElementById('season-intro-tagline').textContent = SEASON_INTRO.tagline;
+
+  const cards = document.getElementById('season-intro-cards');
+  cards.innerHTML = SEASON_INTRO.items.map((item, i) => `
+    <div class="season-intro-card ${item.rarity}" style="--i:${i}">
+      <div class="season-intro-card-emoji">${item.flag ? '<span class="it-flag"></span>' : item.emoji}</div>
+      <div class="season-intro-card-name">${item.name}</div>
+      <div class="season-intro-card-tag">${item.rarity.toUpperCase()}</div>
+      <div class="season-intro-card-desc">${item.desc}</div>
+      <div class="season-intro-card-tier">TIER ${item.tier}</div>
+    </div>
+  `).join('');
+
+  buildSeasonIntroConfetti();
+}
+
+function showSeasonIntro(passData) {
+  const overlay = document.getElementById('season-intro-overlay');
+  if (!overlay) return;
+
+  renderSeasonIntro(passData);
+
+  // Restart the CSS animations even if the overlay was already shown once.
+  const panel = document.getElementById('season-intro');
+  if (panel) {
+    panel.style.animation = 'none';
+    void panel.offsetWidth;
+    panel.style.animation = '';
+  }
+
+  overlay.classList.remove('hidden');
+  localStorage.setItem(seasonIntroSeenKey(), '1');
+
+  // Fanfare lands with the title reveal.
+  setTimeout(() => { try { Sounds.levelup(); } catch (e) {} }, 800);
+}
+
+function closeSeasonIntro() {
+  document.getElementById('season-intro-overlay').classList.add('hidden');
+  // Stop the confetti animations from running behind the hidden overlay.
+  const wrap = document.getElementById('season-intro-confetti');
+  if (wrap) wrap.innerHTML = '';
+}
+
+// Returns true when the intro was shown.
+async function maybeShowSeasonIntro() {
+  if (localStorage.getItem(seasonIntroSeenKey())) return false;
+
+  const data = _passData || await fetchPassData();
+  // Only pitch a season that is actually running.
+  if (!data || data.active === false) return false;
+  if (data.season_id && data.season_id !== SEASON_INTRO.id) return false;
+
+  showSeasonIntro(data);
+  return true;
+}
+
+function initSeasonIntroHandlers() {
+  const closeBtn = document.getElementById('season-intro-close');
+  const openBtn  = document.getElementById('season-intro-open');
+  if (closeBtn) closeBtn.addEventListener('click', closeSeasonIntro);
+  if (openBtn) {
+    openBtn.addEventListener('click', () => {
+      closeSeasonIntro();
+      showSeasonPass();
+    });
+  }
+}
+
 // ── Season Pass Screen ───────────────────────────────────────────────────────
 
 function showSeasonPass() {
@@ -85,12 +213,12 @@ async function loadSeasonPass() {
   document.getElementById('pass-pulsar-header').textContent = formatNumber(pulsar);
   updateMenuPassPanel(data);
 
-  const daysLeft = Math.max(0, Math.ceil((new Date(data.season_end) - Date.now()) / 86400000));
+  const daysLeft = getSeasonDaysLeft(data) ?? 0;
 
   content.innerHTML = `
     <div class="pass-header-card">
-      <div class="pass-season-name">🌸 ${data.season_name}</div>
-      <div class="pass-season-info">Stagione 1 · ${daysLeft} giorni rimanenti</div>
+      <div class="pass-season-name">${SEASON_INTRO.emblemHtml} ${data.season_name}</div>
+      <div class="pass-season-info">Stagione ${SEASON_INTRO.number} · ${daysLeft} giorni rimanenti</div>
       <div class="pass-pulsar-section">
         <div class="pass-pulsar-label">⚡ PULSAR: <strong>${formatNumber(pulsar)}</strong> / ${formatNumber(PASS_MAX_PULSAR)}</div>
         <div class="pass-bar-outer">
@@ -98,8 +226,12 @@ async function loadSeasonPass() {
         </div>
       </div>
       <div class="pass-how">Completa le MISSIONI per guadagnare Pulsar e sbloccare ricompense!</div>
+      <button class="btn btn-ghost pass-replay-intro-btn" id="pass-replay-intro">▶ RIVEDI INTRO STAGIONE</button>
     </div>
   `;
+
+  const replayBtn = document.getElementById('pass-replay-intro');
+  if (replayBtn) replayBtn.addEventListener('click', () => showSeasonIntro(data));
 
   // Tier rewards list
   const tiersEl = document.createElement('div');
@@ -296,8 +428,11 @@ function initPassHandlers() {
   document.getElementById('btn-missions').addEventListener('click', showMissions);
   document.getElementById('pass-back').addEventListener('click', showMainMenu);
   document.getElementById('missions-back').addEventListener('click', showMainMenu);
+  initSeasonIntroHandlers();
 }
 
-window.initPassHandlers  = initPassHandlers;
-window.updateMenuPassPanel = updateMenuPassPanel;
-window.fetchPassData     = fetchPassData;
+window.initPassHandlers      = initPassHandlers;
+window.updateMenuPassPanel   = updateMenuPassPanel;
+window.fetchPassData         = fetchPassData;
+window.maybeShowSeasonIntro  = maybeShowSeasonIntro;
+window.showSeasonIntro       = showSeasonIntro;

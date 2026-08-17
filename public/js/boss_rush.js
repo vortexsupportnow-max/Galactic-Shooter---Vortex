@@ -15,7 +15,7 @@ class BossRushGame extends GalacticGame {
     this._brMode = true;
   }
 
-  startBossRush(skinBoosts = null, skinColor = null, skinTrail = null) {
+  startBossRush(skinBoosts = null, skinColor = null, skinTrail = null, skinStripes = null) {
     if (this.animId) cancelAnimationFrame(this.animId);
 
     const player = new Player(480, 700);
@@ -24,6 +24,7 @@ class BossRushGame extends GalacticGame {
     if (boosts.extra_lives > 0) player.lives += boosts.extra_lives;
     if (boosts.starting_shield) { player.shielded = true; player.shieldTimer = 5000; }
     player.skinColor = skinColor || null;
+    player.skinStripes = skinStripes || null;
 
     // Build random boss order
     const order = _shuffleArray([0, 1, 2, 3, 4]);
@@ -692,9 +693,9 @@ function _shuffleArray(arr) {
 // Global instance
 let bossRushInstance = null;
 
-function startBossRush(skinBoosts, skinColor, skinTrail) {
+function startBossRush(skinBoosts, skinColor, skinTrail, skinStripes) {
   if (!bossRushInstance) bossRushInstance = new BossRushGame();
-  bossRushInstance.startBossRush(skinBoosts || null, skinColor || null, skinTrail || null);
+  bossRushInstance.startBossRush(skinBoosts || null, skinColor || null, skinTrail || null, skinStripes || null);
 }
 
 function stopBossRush() {

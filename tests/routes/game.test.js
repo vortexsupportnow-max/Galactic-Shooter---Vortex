@@ -13,6 +13,7 @@ const request = require('supertest');
 const express = require('express');
 const { getDB } = require('../../db/database');
 const gameRouter = require('../../routes/game');
+const { GENERIC_ERROR } = require('../../lib/respond');
 
 // Inject req.user without a real JWT so we can test game logic in isolation
 function buildApp() {
@@ -334,7 +335,7 @@ describe('GET /api/game/profile', () => {
     getDB.mockReturnValue(supabase);
 
     const res = await request(app).get('/api/game/profile');
-    expect(res.body).toEqual({ success: false, error: 'db failure' });
+    expect(res.body).toEqual({ success: false, error: GENERIC_ERROR });
   });
 });
 
@@ -656,7 +657,7 @@ describe('GET /api/game/achievements', () => {
     getDB.mockReturnValue(supabase);
 
     const res = await request(app).get('/api/game/achievements');
-    expect(res.body).toEqual({ success: false, error: 'db error' });
+    expect(res.body).toEqual({ success: false, error: GENERIC_ERROR });
   });
 
   it('returns empty array when no achievements', async () => {
@@ -685,8 +686,10 @@ describe('checkAchievements thresholds (via save-score)', () => {
     { desc: 'score_100k at score 100000', body: { score: 100000, wave: 1, enemiesKilled: 0 }, expectedIds: ['score_1k', 'score_10k', 'score_100k'] },
     { desc: 'wave_5 at wave 5', body: { score: 0, wave: 5, enemiesKilled: 0 }, expectedIds: ['wave_5'] },
     { desc: 'wave_10 at wave 10', body: { score: 0, wave: 10, enemiesKilled: 0 }, expectedIds: ['wave_5', 'wave_10'] },
-    { desc: 'kills_100 at enemiesKilled 100', body: { score: 0, wave: 1, enemiesKilled: 100 }, expectedIds: ['kills_100'] },
-    { desc: 'kills_500 at enemiesKilled 500', body: { score: 0, wave: 1, enemiesKilled: 500 }, expectedIds: ['kills_100', 'kills_500'] }
+    // Waves here must be high enough for the kill count to pass run validation:
+    // a wave-1 run with 500 kills is rejected as tampered before it gets this far.
+    { desc: 'kills_100 at enemiesKilled 100', body: { score: 0, wave: 5, enemiesKilled: 100 }, expectedIds: ['kills_100'] },
+    { desc: 'kills_500 at enemiesKilled 500', body: { score: 0, wave: 15, enemiesKilled: 500 }, expectedIds: ['kills_100', 'kills_500'] }
   ];
 
   thresholdCases.forEach(({ desc, body, expectedIds }) => {
