@@ -37,6 +37,7 @@ function showMainMenu() {
   updateCurrency();
   refreshWheelStatus();
   updateStreakButton();
+  refreshPatchNotesBadge();
   initStarField('menuStars');
   // Refresh season pass mini-panel
   if (window.fetchPassData) {
@@ -67,7 +68,7 @@ async function loadProfile() {
   content.innerHTML = '<div class="loading">LOADING...</div>';
 
   const res = await apiFetch('/game/profile');
-  if (!res.success) { content.innerHTML = `<div class="loading">ERROR: ${res.error}</div>`; return; }
+  if (!res.success) { content.innerHTML = `<div class="loading">ERROR: ${escapeHtml(res.error)}</div>`; return; }
   const d = res.data;
   _profileData = d;
 
@@ -81,7 +82,7 @@ async function loadProfile() {
   content.innerHTML = `
     <div class="profile-card">
       <h3>PILOT INFO</h3>
-      <div class="stat-row"><span>NICKNAME</span><span class="val">${d.nickname}</span></div>
+      <div class="stat-row"><span>NICKNAME</span><span class="val">${escapeHtml(d.nickname)}</span></div>
       <div class="stat-row"><span>JOINED</span><span class="val">${new Date(d.created_at).toLocaleDateString()}</span></div>
     </div>
     <div class="profile-card">
@@ -103,7 +104,7 @@ async function loadProfile() {
       <h3>🌟 AURA EQUIPAGGIATA</h3>
       <div class="stat-row"><span>AURA</span><span class="val" style="color:#ff66cc">${skinLabel}</span></div>
       ${skinObj ? `<div class="stat-row"><span>BOOST</span><span class="val" style="font-size:0.38rem;color:var(--yellow)">${skinObj.description}</span></div>` : ''}
-      ${skinObj?.season_exclusive ? `<div class="stat-row"><span style="color:#ff4400">🌸 SEASON EXCLUSIVE</span><span class="val" style="color:#ff4400">Japan Season</span></div>` : ''}
+      ${skinObj?.season_exclusive ? `<div class="stat-row"><span style="color:#ff4400">★ SEASON EXCLUSIVE</span><span class="val" style="color:#ff4400">${skinObj.season_tag || 'Season Pass'}</span></div>` : ''}
       ${skinObj?.streak_exclusive ? `<div class="stat-row"><span style="color:#ff6600">🔥 STREAK EXCLUSIVE</span><span class="val" style="color:#ff6600">30 Giorni</span></div>` : ''}
     </div>
     <div class="profile-card">
@@ -181,7 +182,7 @@ function renderAbilityGrid(profile) {
     card.appendChild(icon);
     card.innerHTML += `
       <div class="ability-name">${ability.name}</div>
-      ${ability.season_exclusive ? '<div class="ability-season-tag">🌸 JAPAN SEASON</div>' : ''}
+      ${ability.season_exclusive ? `<div class="ability-season-tag">${ability.season_tag || 'SEASON PASS'}</div>` : ''}
       ${owned ? `<div class="ability-level">LV ${owned}/10</div>` : ability.season_exclusive ? '<div class="ability-level" style="color:#ff4400">SOLO DAL PASS</div>' : '<div class="ability-level" style="color:#555">BLOCCATA</div>'}
     `;
 
@@ -546,7 +547,7 @@ async function loadLeaderboard() {
     const waveVal = _lbType === 'scores' ? row.wave : formatNumber(row.score);
     return `<tr class="${isCurrent ? 'current-user' : ''}">
       <td>${i+1}</td>
-      <td>${row.nickname}</td>
+      <td>${escapeHtml(row.nickname)}</td>
       <td>${val}</td>
       <td>${waveVal}</td>
     </tr>`;
@@ -573,7 +574,7 @@ async function loadBossRushLeaderboard() {
     const ss = (totalSec % 60).toString().padStart(2,'0');
     return `<tr class="${isCurrent ? 'current-user' : ''}">
       <td>${i+1}</td>
-      <td>${row.nickname}</td>
+      <td>${escapeHtml(row.nickname)}</td>
       <td>${row.bosses_defeated} 💀</td>
       <td>${mm}:${ss}</td>
     </tr>`;
@@ -638,14 +639,29 @@ function initMenuHandlers() {
 }
 
 // ===== PATCH NOTES =====
+// Bump this when the notes in index.html change: it re-arms the "unread" dot.
+const PATCH_NOTES_VERSION = 'v2_7';
+
+function patchNotesSeenKey() {
+  return `gs_patchnotes_seen_${PATCH_NOTES_VERSION}`;
+}
+
+function refreshPatchNotesBadge() {
+  const btn = document.getElementById('btn-topbar-news');
+  if (btn) btn.classList.toggle('has-news', !localStorage.getItem(patchNotesSeenKey()));
+}
+
 function openPatchNotes() {
   document.getElementById('patchnotes-overlay').classList.remove('hidden');
+  localStorage.setItem(patchNotesSeenKey(), '1');
+  refreshPatchNotesBadge();
 }
 
 function initPatchNotesHandlers() {
   document.getElementById('patchnotes-close').addEventListener('click', () => {
     document.getElementById('patchnotes-overlay').classList.add('hidden');
   });
+  refreshPatchNotesBadge();
 }
 
 // ===== MODE SELECT =====
@@ -720,8 +736,9 @@ function initModeSelectHandlers() {
     const skinBoosts      = getEquippedSkinBoosts(equippedSkin);
     const skinColor       = SKINS[equippedSkin]?.color || null;
     const skinTrail       = getEquippedSkinTrail(equippedSkin);
+    const skinStripes     = getEquippedSkinStripes(equippedSkin);
     showScreen('game');
-    startGame([null, null, null], ownedAbilityIds, skinBoosts, skinColor, skinTrail);
+    startGame([null, null, null], ownedAbilityIds, skinBoosts, skinColor, skinTrail, skinStripes);
   });
 
   document.getElementById('mode-btn-boss-rush').addEventListener('click', async () => {
@@ -732,8 +749,9 @@ function initModeSelectHandlers() {
     const skinBoosts   = getEquippedSkinBoosts(equippedSkin);
     const skinColor    = SKINS[equippedSkin]?.color || null;
     const skinTrail    = getEquippedSkinTrail(equippedSkin);
+    const skinStripes  = getEquippedSkinStripes(equippedSkin);
     showScreen('game');
-    startBossRush(skinBoosts, skinColor, skinTrail);
+    startBossRush(skinBoosts, skinColor, skinTrail, skinStripes);
   });
 }
 
@@ -902,11 +920,14 @@ async function completeTutorial() {
     updateCurrency();
     alert('🎉 WELCOME GIFT RECEIVED!\n🪙 +1,000 COINS\n💎 +10 GEMS\n\nGood luck, pilot!');
   }
+
+  if (window.maybeShowSeasonIntro) await window.maybeShowSeasonIntro();
 }
 
+// Returns true when the tutorial was shown.
 async function maybeShowTutorial() {
   const key = `gs_tutorial_done_${getNickname()}`;
-  if (localStorage.getItem(key)) return;
+  if (localStorage.getItem(key)) return false;
 
   let profile = _profileData;
   if (!profile || !Array.isArray(profile.achievements)) {
@@ -920,12 +941,22 @@ async function maybeShowTutorial() {
   const alreadyCompleted = (profile?.achievements || []).some(a => a.achievement_id === 'tutorial_done');
   if (alreadyCompleted) {
     localStorage.setItem(key, '1');
-    return;
+    return false;
   }
 
   _tutorialSlide = 0;
   renderTutorialSlide();
   document.getElementById('tutorial-overlay').classList.remove('hidden');
+  return true;
+}
+
+// Everything that greets a player right after they reach the menu. The two
+// overlays must not stack: a brand-new pilot does the tutorial first and meets
+// the season straight after claiming the welcome gift.
+async function runWelcomeFlow() {
+  const tutorialShown = await maybeShowTutorial();
+  if (tutorialShown) return;
+  if (window.maybeShowSeasonIntro) await window.maybeShowSeasonIntro();
 }
 
 function getWheelAvailability(profile = _profileData) {
@@ -1111,7 +1142,7 @@ function openAbilityInfo(ability, ownedLevel) {
 
   const levelEl = document.getElementById('ability-info-level');
   if (ability.season_exclusive && !ownedLevel) {
-    levelEl.textContent = '🌸 ESCLUSIVA JAPAN SEASON — Riscatta dal PASS';
+    levelEl.textContent = `${ability.season_tag || 'SEASON PASS'} — Esclusiva, riscatta dal PASS`;
     levelEl.style.color = '#ff4400';
   } else {
     levelEl.textContent = ownedLevel ? `LEVEL ${ownedLevel} / 10` : '🔒 BLOCCATA — APRI CASSE PER SBLOCCARE';
@@ -1218,18 +1249,21 @@ function renderSkinGrid() {
       const obj = skin.unlock_objective || 'Obiettivo Boss Rush';
       lockLabel = `<div class="skin-locked-label br-lock-label-card" title="${obj}">🔒 <span class="br-lock-obj">${obj}</span></div>`;
     } else if (skin.season_exclusive) {
-      lockLabel = '<div class="skin-locked-label">🌸 SOLO DAL PASS</div>';
+      lockLabel = '<div class="skin-locked-label">★ SOLO DAL PASS</div>';
     } else if (skin.streak_exclusive) {
       lockLabel = '<div class="skin-locked-label">🔥 STREAK 30 GIORNI</div>';
     }
 
+    // Flag skins get the CSS tricolore: the 🇮🇹 emoji has no glyph on Windows.
+    const skinIcon = skin.stripes ? '<span class="it-flag"></span>' : skin.emoji;
+
     card.innerHTML = `
       <div class="skin-rarity-tag">${skin.rarity.toUpperCase()}</div>
-      <div class="skin-emoji">${skin.emoji}</div>
+      <div class="skin-emoji">${skinIcon}</div>
       <div class="skin-name">${skin.name}</div>
       <div class="skin-desc">${skin.description}</div>
       <div class="skin-boosts">${boostLines.join(' · ')}</div>
-      ${skin.season_exclusive ? '<div class="skin-season-tag">🌸 JAPAN SEASON</div>' : ''}
+      ${skin.season_exclusive ? `<div class="skin-season-tag">${skin.season_tag || 'SEASON PASS'}</div>` : ''}
       ${skin.streak_exclusive ? '<div class="skin-season-tag" style="color:#ff6600;border-color:#ff6600">🔥 STREAK EXCLUSIVE</div>' : ''}
       ${skin.boss_rush_exclusive ? '<div class="skin-season-tag skin-br-tag">⚡ BOSS RUSH</div>' : ''}
       ${isOwned

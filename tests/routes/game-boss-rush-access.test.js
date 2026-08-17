@@ -14,14 +14,12 @@ describe('Boss Rush routes access', () => {
   test('POST /save-boss-rush-score is not developer-only', () => {
     const routeLayer = findRoute('/save-boss-rush-score', 'post');
     expect(routeLayer).toBeTruthy();
-    expect(routeLayer.route.stack).toHaveLength(1);
     expect(routeLayer.route.stack.some((layer) => layer.name === 'requireDeveloper')).toBe(false);
   });
 
   test('GET /boss-rush-stats is not developer-only', () => {
     const routeLayer = findRoute('/boss-rush-stats', 'get');
     expect(routeLayer).toBeTruthy();
-    expect(routeLayer.route.stack).toHaveLength(1);
     expect(routeLayer.route.stack.some((layer) => layer.name === 'requireDeveloper')).toBe(false);
   });
 });

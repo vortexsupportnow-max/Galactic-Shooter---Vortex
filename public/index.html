@@ -98,8 +98,8 @@
           <!-- LEFT: Season Pass Panel -->
           <div class="menu-left">
             <div class="season-panel">
-              <div class="season-panel-title">🌸 JAPAN SEASON</div>
-              <div class="season-panel-end">Fino al 30 Giu</div>
+              <div class="season-panel-title"><span class="it-flag"></span> ITALIA SEASON</div>
+              <div class="season-panel-end">Fino al 5 Ott</div>
               <div class="season-pulsar-bar-wrap">
                 <div class="season-pulsar-label">⚡ PULSAR: <span id="menu-pulsar">0</span></div>
                 <div class="season-pulsar-bar">
@@ -107,7 +107,7 @@
                 </div>
               </div>
             </div>
-            <button class="btn btn-season" id="btn-pass">🌸 SPACE PASS</button>
+            <button class="btn btn-season" id="btn-pass"><span class="it-flag"></span> SPACE PASS</button>
             <button class="btn btn-mission" id="btn-missions">📋 MISSIONI</button>
             <button class="btn btn-streak" id="btn-streak">🔥 STREAK<span class="menu-btn-subtitle" id="streak-button-status"></span></button>
           </div>
@@ -160,43 +160,71 @@
           <span class="patchnotes-badge">NOVITÀ</span>
           <h3 class="patchnotes-title">📋 PATCH NOTES</h3>
         </div>
-        <div class="patchnotes-version">V2.6, May Release</div>
-        <div class="patchnotes-date">🗓 Giugno 2025</div>
+        <div class="patchnotes-version">V2.7 · Italia Season</div>
+        <div class="patchnotes-date">🗓 Agosto 2026</div>
         <div class="patchnotes-list">
           <div class="patchnotes-section">
-            <div class="patchnotes-section-title">📱 GAMEPLAY MOBILE</div>
+            <div class="patchnotes-section-title"><span class="it-flag"></span> STAGIONE 2: ITALIA</div>
             <ul>
-              <li>Rimosso il pulsante Fuoco: sparo automatico continuo</li>
-              <li>Joystick ottimizzato: zero delay negli input</li>
-              <li>Controlli semplificati per massima giocabilità</li>
+              <li>Nuovo Space Pass tricolore, 30 tier fino a 50.000 Pulsar</li>
+              <li>70 missioni in 7 settimane: dal Gladiatore al Vulcano</li>
+              <li>Intro animata di presentazione al primo accesso</li>
+              <li>La Japan Season si chiude: i suoi premi restano a chi li ha presi</li>
             </ul>
           </div>
           <div class="patchnotes-section">
-            <div class="patchnotes-section-title">🎨 UPDATE GRAFICO</div>
+            <div class="patchnotes-section-title">⚔ NUOVE ABILITÀ</div>
             <ul>
-              <li>Nuove animazioni di annuncio ondata</li>
-              <li>Effetti visivi potenziati durante il gameplay</li>
-              <li>Background dinamico che cambia con le wave</li>
+              <li>🌿 Pesto Genovese (RARE, tier 6): impantana i nemici al 40% di velocità e rallenta anche il loro fuoco</li>
+              <li>🍕 Pizza Gigante (EPIC, tier 14): danno ad area e nemici sbalzati indietro, boss compreso</li>
             </ul>
           </div>
           <div class="patchnotes-section">
-            <div class="patchnotes-section-title">🛒 NEGOZIO &amp; MENÙ</div>
+            <div class="patchnotes-section-title">🌟 NUOVE AURE</div>
             <ul>
-              <li>La sezione Crates diventa il Negozio</li>
-              <li>La sezione Collection diventa Abilità</li>
-              <li>Layout a scorrimento nel negozio</li>
+              <li><span class="it-flag"></span> Tricolore (EPIC, tier 9): bande verde-bianco-rosso sulla nave, +20% score</li>
+              <li>🏛️ Colosseo (LEGENDARY, tier 30): aura dorata, scudo iniziale e vita extra</li>
+            </ul>
+          </div>
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title">🔒 ACCOUNT &amp; SICUREZZA</div>
+            <ul>
+              <li>Nickname protetti: niente caratteri usabili per attacchi</li>
+              <li>Sessione scaduta: rientro automatico alla schermata di accesso</li>
+              <li>Nuovi controlli anti-cheat sui punteggi inviati</li>
+              <li>Classifiche più pulite: le run manomesse vengono rifiutate</li>
             </ul>
           </div>
           <div class="patchnotes-section">
             <div class="patchnotes-section-title">⚙ MIGLIORAMENTI</div>
             <ul>
-              <li>Ottimizzazioni performance mobile</li>
-              <li>Touch-action ottimizzato per zero ritardo</li>
-              <li>Miglioramenti generali all'esperienza utente</li>
+              <li>Risolto il limite di richieste che poteva bloccare più giocatori insieme</li>
+              <li>Niente più doppie spese di gemme su click ravvicinati</li>
+              <li>Messaggi di errore più chiari e meno tecnici</li>
             </ul>
           </div>
         </div>
         <button class="btn btn-ghost" id="patchnotes-close">CHIUDI</button>
+      </div>
+    </div>
+
+    <!-- Season Intro Overlay (cinematic reveal of the current season) -->
+    <div id="season-intro-overlay" class="overlay hidden">
+      <div class="season-intro" id="season-intro">
+        <div class="season-intro-sweep" aria-hidden="true"></div>
+        <div class="season-intro-confetti" id="season-intro-confetti" aria-hidden="true"></div>
+        <div class="season-intro-content">
+          <div class="season-intro-kicker">NUOVA STAGIONE</div>
+          <div class="season-intro-emblem" id="season-intro-emblem"><span class="it-flag it-flag--lg"></span></div>
+          <h2 class="season-intro-title" id="season-intro-title">ITALIA SEASON</h2>
+          <div class="season-intro-sub" id="season-intro-sub"></div>
+          <div class="season-intro-tagline" id="season-intro-tagline"></div>
+          <div class="season-intro-cards" id="season-intro-cards"></div>
+          <div class="season-intro-actions">
+            <button class="btn btn-season" id="season-intro-open">APRI IL PASS</button>
+            <button class="btn btn-ghost" id="season-intro-close">PIÙ TARDI</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -501,7 +529,7 @@
     <div id="screen-pass" class="screen">
       <div class="screen-header">
         <button class="btn btn-ghost btn-back" id="pass-back">← BACK</button>
-        <h2 class="screen-title">🌸 SPACE PASS</h2>
+        <h2 class="screen-title"><span class="it-flag"></span> SPACE PASS</h2>
         <div class="header-currency">
           ⚡ <span id="pass-pulsar-header">0</span> Pulsar
         </div>

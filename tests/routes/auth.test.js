@@ -15,6 +15,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { getDB } = require('../../db/database');
 const authRouter = require('../../routes/auth');
+const { GENERIC_ERROR } = require('../../lib/respond');
 
 function buildApp() {
   const app = express();
@@ -138,7 +139,8 @@ describe('POST /api/auth/register', () => {
     getDB.mockReturnValue(supabase);
 
     const res = await request(app).post('/api/auth/register').send({ nickname: 'Alice', password: 'secret123' });
-    expect(res.body).toEqual({ success: false, error: 'insert failed' });
+    // DB messages are logged server-side, never returned to the client
+    expect(res.body).toEqual({ success: false, error: GENERIC_ERROR });
   });
 });
 

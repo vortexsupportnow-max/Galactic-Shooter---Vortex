@@ -1,5 +1,7 @@
 const express = require('express');
 const { getDB } = require('../db/database');
+const { fail } = require('../lib/respond');
+const userLock = require('../middleware/userLock');
 
 const router = express.Router();
 
@@ -70,9 +72,12 @@ const SKINS = {
   celestial:         { id: 'celestial',          name: 'Celestial Dragon',  rarity: 'epic',      boost: { coins_mult: 1.00, gems_mult: 1.00, score_mult: 1.20, extra_lives: 1, starting_shield: false } },
   quantum_rift:      { id: 'quantum_rift',       name: 'Quantum Rift',      rarity: 'epic',      boost: { coins_mult: 1.15, gems_mult: 1.15, score_mult: 1.00, extra_lives: 0, starting_shield: true  } },
   galactic_overlord: { id: 'galactic_overlord',  name: 'Galactic Overlord', rarity: 'legendary', boost: { coins_mult: 1.30, gems_mult: 1.30, score_mult: 1.25, extra_lives: 2, starting_shield: false } },
-  // Japan Season (pass-exclusive)
+  // Japan Season (pass-exclusive — Season 1, archived)
   rising_sun:        { id: 'rising_sun',         name: 'Rising Sun',        rarity: 'epic',      season_exclusive: true, boost: { coins_mult: 1.00, gems_mult: 1.10, score_mult: 1.20, extra_lives: 0, starting_shield: false } },
   torii_gate:        { id: 'torii_gate',         name: 'Torii Gate',        rarity: 'legendary', season_exclusive: true, boost: { coins_mult: 1.25, gems_mult: 1.25, score_mult: 1.00, extra_lives: 1, starting_shield: true  } },
+  // Italia Season (pass-exclusive — Season 2)
+  tricolore:         { id: 'tricolore',          name: 'Tricolore',         rarity: 'epic',      season_exclusive: true, boost: { coins_mult: 1.00, gems_mult: 1.10, score_mult: 1.20, extra_lives: 0, starting_shield: false } },
+  colosseo:          { id: 'colosseo',           name: 'Colosseo',          rarity: 'legendary', season_exclusive: true, boost: { coins_mult: 1.25, gems_mult: 1.25, score_mult: 1.00, extra_lives: 1, starting_shield: true  } },
   // Streak-exclusive (day 30 reward — NOT obtainable from crates)
   streak_inferno:    { id: 'streak_inferno',     name: 'Streak Inferno',    rarity: 'legendary', streak_exclusive: true, boost: { coins_mult: 1.35, gems_mult: 1.35, score_mult: 1.30, extra_lives: 2, starting_shield: true  } },
   // Boss Rush Exclusive auras
@@ -88,7 +93,7 @@ const SKINS_BY_RARITY = {
   rare:      ['phantom', 'crimson_nova', 'nebula', 'thunder'],
   epic:      ['void_wraith', 'celestial', 'quantum_rift'],
   legendary: ['galactic_overlord']
-  // Note: rising_sun and torii_gate are excluded — pass-exclusive only
+  // Note: season skins (rising_sun, torii_gate, tricolore, colosseo) are excluded — pass-exclusive only
 };
 
 const SKIN_CRATE_TYPES = {
@@ -102,15 +107,23 @@ const SKIN_CRATE_TYPES = {
   }
 };
 
-// ── Japan Season (pass-exclusive abilities) ───────────────────────────────────
+// ── Season-exclusive content (pass-only abilities/skins) ──────────────────────
 // These IDs exist in the game but are NOT in the regular ABILITIES_BY_RARITY crate pools.
-const SEASON_EXCLUSIVE_ABILITIES = ['bushido_blade', 'sakura_storm'];
-const SEASON_EXCLUSIVE_SKINS     = ['rising_sun', 'torii_gate'];
+const SEASON_EXCLUSIVE_ABILITIES = ['bushido_blade', 'sakura_storm', 'pesto_genovese', 'pizza_gigante'];
+const SEASON_EXCLUSIVE_SKINS     = ['rising_sun', 'torii_gate', 'tricolore', 'colosseo'];
 const STREAK_EXCLUSIVE_SKINS     = ['streak_inferno'];
 const ABILITY_RARITY_OVERRIDES = {
   bushido_blade: 'rare',
-  sakura_storm: 'epic'
+  sakura_storm: 'epic',
+  pesto_genovese: 'rare',
+  pizza_gigante: 'epic'
 };
+
+// Every ability a user can legitimately own — used to reject made-up ids.
+const KNOWN_ABILITY_IDS = new Set([
+  ...Object.values(ABILITIES_BY_RARITY).flat(),
+  ...SEASON_EXCLUSIVE_ABILITIES
+]);
 
 function getAbilityRarity(abilityId) {
   if (ABILITY_RARITY_OVERRIDES[abilityId]) return ABILITY_RARITY_OVERRIDES[abilityId];
@@ -159,12 +172,14 @@ const CLAIM_MISSION_LOCKS = new Set();
 
 // ── Season Pass ───────────────────────────────────────────────────────────────
 
-const SEASON_ID   = 'japan_s1';
-const SEASON_NAME = 'JAPAN SEASON';
-const SEASON_END  = new Date('2026-06-30T23:59:59Z');
+// Season 2 — ITALIA. Season 1 (japan_s1) ended 2026-06-30; its pass rewards stay
+// owned by whoever claimed them but are no longer obtainable.
+const SEASON_ID   = 'italy_s2';
+const SEASON_NAME = 'ITALIA SEASON';
+const SEASON_END  = new Date('2026-10-05T23:59:59Z');
 
-// Season start = May 12 2026 (week anchor for unlocking missions)
-const SEASON_START = new Date('2026-05-12T00:00:00Z');
+// Season start = Aug 17 2026 (week anchor for unlocking missions)
+const SEASON_START = new Date('2026-08-17T00:00:00Z');
 
 // difficulty → pulsar/coins/gems rewards
 const MISSION_REWARDS = {
@@ -176,90 +191,92 @@ const MISSION_REWARDS = {
 
 // 70 missions – 10 per week for 7 weeks. Each has: id, week, difficulty, title, desc, type, target
 // pulsar/reward_coins/reward_gems are derived from MISSION_REWARDS at runtime.
+// NOTE: ids are prefixed per season (s2_) because user_mission_progress is keyed by
+// mission_id alone — reusing Season 1 ids would carry over completed/claimed rows.
 const SEASON_MISSIONS_DEF = [
-  // ── Week 1: Il Risveglio ─────────────────────────────────────────────────
-  { id: 'w1_1',  week: 1, difficulty: 'easy',   title: 'Prima Partita',          desc: 'Gioca 1 partita',                      type: 'games_played',          target: 1    },
-  { id: 'w1_2',  week: 1, difficulty: 'easy',   title: 'Sparatorie Iniziali',    desc: 'Abbatti 20 nemici',                    type: 'enemies_killed',        target: 20   },
-  { id: 'w1_3',  week: 1, difficulty: 'easy',   title: 'Sopravvissuto',          desc: "Raggiungi l'onda 3",                   type: 'max_wave_single',       target: 3    },
-  { id: 'w1_4',  week: 1, difficulty: 'easy',   title: 'Prime Monete',           desc: 'Guadagna 300 monete in una partita',   type: 'coins_earned_session',  target: 300  },
-  { id: 'w1_5',  week: 1, difficulty: 'medium', title: 'Pilota Promettente',     desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
-  { id: 'w1_6',  week: 1, difficulty: 'medium', title: 'Battesimo del Fuoco',    desc: 'Abbatti 80 nemici in totale',          type: 'enemies_killed',        target: 80   },
-  { id: 'w1_7',  week: 1, difficulty: 'medium', title: 'Cacciatore',             desc: "Raggiungi l'onda 5",                   type: 'max_wave_single',       target: 5    },
-  { id: 'w1_8',  week: 1, difficulty: 'hard',   title: 'Sfida dell\'Onda',       desc: "Raggiungi l'onda 8",                   type: 'max_wave_single',       target: 8    },
-  { id: 'w1_9',  week: 1, difficulty: 'hard',   title: 'Cacciatore di Bottino',  desc: 'Guadagna 1,000 monete in una partita', type: 'coins_earned_session',  target: 1000 },
-  { id: 'w1_10', week: 1, difficulty: 'epic',   title: 'Veterano della Settimana','desc': "Raggiungi l'onda 12",               type: 'max_wave_single',       target: 12   },
+  // ── Week 1: La Partenza ──────────────────────────────────────────────────
+  { id: 's2_w1_1',  week: 1, difficulty: 'easy',   title: 'Buongiorno Pilota',      desc: 'Gioca 1 partita',                      type: 'games_played',          target: 1    },
+  { id: 's2_w1_2',  week: 1, difficulty: 'easy',   title: 'Antipasto',              desc: 'Abbatti 20 nemici',                    type: 'enemies_killed',        target: 20   },
+  { id: 's2_w1_3',  week: 1, difficulty: 'easy',   title: 'Prima Portata',          desc: "Raggiungi l'onda 3",                   type: 'max_wave_single',       target: 3    },
+  { id: 's2_w1_4',  week: 1, difficulty: 'easy',   title: 'Primi Spiccioli',        desc: 'Guadagna 300 monete in una partita',   type: 'coins_earned_session',  target: 300  },
+  { id: 's2_w1_5',  week: 1, difficulty: 'medium', title: 'Il Vespista',            desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
+  { id: 's2_w1_6',  week: 1, difficulty: 'medium', title: 'Battesimo del Fuoco',    desc: 'Abbatti 80 nemici in totale',          type: 'enemies_killed',        target: 80   },
+  { id: 's2_w1_7',  week: 1, difficulty: 'medium', title: 'Sulla Via Appia',        desc: "Raggiungi l'onda 5",                   type: 'max_wave_single',       target: 5    },
+  { id: 's2_w1_8',  week: 1, difficulty: 'hard',   title: 'Passo del Gran Sasso',   desc: "Raggiungi l'onda 8",                   type: 'max_wave_single',       target: 8    },
+  { id: 's2_w1_9',  week: 1, difficulty: 'hard',   title: 'Bottino da Mercante',    desc: 'Guadagna 1,000 monete in una partita', type: 'coins_earned_session',  target: 1000 },
+  { id: 's2_w1_10', week: 1, difficulty: 'epic',   title: 'Il Condottiero',         desc: "Raggiungi l'onda 12",                  type: 'max_wave_single',       target: 12   },
 
-  // ── Week 2: Il Guerriero ─────────────────────────────────────────────────
-  { id: 'w2_1',  week: 2, difficulty: 'easy',   title: 'Di Ritorno',             desc: 'Gioca 3 partite',                      type: 'games_played',          target: 3    },
-  { id: 'w2_2',  week: 2, difficulty: 'easy',   title: 'Raffica Nemica',         desc: 'Abbatti 40 nemici',                    type: 'enemies_killed',        target: 40   },
-  { id: 'w2_3',  week: 2, difficulty: 'easy',   title: 'Primo Uso',              desc: 'Usa 2 abilità in una partita',         type: 'abilities_used_single', target: 2    },
-  { id: 'w2_4',  week: 2, difficulty: 'easy',   title: 'Raccoglitore',           desc: 'Raccogli 10 gemme in totale',          type: 'gems_collected',        target: 10   },
-  { id: 'w2_5',  week: 2, difficulty: 'medium', title: 'Sterminio',              desc: 'Abbatti 180 nemici in totale',         type: 'enemies_killed',        target: 180  },
-  { id: 'w2_6',  week: 2, difficulty: 'medium', title: 'Profondo Spazio',        desc: "Raggiungi l'onda 7",                   type: 'max_wave_single',       target: 7    },
-  { id: 'w2_7',  week: 2, difficulty: 'medium', title: 'Cacciatore di Gemme',    desc: 'Raccogli 30 gemme in totale',          type: 'gems_collected',        target: 30   },
-  { id: 'w2_8',  week: 2, difficulty: 'hard',   title: 'Decimazione',            desc: "Raggiungi l'onda 10",                  type: 'max_wave_single',       target: 10   },
-  { id: 'w2_9',  week: 2, difficulty: 'hard',   title: 'Ninja dello Spazio',     desc: 'Usa 5 abilità in una partita',         type: 'abilities_used_single', target: 5    },
-  { id: 'w2_10', week: 2, difficulty: 'epic',   title: 'Macchina da Guerra',     desc: 'Abbatti 400 nemici in totale',         type: 'enemies_killed',        target: 400  },
+  // ── Week 2: Il Gladiatore ────────────────────────────────────────────────
+  { id: 's2_w2_1',  week: 2, difficulty: 'easy',   title: "Ritorno nell'Arena",     desc: 'Gioca 3 partite',                      type: 'games_played',          target: 3    },
+  { id: 's2_w2_2',  week: 2, difficulty: 'easy',   title: 'Duello nel Circo',       desc: 'Abbatti 40 nemici',                    type: 'enemies_killed',        target: 40   },
+  { id: 's2_w2_3',  week: 2, difficulty: 'easy',   title: 'Armi del Gladiatore',    desc: 'Usa 2 abilità in una partita',         type: 'abilities_used_single', target: 2    },
+  { id: 's2_w2_4',  week: 2, difficulty: 'easy',   title: "Tesoro dell'Arena",      desc: 'Raccogli 10 gemme in totale',          type: 'gems_collected',        target: 10   },
+  { id: 's2_w2_5',  week: 2, difficulty: 'medium', title: 'Pollice Verso',          desc: 'Abbatti 180 nemici in totale',         type: 'enemies_killed',        target: 180  },
+  { id: 's2_w2_6',  week: 2, difficulty: 'medium', title: 'Il Colosseo',            desc: "Raggiungi l'onda 7",                   type: 'max_wave_single',       target: 7    },
+  { id: 's2_w2_7',  week: 2, difficulty: 'medium', title: 'Bottino del Circo',      desc: 'Raccogli 30 gemme in totale',          type: 'gems_collected',        target: 30   },
+  { id: 's2_w2_8',  week: 2, difficulty: 'hard',   title: 'Trionfo Romano',         desc: "Raggiungi l'onda 10",                  type: 'max_wave_single',       target: 10   },
+  { id: 's2_w2_9',  week: 2, difficulty: 'hard',   title: 'Retiario Esperto',       desc: 'Usa 5 abilità in una partita',         type: 'abilities_used_single', target: 5    },
+  { id: 's2_w2_10', week: 2, difficulty: 'epic',   title: 'Legione Invincibile',    desc: 'Abbatti 400 nemici in totale',         type: 'enemies_killed',        target: 400  },
 
-  // ── Week 3: Cacciatore di Stelle ─────────────────────────────────────────
-  { id: 'w3_1',  week: 3, difficulty: 'easy',   title: 'Continuare a Volare',    desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
-  { id: 'w3_2',  week: 3, difficulty: 'easy',   title: 'Pioggia di Fuoco',       desc: 'Abbatti 60 nemici',                    type: 'enemies_killed',        target: 60   },
-  { id: 'w3_3',  week: 3, difficulty: 'easy',   title: 'Zona di Pericolo',       desc: "Raggiungi l'onda 5",                   type: 'max_wave_single',       target: 5    },
-  { id: 'w3_4',  week: 3, difficulty: 'easy',   title: 'Bottino Galattico',      desc: 'Guadagna 500 monete in una partita',   type: 'coins_earned_session',  target: 500  },
-  { id: 'w3_5',  week: 3, difficulty: 'medium', title: 'Grande Caccia',          desc: 'Abbatti 300 nemici in totale',         type: 'enemies_killed',        target: 300  },
-  { id: 'w3_6',  week: 3, difficulty: 'medium', title: 'Conquistatore',          desc: "Raggiungi l'onda 10",                  type: 'max_wave_single',       target: 10   },
-  { id: 'w3_7',  week: 3, difficulty: 'medium', title: 'Minatore Spaziale',      desc: 'Raccogli 60 gemme in totale',          type: 'gems_collected',        target: 60   },
-  { id: 'w3_8',  week: 3, difficulty: 'hard',   title: 'Macellaio Cosmico',      desc: "Raggiungi l'onda 13",                  type: 'max_wave_single',       target: 13   },
-  { id: 'w3_9',  week: 3, difficulty: 'hard',   title: 'Colpo Grosso',           desc: 'Guadagna 2,000 monete in una partita', type: 'coins_earned_session',  target: 2000 },
-  { id: 'w3_10', week: 3, difficulty: 'epic',   title: 'Asso dello Spazio',      desc: 'Abbatti 700 nemici in totale',         type: 'enemies_killed',        target: 700  },
+  // ── Week 3: Il Rinascimento ──────────────────────────────────────────────
+  { id: 's2_w3_1',  week: 3, difficulty: 'easy',   title: 'La Bottega',             desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
+  { id: 's2_w3_2',  week: 3, difficulty: 'easy',   title: 'Pennellate di Fuoco',    desc: 'Abbatti 60 nemici',                    type: 'enemies_killed',        target: 60   },
+  { id: 's2_w3_3',  week: 3, difficulty: 'easy',   title: 'Firenze',                desc: "Raggiungi l'onda 5",                   type: 'max_wave_single',       target: 5    },
+  { id: 's2_w3_4',  week: 3, difficulty: 'easy',   title: 'Il Mecenate',            desc: 'Guadagna 500 monete in una partita',   type: 'coins_earned_session',  target: 500  },
+  { id: 's2_w3_5',  week: 3, difficulty: 'medium', title: "Opera d'Arte",           desc: 'Abbatti 300 nemici in totale',         type: 'enemies_killed',        target: 300  },
+  { id: 's2_w3_6',  week: 3, difficulty: 'medium', title: 'La Cupola',              desc: "Raggiungi l'onda 10",                  type: 'max_wave_single',       target: 10   },
+  { id: 's2_w3_7',  week: 3, difficulty: 'medium', title: "Fiorini d'Oro",          desc: 'Raccogli 60 gemme in totale',          type: 'gems_collected',        target: 60   },
+  { id: 's2_w3_8',  week: 3, difficulty: 'hard',   title: 'Il Genio di Vinci',      desc: "Raggiungi l'onda 13",                  type: 'max_wave_single',       target: 13   },
+  { id: 's2_w3_9',  week: 3, difficulty: 'hard',   title: 'Banco dei Medici',       desc: 'Guadagna 2,000 monete in una partita', type: 'coins_earned_session',  target: 2000 },
+  { id: 's2_w3_10', week: 3, difficulty: 'epic',   title: 'Capolavoro',             desc: 'Abbatti 700 nemici in totale',         type: 'enemies_killed',        target: 700  },
 
-  // ── Week 4: Leggenda della Galassia ──────────────────────────────────────
-  { id: 'w4_1',  week: 4, difficulty: 'easy',   title: 'Routine Galattica',      desc: 'Gioca 8 partite',                      type: 'games_played',          target: 8    },
-  { id: 'w4_2',  week: 4, difficulty: 'easy',   title: 'Caccia Continua',        desc: 'Abbatti 80 nemici',                    type: 'enemies_killed',        target: 80   },
-  { id: 'w4_3',  week: 4, difficulty: 'easy',   title: 'Tattico',                desc: 'Usa 3 abilità in una partita',         type: 'abilities_used_single', target: 3    },
-  { id: 'w4_4',  week: 4, difficulty: 'easy',   title: 'Gemme Celesti',          desc: 'Raccogli 20 gemme',                    type: 'gems_collected',        target: 20   },
-  { id: 'w4_5',  week: 4, difficulty: 'medium', title: 'Sterminatore',           desc: 'Abbatti 500 nemici in totale',         type: 'enemies_killed',        target: 500  },
-  { id: 'w4_6',  week: 4, difficulty: 'medium', title: 'Profondo Abisso',        desc: "Raggiungi l'onda 12",                  type: 'max_wave_single',       target: 12   },
-  { id: 'w4_7',  week: 4, difficulty: 'medium', title: 'Veterano',               desc: 'Gioca 15 partite in totale',           type: 'games_played',          target: 15   },
-  { id: 'w4_8',  week: 4, difficulty: 'hard',   title: 'Signore delle Onde',     desc: "Raggiungi l'onda 15",                  type: 'max_wave_single',       target: 15   },
-  { id: 'w4_9',  week: 4, difficulty: 'hard',   title: 'Tesoro Cosmico',         desc: 'Raccogli 100 gemme in totale',         type: 'gems_collected',        target: 100  },
-  { id: 'w4_10', week: 4, difficulty: 'epic',   title: 'Mille Battaglie',        desc: 'Abbatti 1,000 nemici in totale',       type: 'enemies_killed',        target: 1000 },
+  // ── Week 4: Il Doge ──────────────────────────────────────────────────────
+  { id: 's2_w4_1',  week: 4, difficulty: 'easy',   title: 'Rotta per Venezia',      desc: 'Gioca 8 partite',                      type: 'games_played',          target: 8    },
+  { id: 's2_w4_2',  week: 4, difficulty: 'easy',   title: 'Cannoni della Laguna',   desc: 'Abbatti 80 nemici',                    type: 'enemies_killed',        target: 80   },
+  { id: 's2_w4_3',  week: 4, difficulty: 'easy',   title: 'Maschere e Inganni',     desc: 'Usa 3 abilità in una partita',         type: 'abilities_used_single', target: 3    },
+  { id: 's2_w4_4',  week: 4, difficulty: 'easy',   title: 'Perle della Laguna',     desc: 'Raccogli 20 gemme',                    type: 'gems_collected',        target: 20   },
+  { id: 's2_w4_5',  week: 4, difficulty: 'medium', title: 'Arsenale Veneziano',     desc: 'Abbatti 500 nemici in totale',         type: 'enemies_killed',        target: 500  },
+  { id: 's2_w4_6',  week: 4, difficulty: 'medium', title: 'Ponte dei Sospiri',      desc: "Raggiungi l'onda 12",                  type: 'max_wave_single',       target: 12   },
+  { id: 's2_w4_7',  week: 4, difficulty: 'medium', title: 'Mercante di Rialto',     desc: 'Gioca 15 partite in totale',           type: 'games_played',          target: 15   },
+  { id: 's2_w4_8',  week: 4, difficulty: 'hard',   title: 'Il Carnevale',           desc: "Raggiungi l'onda 15",                  type: 'max_wave_single',       target: 15   },
+  { id: 's2_w4_9',  week: 4, difficulty: 'hard',   title: 'Tesoro di San Marco',    desc: 'Raccogli 100 gemme in totale',         type: 'gems_collected',        target: 100  },
+  { id: 's2_w4_10', week: 4, difficulty: 'epic',   title: 'Il Doge',                desc: 'Abbatti 1,000 nemici in totale',       type: 'enemies_killed',        target: 1000 },
 
-  // ── Week 5: Sterminatore Cosmico ─────────────────────────────────────────
-  { id: 'w5_1',  week: 5, difficulty: 'easy',   title: 'Ancora in Volo',         desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
-  { id: 'w5_2',  week: 5, difficulty: 'easy',   title: 'Piombo Galattico',       desc: 'Abbatti 100 nemici',                   type: 'enemies_killed',        target: 100  },
-  { id: 'w5_3',  week: 5, difficulty: 'easy',   title: 'Sopravvissuto Plus',     desc: "Raggiungi l'onda 6",                   type: 'max_wave_single',       target: 6    },
-  { id: 'w5_4',  week: 5, difficulty: 'easy',   title: 'Ricco Spaziale',         desc: 'Guadagna 800 monete in una partita',   type: 'coins_earned_session',  target: 800  },
-  { id: 'w5_5',  week: 5, difficulty: 'medium', title: 'Sinfonia di Fuoco',      desc: 'Abbatti 700 nemici in totale',         type: 'enemies_killed',        target: 700  },
-  { id: 'w5_6',  week: 5, difficulty: 'medium', title: 'Cacciatore di Boss',     desc: "Raggiungi l'onda 14",                  type: 'max_wave_single',       target: 14   },
-  { id: 'w5_7',  week: 5, difficulty: 'medium', title: 'Combo Letale',           desc: 'Usa 8 abilità in una partita',         type: 'abilities_used_single', target: 8    },
-  { id: 'w5_8',  week: 5, difficulty: 'hard',   title: 'Predatore dell\'Onda',   desc: "Raggiungi l'onda 18",                  type: 'max_wave_single',       target: 18   },
-  { id: 'w5_9',  week: 5, difficulty: 'hard',   title: 'Grande Fortuna',         desc: 'Guadagna 3,500 monete in una partita', type: 'coins_earned_session',  target: 3500 },
-  { id: 'w5_10', week: 5, difficulty: 'epic',   title: 'Flagello Cosmico',       desc: 'Abbatti 1,500 nemici in totale',       type: 'enemies_killed',        target: 1500 },
+  // ── Week 5: La Dolce Vita ────────────────────────────────────────────────
+  { id: 's2_w5_1',  week: 5, difficulty: 'easy',   title: 'Passeggiata a Roma',     desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
+  { id: 's2_w5_2',  week: 5, difficulty: 'easy',   title: 'Notte in Via Veneto',    desc: 'Abbatti 100 nemici',                   type: 'enemies_killed',        target: 100  },
+  { id: 's2_w5_3',  week: 5, difficulty: 'easy',   title: 'Fontana di Trevi',       desc: "Raggiungi l'onda 6",                   type: 'max_wave_single',       target: 6    },
+  { id: 's2_w5_4',  week: 5, difficulty: 'easy',   title: 'Vita da Star',           desc: 'Guadagna 800 monete in una partita',   type: 'coins_earned_session',  target: 800  },
+  { id: 's2_w5_5',  week: 5, difficulty: 'medium', title: 'Paparazzi',              desc: 'Abbatti 700 nemici in totale',         type: 'enemies_killed',        target: 700  },
+  { id: 's2_w5_6',  week: 5, difficulty: 'medium', title: 'Cinecittà',              desc: "Raggiungi l'onda 14",                  type: 'max_wave_single',       target: 14   },
+  { id: 's2_w5_7',  week: 5, difficulty: 'medium', title: 'Regista Provetto',       desc: 'Usa 8 abilità in una partita',         type: 'abilities_used_single', target: 8    },
+  { id: 's2_w5_8',  week: 5, difficulty: 'hard',   title: 'Il Sorpasso',            desc: "Raggiungi l'onda 18",                  type: 'max_wave_single',       target: 18   },
+  { id: 's2_w5_9',  week: 5, difficulty: 'hard',   title: 'Milano da Bere',         desc: 'Guadagna 3,500 monete in una partita', type: 'coins_earned_session',  target: 3500 },
+  { id: 's2_w5_10', week: 5, difficulty: 'epic',   title: 'La Dolce Vita',          desc: 'Abbatti 1,500 nemici in totale',       type: 'enemies_killed',        target: 1500 },
 
-  // ── Week 6: Maestro del Vortex ────────────────────────────────────────────
-  { id: 'w6_1',  week: 6, difficulty: 'easy',   title: 'Routine da Maestro',     desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
-  { id: 'w6_2',  week: 6, difficulty: 'easy',   title: 'Distruzione Metodica',   desc: 'Abbatti 100 nemici',                   type: 'enemies_killed',        target: 100  },
-  { id: 'w6_3',  week: 6, difficulty: 'easy',   title: 'Arsenal Galattico',      desc: 'Usa 5 abilità in una partita',         type: 'abilities_used_single', target: 5    },
-  { id: 'w6_4',  week: 6, difficulty: 'easy',   title: 'Gemme del Vortex',       desc: 'Raccogli 30 gemme',                    type: 'gems_collected',        target: 30   },
-  { id: 'w6_5',  week: 6, difficulty: 'medium', title: 'Devastazione',           desc: 'Abbatti 1,000 nemici in totale',       type: 'enemies_killed',        target: 1000 },
-  { id: 'w6_6',  week: 6, difficulty: 'medium', title: 'Guardiano del Vortex',   desc: "Raggiungi l'onda 16",                  type: 'max_wave_single',       target: 16   },
-  { id: 'w6_7',  week: 6, difficulty: 'medium', title: 'Veterano Esperto',       desc: 'Gioca 25 partite in totale',           type: 'games_played',          target: 25   },
-  { id: 'w6_8',  week: 6, difficulty: 'hard',   title: 'Onda Perfetta',          desc: "Raggiungi l'onda 20",                  type: 'max_wave_single',       target: 20   },
-  { id: 'w6_9',  week: 6, difficulty: 'hard',   title: 'Vault Cosmico',          desc: 'Raccogli 200 gemme in totale',         type: 'gems_collected',        target: 200  },
-  { id: 'w6_10', week: 6, difficulty: 'epic',   title: 'Ira del Vortex',         desc: 'Abbatti 2,500 nemici in totale',       type: 'enemies_killed',        target: 2500 },
+  // ── Week 6: Il Vulcano ───────────────────────────────────────────────────
+  { id: 's2_w6_1',  week: 6, difficulty: 'easy',   title: 'Ai Piedi del Vesuvio',   desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
+  { id: 's2_w6_2',  week: 6, difficulty: 'easy',   title: 'Colata Lavica',          desc: 'Abbatti 100 nemici',                   type: 'enemies_killed',        target: 100  },
+  { id: 's2_w6_3',  week: 6, difficulty: 'easy',   title: "Fuoco dell'Etna",        desc: 'Usa 5 abilità in una partita',         type: 'abilities_used_single', target: 5    },
+  { id: 's2_w6_4',  week: 6, difficulty: 'easy',   title: 'Gemme di Ossidiana',     desc: 'Raccogli 30 gemme',                    type: 'gems_collected',        target: 30   },
+  { id: 's2_w6_5',  week: 6, difficulty: 'medium', title: 'Pioggia di Cenere',      desc: 'Abbatti 1,000 nemici in totale',       type: 'enemies_killed',        target: 1000 },
+  { id: 's2_w6_6',  week: 6, difficulty: 'medium', title: 'Stromboli',              desc: "Raggiungi l'onda 16",                  type: 'max_wave_single',       target: 16   },
+  { id: 's2_w6_7',  week: 6, difficulty: 'medium', title: 'Sentiero dei Crateri',   desc: 'Gioca 25 partite in totale',           type: 'games_played',          target: 25   },
+  { id: 's2_w6_8',  week: 6, difficulty: 'hard',   title: 'Eruzione',               desc: "Raggiungi l'onda 20",                  type: 'max_wave_single',       target: 20   },
+  { id: 's2_w6_9',  week: 6, difficulty: 'hard',   title: 'Tesoro di Pompei',       desc: 'Raccogli 200 gemme in totale',         type: 'gems_collected',        target: 200  },
+  { id: 's2_w6_10', week: 6, difficulty: 'epic',   title: 'Ira del Vesuvio',        desc: 'Abbatti 2,500 nemici in totale',       type: 'enemies_killed',        target: 2500 },
 
-  // ── Week 7: Campione Galattico ────────────────────────────────────────────
-  { id: 'w7_1',  week: 7, difficulty: 'easy',   title: 'Ultimo Capitolo',        desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
-  { id: 'w7_2',  week: 7, difficulty: 'easy',   title: 'Falce Galattica',        desc: 'Abbatti 150 nemici',                   type: 'enemies_killed',        target: 150  },
-  { id: 'w7_3',  week: 7, difficulty: 'easy',   title: 'Onda Finale',            desc: "Raggiungi l'onda 8",                   type: 'max_wave_single',       target: 8    },
-  { id: 'w7_4',  week: 7, difficulty: 'easy',   title: 'Tattico Supremo',        desc: 'Usa 5 abilità in una partita',         type: 'abilities_used_single', target: 5    },
-  { id: 'w7_5',  week: 7, difficulty: 'medium', title: 'Genocidio Stellare',     desc: 'Abbatti 1,500 nemici in totale',       type: 'enemies_killed',        target: 1500 },
-  { id: 'w7_6',  week: 7, difficulty: 'medium', title: 'Ascesa Finale',          desc: "Raggiungi l'onda 18",                  type: 'max_wave_single',       target: 18   },
-  { id: 'w7_7',  week: 7, difficulty: 'medium', title: 'Grande Veterano',        desc: 'Gioca 35 partite in totale',           type: 'games_played',          target: 35   },
-  { id: 'w7_8',  week: 7, difficulty: 'hard',   title: 'Vetta dell\'Universo',   desc: "Raggiungi l'onda 25",                  type: 'max_wave_single',       target: 25   },
-  { id: 'w7_9',  week: 7, difficulty: 'hard',   title: 'Tesoro Leggendario',     desc: 'Raccogli 350 gemme in totale',         type: 'gems_collected',        target: 350  },
-  { id: 'w7_10', week: 7, difficulty: 'epic',   title: 'Il Grande Campione',     desc: 'Abbatti 4,000 nemici in totale',       type: 'enemies_killed',        target: 4000 }
+  // ── Week 7: Campione d'Italia ────────────────────────────────────────────
+  { id: 's2_w7_1',  week: 7, difficulty: 'easy',   title: 'Ultimo Giro',            desc: 'Gioca 5 partite',                      type: 'games_played',          target: 5    },
+  { id: 's2_w7_2',  week: 7, difficulty: 'easy',   title: 'Assalto Azzurro',        desc: 'Abbatti 150 nemici',                   type: 'enemies_killed',        target: 150  },
+  { id: 's2_w7_3',  week: 7, difficulty: 'easy',   title: 'Girone Finale',          desc: "Raggiungi l'onda 8",                   type: 'max_wave_single',       target: 8    },
+  { id: 's2_w7_4',  week: 7, difficulty: 'easy',   title: 'Catenaccio',             desc: 'Usa 5 abilità in una partita',         type: 'abilities_used_single', target: 5    },
+  { id: 's2_w7_5',  week: 7, difficulty: 'medium', title: 'Contropiede',            desc: 'Abbatti 1,500 nemici in totale',       type: 'enemies_killed',        target: 1500 },
+  { id: 's2_w7_6',  week: 7, difficulty: 'medium', title: 'Semifinale',             desc: "Raggiungi l'onda 18",                  type: 'max_wave_single',       target: 18   },
+  { id: 's2_w7_7',  week: 7, difficulty: 'medium', title: 'Maratona Tricolore',     desc: 'Gioca 35 partite in totale',           type: 'games_played',          target: 35   },
+  { id: 's2_w7_8',  week: 7, difficulty: 'hard',   title: 'La Finale',              desc: "Raggiungi l'onda 25",                  type: 'max_wave_single',       target: 25   },
+  { id: 's2_w7_9',  week: 7, difficulty: 'hard',   title: "Coppa d'Oro",            desc: 'Raccogli 350 gemme in totale',         type: 'gems_collected',        target: 350  },
+  { id: 's2_w7_10', week: 7, difficulty: 'epic',   title: "Campione d'Italia",      desc: 'Abbatti 4,000 nemici in totale',       type: 'enemies_killed',        target: 4000 }
 ];
 
 // Attach reward fields from MISSION_REWARDS based on difficulty
@@ -277,15 +294,15 @@ const PASS_TIERS = [
   { tier: 3,  pulsar: 3500,  reward: { type: 'coins',   amount: 2500 } },
   { tier: 4,  pulsar: 5000,  reward: { type: 'gems',    amount: 40 } },
   { tier: 5,  pulsar: 6500,  reward: { type: 'coins',   amount: 4000 } },
-  { tier: 6,  pulsar: 8000,  reward: { type: 'ability', abilityId: 'bushido_blade' } },
+  { tier: 6,  pulsar: 8000,  reward: { type: 'ability', abilityId: 'pesto_genovese' } },
   { tier: 7,  pulsar: 9500,  reward: { type: 'gems',    amount: 60 } },
   { tier: 8,  pulsar: 11000, reward: { type: 'coins',   amount: 6000 } },
-  { tier: 9,  pulsar: 13000, reward: { type: 'skin',    skinId: 'rising_sun' } },
+  { tier: 9,  pulsar: 13000, reward: { type: 'skin',    skinId: 'tricolore' } },
   { tier: 10, pulsar: 15000, reward: { type: 'gems',    amount: 80 } },
   { tier: 11, pulsar: 17000, reward: { type: 'coins',   amount: 8000 } },
   { tier: 12, pulsar: 19000, reward: { type: 'gems',    amount: 100 } },
   { tier: 13, pulsar: 21000, reward: { type: 'coins',   amount: 10000 } },
-  { tier: 14, pulsar: 23000, reward: { type: 'ability', abilityId: 'sakura_storm' } },
+  { tier: 14, pulsar: 23000, reward: { type: 'ability', abilityId: 'pizza_gigante' } },
   { tier: 15, pulsar: 25000, reward: { type: 'gems',    amount: 120 } },
   { tier: 16, pulsar: 27000, reward: { type: 'coins',   amount: 12000 } },
   { tier: 17, pulsar: 29000, reward: { type: 'gems',    amount: 150 } },
@@ -301,8 +318,64 @@ const PASS_TIERS = [
   { tier: 27, pulsar: 47500, reward: { type: 'gems',    amount: 350 } },
   { tier: 28, pulsar: 48500, reward: { type: 'coins',   amount: 45000 } },
   { tier: 29, pulsar: 49500, reward: { type: 'gems',    amount: 400 } },
-  { tier: 30, pulsar: 50000, reward: { type: 'skin',    skinId: 'torii_gate' } }
+  { tier: 30, pulsar: 50000, reward: { type: 'skin',    skinId: 'colosseo' } }
 ];
+
+// ── Submitted-run validation ──────────────────────────────────────────────────
+// The run itself is simulated on the client, so the numbers below arrive from an
+// untrusted source. We can't recompute them server-side, but we can refuse values
+// that no real run could produce: that keeps forged submissions out of the
+// leaderboard and caps how much currency a tampered client can mint.
+
+const MAX_WAVE = 1000;
+const MAX_ABILITIES_USED = 500;
+// Headroom over a perfect run: ~40 enemies/wave at max combo, plus boss score.
+const MAX_SCORE_PER_WAVE = 500000;
+const MAX_ENEMIES_PER_WAVE = 60;
+
+function toCount(value, fallback = 0) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.floor(n);
+}
+
+// Returns { ok: true, stats } or { ok: false, error }
+function validateRunStats(body) {
+  const raw = body || {};
+
+  const score = Number(raw.score);
+  const wave = Number(raw.wave);
+  if (!Number.isFinite(score) || !Number.isFinite(wave)) {
+    return { ok: false, error: 'Invalid run data' };
+  }
+  if (score < 0 || wave < 1 || wave > MAX_WAVE) {
+    return { ok: false, error: 'Invalid run data' };
+  }
+
+  const stats = {
+    score: Math.floor(score),
+    wave: Math.floor(wave),
+    enemiesKilled: toCount(raw.enemiesKilled),
+    gemsCollected: toCount(raw.gemsCollected),
+    abilitiesUsed: toCount(raw.abilitiesUsed)
+  };
+
+  if (stats.score > stats.wave * MAX_SCORE_PER_WAVE) {
+    return { ok: false, error: 'Run rejected: implausible score' };
+  }
+  if (stats.enemiesKilled > stats.wave * MAX_ENEMIES_PER_WAVE + 100) {
+    return { ok: false, error: 'Run rejected: implausible kill count' };
+  }
+  // Gems drop from kills (plus a few from bosses/milestones), never out of nowhere.
+  if (stats.gemsCollected > stats.enemiesKilled + 50) {
+    return { ok: false, error: 'Run rejected: implausible gem count' };
+  }
+  if (stats.abilitiesUsed > MAX_ABILITIES_USED) {
+    stats.abilitiesUsed = MAX_ABILITIES_USED;
+  }
+
+  return { ok: true, stats };
+}
 
 function getCurrentSeasonWeek() {
   const now = Date.now();
@@ -479,9 +552,12 @@ async function fetchUserProfileData(supabase, userId) {
   };
 }
 
-router.post('/save-score', async (req, res) => {
+router.post('/save-score', userLock('save-score'), async (req, res) => {
   try {
-    const { score, wave, enemiesKilled, gemsCollected = 0, abilitiesUsed = 0 } = req.body;
+    const validation = validateRunStats(req.body);
+    if (!validation.ok) return res.json({ success: false, error: validation.error });
+    const { score, wave, enemiesKilled, gemsCollected, abilitiesUsed } = validation.stats;
+
     const supabase = getDB();
     const userId = req.user.userId;
 
@@ -548,11 +624,11 @@ router.post('/save-score', async (req, res) => {
 
     res.json({ success: true, data: { coinsEarned, gemsEarned, newMaxScore, newMaxWave } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
-router.post('/claim-tutorial-reward', async (req, res) => {
+router.post('/claim-tutorial-reward', userLock('claim-tutorial-reward'), async (req, res) => {
   try {
     const supabase = getDB();
     const userId = req.user.userId;
@@ -583,11 +659,11 @@ router.post('/claim-tutorial-reward', async (req, res) => {
 
     res.json({ success: true, data: { coinsEarned: 1000, gemsEarned: 10 } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
-router.post('/claim-streak', async (req, res) => {
+router.post('/claim-streak', userLock('claim-streak'), async (req, res) => {
   try {
     const supabase = getDB();
     const userId = req.user.userId;
@@ -667,7 +743,7 @@ router.post('/claim-streak', async (req, res) => {
 
     res.json({ success: true, data: rewardResult });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
@@ -681,13 +757,17 @@ router.get('/profile', async (req, res) => {
 
     res.json({ success: true, data: profile });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
-router.post('/upgrade-ability', async (req, res) => {
+router.post('/upgrade-ability', userLock('upgrade-ability'), async (req, res) => {
   try {
-    const { abilityId } = req.body;
+    const { abilityId } = req.body || {};
+    if (typeof abilityId !== 'string' || !KNOWN_ABILITY_IDS.has(abilityId)) {
+      return res.json({ success: false, error: 'Unknown ability' });
+    }
+
     const supabase = getDB();
     const userId = req.user.userId;
 
@@ -731,11 +811,11 @@ router.post('/upgrade-ability', async (req, res) => {
 
     res.json({ success: true, data: { newLevel: currentLevel + 1, coinsSpent: cost } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
-router.post('/open-crate', async (req, res) => {
+router.post('/open-crate', userLock('open-crate'), async (req, res) => {
   try {
     const supabase = getDB();
     const userId = req.user.userId;
@@ -823,11 +903,11 @@ router.post('/open-crate', async (req, res) => {
 
     res.json({ success: true, data: { results, usedFreeCrate: usingFreeCrate } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
-router.post('/spin-wheel', async (req, res) => {
+router.post('/spin-wheel', userLock('spin-wheel'), async (req, res) => {
   try {
     const supabase = getDB();
     const userId = req.user.userId;
@@ -888,7 +968,7 @@ router.post('/spin-wheel', async (req, res) => {
       }
     });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
@@ -903,12 +983,12 @@ router.get('/achievements', async (req, res) => {
     if (error) throw new Error(error.message);
     res.json({ success: true, data: achievements });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
 // ── Skin crate endpoint ───────────────────────────────────────────────────────
-router.post('/open-skin-crate', async (req, res) => {
+router.post('/open-skin-crate', userLock('open-skin-crate'), async (req, res) => {
   try {
     const supabase = getDB();
     const userId = req.user.userId;
@@ -983,7 +1063,7 @@ router.post('/open-skin-crate', async (req, res) => {
       }
     });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
@@ -1015,7 +1095,7 @@ router.post('/equip-skin', async (req, res) => {
 
     res.json({ success: true, data: { equipped_skin: skinId } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
@@ -1120,7 +1200,7 @@ router.get('/season-pass', async (req, res) => {
       }
     });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
@@ -1191,7 +1271,7 @@ router.post('/claim-mission-reward', async (req, res) => {
       gemsEarned:  mission.reward_gems  || 0
     } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   } finally {
     CLAIM_MISSION_LOCKS.delete(lockKey);
   }
@@ -1270,13 +1350,13 @@ router.post('/claim-all-mission-rewards', async (req, res) => {
       }
     });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   } finally {
     CLAIM_ALL_MISSIONS_LOCKS.delete(userId);
   }
 });
 
-router.post('/claim-pass-tier', async (req, res) => {
+router.post('/claim-pass-tier', userLock('claim-pass-tier'), async (req, res) => {
   try {
     const { tier } = req.body;
     const supabase = getDB();
@@ -1336,11 +1416,73 @@ router.post('/claim-pass-tier', async (req, res) => {
 
     res.json({ success: true, data: { tier, reward, rewardDesc } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
 // ── Boss Rush Mode ────────────────────────────────────────────────────────────
+
+// A Boss Rush run is exactly 5 bosses; everything else is derived from that.
+const BR_BOSS_IDS = ['nebulox', 'void_tyrant', 'star_crusher', 'chronos_rex', 'astral_sentinel'];
+const BR_MAX_BOSSES_PER_RUN = 5;
+const BR_MAX_RUN_MS = 2 * 60 * 60 * 1000; // 2h is already absurd for a 5-boss run
+const BR_MAX_SCORE_PER_BOSS = 400000;
+
+// Returns { ok: true, stats } or { ok: false, error }.
+// Aura unlocks are permanent, so a forged payload here is worth more than coins:
+// without these checks a single crafted request unlocks every legendary aura.
+function validateBossRushRun(body) {
+  const raw = body || {};
+
+  const bossesDefeated = toCount(raw.bossesDefeated);
+  const totalTimeMs = toCount(raw.totalTimeMs);
+  const score = toCount(raw.score);
+  const fastBossStreak = toCount(raw.fastBossStreak);
+
+  if (bossesDefeated > BR_MAX_BOSSES_PER_RUN) {
+    return { ok: false, error: 'Run rejected: invalid boss count' };
+  }
+  if (totalTimeMs > BR_MAX_RUN_MS) {
+    return { ok: false, error: 'Run rejected: invalid run time' };
+  }
+  if (score > BR_MAX_BOSSES_PER_RUN * BR_MAX_SCORE_PER_BOSS) {
+    return { ok: false, error: 'Run rejected: implausible score' };
+  }
+  if (fastBossStreak > bossesDefeated) {
+    return { ok: false, error: 'Run rejected: invalid boss streak' };
+  }
+
+  // Only known boss ids, and no more kills than the run actually contained.
+  const bossKillCounts = {};
+  let totalKills = 0;
+  const rawCounts = raw.bossKillCounts;
+  if (rawCounts && typeof rawCounts === 'object' && !Array.isArray(rawCounts)) {
+    for (const bossId of BR_BOSS_IDS) {
+      const kills = toCount(rawCounts[bossId]);
+      if (kills > 0) {
+        bossKillCounts[bossId] = kills;
+        totalKills += kills;
+      }
+    }
+  }
+  if (totalKills > bossesDefeated) {
+    return { ok: false, error: 'Run rejected: invalid boss kill counts' };
+  }
+
+  return {
+    ok: true,
+    stats: {
+      bossesDefeated,
+      totalTimeMs,
+      score,
+      fastBossStreak,
+      bossKillCounts,
+      // These flags gate aura unlocks — they only mean anything if a boss died.
+      noAbilitiesUsed: raw.noAbilitiesUsed === true && bossesDefeated > 0,
+      noHitPhase2: raw.noHitPhase2 === true && bossesDefeated > 0
+    }
+  };
+}
 
 // Aura unlock objective IDs and their condition checks
 const BR_AURA_CONDITIONS = {
@@ -1351,9 +1493,15 @@ const BR_AURA_CONDITIONS = {
   br_eternal_nemesis: stats => stats.total_bosses_killed >= 100
 };
 
-router.post('/save-boss-rush-score', async (req, res) => {
+router.post('/save-boss-rush-score', userLock('save-boss-rush-score'), async (req, res) => {
   try {
-    const { bossesDefeated, totalTimeMs, score, bossKillCounts, noAbilitiesUsed, noHitPhase2, fastBossStreak } = req.body;
+    const validation = validateBossRushRun(req.body);
+    if (!validation.ok) return res.json({ success: false, error: validation.error });
+    const {
+      bossesDefeated, totalTimeMs, score, bossKillCounts,
+      noAbilitiesUsed, noHitPhase2, fastBossStreak
+    } = validation.stats;
+
     const supabase = getDB();
     const userId = req.user.userId;
 
@@ -1415,7 +1563,7 @@ router.post('/save-boss-rush-score', async (req, res) => {
 
     res.json({ success: true, data: { coinsEarned, gemsEarned, auraUnlocked } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 
@@ -1432,7 +1580,7 @@ router.get('/boss-rush-stats', async (req, res) => {
     }
     res.json({ success: true, data: { stats: stats || {}, auraStatus } });
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    return fail(res, err, `game${req.path}`);
   }
 });
 

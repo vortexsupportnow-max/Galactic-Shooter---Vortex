@@ -19,8 +19,11 @@ A browser-based space shooter built with HTML5 Canvas + a Node.js/Express backen
 1. Go to <https://supabase.com> and create a new project.
 2. Once the project is ready, open **Settings → API** and copy:
    - **Project URL** (e.g. `https://xxxx.supabase.co`)
-   - **Anon public key**
-   - **JWT Secret** (under *JWT Settings*)
+   - **`service_role` key** — server-only, never ship it to a browser
+   - (the **anon public key** works as a fallback, but see [Security](#security))
+
+> Do **not** reuse Supabase's own *JWT Secret* for `JWT_SECRET`. This app signs its
+> own tokens; give it a dedicated random secret you can rotate independently.
 
 ---
 
@@ -41,7 +44,10 @@ This creates the following tables and helpers:
 | `get_wave_leaderboard` | function | Best wave per player, ordered by wave |
 | `unlock_achievement` | function | Idempotent achievement unlock |
 
-Row-Level Security is enabled on every table with a permissive backend policy so the Node.js server can read/write freely.
+`db/schema.sql` enables Row-Level Security with a **permissive** policy so a server
+running on the anon key keeps working. That policy also grants the public anon key
+full read/write access to every table — see [Security](#security) for how to close it
+with `db/schema_rls.sql`.
 
 ---
 
@@ -57,10 +63,22 @@ cp .env.example .env
 
 ```
 SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=your-anon-key-here
-JWT_SECRET=your-jwt-secret-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # preferred
+SUPABASE_ANON_KEY=                                # fallback only
+JWT_SECRET=a-random-string-of-at-least-32-chars
+NODE_ENV=development
 PORT=3000
+ALLOWED_ORIGINS=                                  # empty = same-origin only
 ```
+
+Generate a strong `JWT_SECRET` with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+With `NODE_ENV=production` the server refuses to start without a `JWT_SECRET` of at
+least 32 characters, rather than falling back to a built-in development secret.
 
 ---
 
@@ -81,8 +99,11 @@ Open that URL in your browser to play the game.
 ```
 ├── db/
 │   ├── schema.sql      # Supabase schema – run this once in the SQL Editor
+│   ├── schema_rls.sql  # Database lockdown – run after switching to the service-role key
+│   ├── schema_roles.sql# Developer role helpers
 │   └── database.js     # Supabase client initialisation
-├── middleware/         # JWT auth middleware
+├── lib/                # Shared helpers (sanitised error responses)
+├── middleware/         # JWT auth, security headers, per-user request locks
 ├── public/             # Front-end (HTML5 Canvas game)
 │   ├── index.html
 │   ├── css/
@@ -93,6 +114,60 @@ Open that URL in your browser to play the game.
 ├── .env.example        # Environment variable template
 └── package.json
 ```
+
+---
+
+## Security
+
+### Secrets
+
+- `.env` is git-ignored — never commit real keys, and keep them out of screenshots and logs.
+- `JWT_SECRET` signs the login tokens. Required in production (≥ 32 chars); rotating it
+  logs everyone out, which is exactly what you want after a suspected leak.
+- Prefer `SUPABASE_SERVICE_ROLE_KEY` over `SUPABASE_ANON_KEY`. The service-role key
+  is meant to stay on the server and never reaches the browser here; the anon key is
+  a *public* key in Supabase's model.
+
+### The three SQL files
+
+They stack — none of them replaces another, and all three are idempotent:
+
+| File | When | What it does |
+|------|------|--------------|
+| `db/schema.sql` | first | Tables, indexes, RPC functions. Also creates permissive RLS policies. |
+| `db/schema_roles.sql` | optional | `role` column and the developer promote/demote helpers. |
+| `db/schema_rls.sql` | **last** | Drops those permissive policies and locks everything to `service_role`. |
+
+⚠ Re-running `schema.sql` on a locked-down project recreates the permissive
+policies and re-opens the database. If you ever do, run `schema_rls.sql` again
+right after.
+
+### Locking the database (recommended)
+
+With the permissive policies from `db/schema.sql`, anyone holding the project URL +
+anon key can bypass this API and read password hashes or edit balances directly.
+To close that:
+
+1. Set `SUPABASE_SERVICE_ROLE_KEY` and redeploy.
+2. Check the log line `Supabase database connected (service-role key)`.
+3. Run `db/schema_rls.sql` in the SQL Editor.
+4. Rotate the anon key.
+
+### What the server already enforces
+
+| Area | Measure |
+|------|---------|
+| Headers | CSP, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, HSTS in production, no `X-Powered-By` |
+| CORS | Same-origin by default; extra origins via `ALLOWED_ORIGINS` |
+| Rate limits | 120 req/min per IP on the API, 30 per 15 min on `/auth`, `trust proxy` set so limits key on the real client IP |
+| Payloads | JSON capped at 16 kB, malformed bodies rejected with a 400 |
+| Accounts | Nickname charset restricted (no markup), password 8–72 chars, constant-work login, case-insensitive unique nicknames |
+| Errors | Database messages are logged server-side only; clients get a generic message |
+| Anti-cheat | Submitted runs are rejected when score/kills/gems/waves are outside what a real run can produce; Boss Rush kill counts are filtered to known bosses |
+| Concurrency | Currency-spending endpoints are serialised per user to prevent double-spend races |
+
+Client-side scoring remains the structural limit: the game simulates runs in the
+browser, so the server can only reject implausible results, not verify honest ones.
 
 ---
 

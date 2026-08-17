@@ -3,8 +3,8 @@
 function getAbilityRarity(abilityId) {
   const rarities = {
     common:    ['shield','speed_boost','triple_shot','frag_bomb','rapid_fire','heal','spread_shot','homing'],
-    rare:      ['laser','magnetic_field','clone','time_slow','piercing','ricochet','overcharge','drone','bushido_blade'],
-    epic:      ['black_hole','emp','rain_of_fire','chain_lightning','vortex','gravity_well','turret','freeze','sakura_storm'],
+    rare:      ['laser','magnetic_field','clone','time_slow','piercing','ricochet','overcharge','drone','bushido_blade','pesto_genovese'],
+    epic:      ['black_hole','emp','rain_of_fire','chain_lightning','vortex','gravity_well','turret','freeze','sakura_storm','pizza_gigante'],
     legendary: ['god_mode','nuke','time_warp','phoenix','singularity','storm']
   };
   for (const [rarity, ids] of Object.entries(rarities)) {
@@ -305,10 +305,10 @@ const ABILITIES = {
     }
   },
 
-  // ===== JAPAN SEASON (pass-exclusive) =====
+  // ===== JAPAN SEASON — Season 1 (pass-exclusive, archived) =====
   bushido_blade: {
     id: 'bushido_blade', name: 'Bushido Blade', rarity: 'rare', icon: 'bushido_blade',
-    season_exclusive: true,
+    season_exclusive: true, season_tag: '🌸 JAPAN SEASON',
     description: 'Katana slash: deals 300+30*level dmg to all enemies in a vertical line',
     maxLevel: 10,
     apply(gs, level) {
@@ -331,7 +331,7 @@ const ABILITIES = {
   },
   sakura_storm: {
     id: 'sakura_storm', name: 'Sakura Storm', rarity: 'epic', icon: 'sakura_storm',
-    season_exclusive: true,
+    season_exclusive: true, season_tag: '🌸 JAPAN SEASON',
     description: 'Sakura petals deal area damage for 5s (+0.5s/level)',
     maxLevel: 10,
     apply(gs, level) {
@@ -342,6 +342,55 @@ const ABILITIES = {
         damage: 25 + level * 8
       };
       gs.particles.emit(gs.player.x, gs.player.y, 30, '#ff88cc', { speed: 5, decay: 0.015 });
+      Sounds.abilityUse();
+    }
+  },
+
+  // ===== ITALIA SEASON — Season 2 (pass-exclusive) =====
+  pesto_genovese: {
+    id: 'pesto_genovese', name: 'Pesto Genovese', rarity: 'rare', icon: 'pesto_genovese',
+    season_exclusive: true, season_tag: '🟩⬜🟥 ITALIA SEASON',
+    description: 'Splash di pesto: nemici impantanati al 40% (-2%/livello) per 6s (+0.5s/livello)',
+    maxLevel: 10,
+    apply(gs, level) {
+      const splats = [];
+      for (let i = 0; i < 9; i++) {
+        splats.push({
+          x: 30 + Math.random() * 420,
+          y: 60 + Math.random() * 520,
+          r: 22 + Math.random() * 30,
+          rot: Math.random() * Math.PI * 2
+        });
+      }
+      gs.pestoField = {
+        timer: (6 + level * 0.5) * 1000,
+        maxTimer: (6 + level * 0.5) * 1000,
+        slowMult: Math.max(0.2, 0.4 - level * 0.02),
+        splats
+      };
+      gs.particles.emit(gs.player.x, gs.player.y - 20, 30, '#4caf2f', { speed: 6, decay: 0.02 });
+      Sounds.abilityUse();
+    }
+  },
+  pizza_gigante: {
+    id: 'pizza_gigante', name: 'Pizza Gigante', rarity: 'epic', icon: 'pizza_gigante',
+    season_exclusive: true, season_tag: '🟩⬜🟥 ITALIA SEASON',
+    description: 'Lancia una pizza gigante: 250+40/livello danni e sbalza indietro i nemici',
+    maxLevel: 10,
+    apply(gs, level) {
+      gs.pizza = {
+        x: gs.player.x,
+        y: gs.player.y - 40,
+        vy: -3.2,
+        radius: 55 + level * 3,
+        damage: 250 + level * 40,
+        knockback: 5 + level * 0.5,
+        angle: 0,
+        hit: new Set(),
+        bossHit: false,
+        timer: 5000
+      };
+      gs.particles.emit(gs.player.x, gs.player.y - 30, 20, '#f0b429', { speed: 4, decay: 0.03 });
       Sounds.abilityUse();
     }
   },

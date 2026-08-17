@@ -13,6 +13,7 @@ const request = require('supertest');
 const express = require('express');
 const { getDB } = require('../../db/database');
 const leaderboardRouter = require('../../routes/leaderboard');
+const { GENERIC_ERROR } = require('../../lib/respond');
 
 function buildApp() {
   const app = express();
@@ -92,7 +93,7 @@ describe('GET /api/leaderboard/scores', () => {
     getDB.mockReturnValue(supabase);
 
     const res = await request(app).get('/api/leaderboard/scores');
-    expect(res.body).toEqual({ success: false, error: 'rpc failed' });
+    expect(res.body).toEqual({ success: false, error: GENERIC_ERROR });
   });
 
   it('returns empty array when no scores exist', async () => {
@@ -163,7 +164,7 @@ describe('GET /api/leaderboard/waves', () => {
     getDB.mockReturnValue(supabase);
 
     const res = await request(app).get('/api/leaderboard/waves');
-    expect(res.body).toEqual({ success: false, error: 'wave rpc failed' });
+    expect(res.body).toEqual({ success: false, error: GENERIC_ERROR });
   });
 
   it('returns empty array when no wave scores exist', async () => {

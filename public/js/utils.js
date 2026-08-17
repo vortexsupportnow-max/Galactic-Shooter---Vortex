@@ -17,10 +17,33 @@ async function apiFetch(path, options = {}) {
   if (token) headers.Authorization = `Bearer ${token}`;
   try {
     const res = await fetch(API_BASE + path, { ...options, headers });
+
+    // Tokens last 7 days; when one expires mid-session every call would silently
+    // fail. Drop the dead token and send the player back to the login screen.
+    if (res.status === 401) {
+      clearToken();
+      if (typeof stopGame === 'function') stopGame();
+      if (typeof showLoginScreen === 'function') showLoginScreen();
+      return { success: false, error: 'Sessione scaduta, accedi di nuovo' };
+    }
+
     return await res.json();
   } catch (e) {
     return { success: false, error: 'Network error' };
   }
+}
+
+// ===== HTML ESCAPING =====
+// Anything that originates from a user (nicknames, above all) must go through this
+// before being dropped into an innerHTML template, or a crafted nickname becomes
+// stored XSS for every player who opens the leaderboard.
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ===== RARITY COLORS =====
