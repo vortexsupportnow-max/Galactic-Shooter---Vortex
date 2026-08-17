@@ -77,8 +77,10 @@ Generate a strong `JWT_SECRET` with:
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-With `NODE_ENV=production` the server refuses to start without a `JWT_SECRET` of at
-least 32 characters, rather than falling back to a built-in development secret.
+With `NODE_ENV=production` the server refuses to start if `JWT_SECRET` is missing or
+is the development secret published in this repo — it never falls back to a value an
+attacker could read. A shorter-than-32-character secret still boots, but logs a
+warning on every start and shows up as `jwt.weak` on `/api/health`.
 
 ---
 
@@ -183,6 +185,7 @@ browser, so the server can only reject implausible results, not verify honest on
 | POST | `/game/open-crate` | Open a loot crate (costs gems) |
 | GET | `/leaderboard/scores` | Top scores leaderboard |
 | GET | `/leaderboard/waves` | Top waves leaderboard |
+| GET | `/health` | Deployment diagnostics: env, DB reachability, which Supabase key, weak-secret flag |
 
 ---
 

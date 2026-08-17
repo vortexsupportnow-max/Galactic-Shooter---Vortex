@@ -10,7 +10,37 @@ process.env.SUPABASE_URL = 'http://localhost';
 process.env.SUPABASE_ANON_KEY = 'test-key';
 
 const request = require('supertest');
+const { getDB } = require('../db/database');
 const app = require('../server');
+
+describe('GET /api/health', () => {
+  it('reports status without leaking secrets', async () => {
+    getDB.mockReturnValue({
+      from: () => ({ select: () => ({ limit: async () => ({ data: [], error: null }) }) })
+    });
+
+    const res = await request(app).get('/api/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.database.reachable).toBe(true);
+    expect(res.body.data.database.key).toBe('anon');
+    expect(res.body.data.env).toBe('test');
+    // No key material anywhere in the payload
+    expect(JSON.stringify(res.body)).not.toMatch(/test-key|test-secret/);
+  });
+
+  it('stays up and reports the outage when the database is unreachable', async () => {
+    getDB.mockReturnValue({
+      from: () => ({ select: () => ({ limit: async () => ({ data: null, error: { message: 'connection refused' } }) }) })
+    });
+
+    const res = await request(app).get('/api/health');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.database.reachable).toBe(false);
+    expect(JSON.stringify(res.body)).not.toContain('connection refused');
+  });
+});
 
 describe('security headers', () => {
   it('sends a strict CSP and the usual hardening headers', async () => {
