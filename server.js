@@ -4,8 +4,11 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
-const { initDB } = require('./db/database');
-const { ALLOWED_ORIGINS, isProduction, isTest } = require('./config');
+const { initDB, getDB } = require('./db/database');
+const {
+  ALLOWED_ORIGINS, isProduction, isTest, NODE_ENV,
+  USING_SERVICE_ROLE_KEY, JWT_SECRET_IS_WEAK
+} = require('./config');
 const authRoutes = require('./routes/auth');
 const gameRoutes = require('./routes/game');
 const leaderboardRoutes = require('./routes/leaderboard');
@@ -14,6 +17,11 @@ const securityHeaders = require('./middleware/securityHeaders');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// On Vercel the app is invoked as a serverless function: there is no port to
+// listen on, and exiting the process on a startup hiccup turns every request —
+// static pages included — into FUNCTION_INVOCATION_FAILED.
+const IS_SERVERLESS = Boolean(process.env.VERCEL);
 
 // Behind Vercel/any reverse proxy every request arrives from the proxy IP. Without
 // this, express-rate-limit buckets the whole planet into a single counter: one busy
@@ -63,6 +71,29 @@ app.use('/api/game', apiLimiter, authMiddleware, gameRoutes);
 // Public leaderboard routes
 app.use('/api/leaderboard', apiLimiter, leaderboardRoutes);
 
+// Deployment diagnostics. Deliberately says whether things work, never why in
+// detail and never a secret — the reasons go to the server logs.
+app.get('/api/health', apiLimiter, async (req, res) => {
+  let dbReachable = false;
+  try {
+    const { error } = await getDB().from('users').select('id').limit(1);
+    dbReachable = !error;
+    if (error) console.error('[health] database check failed:', error.message);
+  } catch (err) {
+    console.error('[health] database check threw:', err && err.message);
+  }
+
+  res.json({
+    success: true,
+    data: {
+      env: NODE_ENV,
+      serverless: IS_SERVERLESS,
+      database: { reachable: dbReachable, key: USING_SERVICE_ROLE_KEY ? 'service_role' : 'anon' },
+      jwt: { weak: JWT_SECRET_IS_WEAK }
+    }
+  });
+});
+
 // Unknown API paths must not fall through to the SPA shell
 app.use('/api', (req, res) => {
   res.status(404).json({ success: false, error: 'Not found' });
@@ -83,14 +114,20 @@ app.use((err, req, res, next) => {
 
 // Tests import the routers directly; don't bind a port under Jest.
 if (!isTest) {
-  initDB().then(() => {
-    app.listen(PORT, () => {
-      console.log(`Galactic Shooter server running on port ${PORT} (${isProduction ? 'production' : 'development'})`);
+  initDB()
+    .then(() => {
+      if (IS_SERVERLESS) return; // nothing to listen on
+      app.listen(PORT, () => {
+        console.log(`Galactic Shooter server running on port ${PORT} (${isProduction ? 'production' : 'development'})`);
+      });
+    })
+    .catch(err => {
+      console.error('Failed to initialise database:', err.message);
+      // Locally a dead database means a broken dev setup, so fail fast. On
+      // serverless the app must stay up: static pages keep working and
+      // /api/health reports the problem instead of a blank 500.
+      if (!IS_SERVERLESS) process.exit(1);
     });
-  }).catch(err => {
-    console.error('Failed to initialise database:', err.message);
-    process.exit(1);
-  });
 }
 
 module.exports = app;
