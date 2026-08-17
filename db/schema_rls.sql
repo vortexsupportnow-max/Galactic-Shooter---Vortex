@@ -89,6 +89,30 @@ GRANT EXECUTE ON FUNCTION get_boss_rush_leaderboard()        TO service_role;
 GRANT EXECUTE ON FUNCTION unlock_achievement(BIGINT, TEXT)   TO service_role;
 GRANT EXECUTE ON FUNCTION trim_user_scores(BIGINT, INTEGER)  TO service_role;
 
+-- ── EMERGENCY ROLLBACK ────────────────────────────────────────
+-- If you applied this script while the server was still using the anon key, the
+-- backend loses all database access (/api/health reports database.status
+-- "denied"). The right fix is to set SUPABASE_SERVICE_ROLE_KEY and redeploy.
+-- If you need the site back on the anon key *right now*, run the block below —
+-- it re-opens the database, so treat it as temporary.
+--
+--   GRANT ALL     ON ALL TABLES    IN SCHEMA public TO anon, authenticated;
+--   GRANT ALL     ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+--   GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
+--   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL     ON TABLES    TO anon, authenticated;
+--   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL     ON SEQUENCES TO anon, authenticated;
+--   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon, authenticated;
+--
+--   CREATE POLICY "backend_all" ON users                 FOR ALL USING (true) WITH CHECK (true);
+--   CREATE POLICY "backend_all" ON user_abilities        FOR ALL USING (true) WITH CHECK (true);
+--   CREATE POLICY "backend_all" ON scores                FOR ALL USING (true) WITH CHECK (true);
+--   CREATE POLICY "backend_all" ON achievements          FOR ALL USING (true) WITH CHECK (true);
+--   CREATE POLICY "backend_all" ON user_skins            FOR ALL USING (true) WITH CHECK (true);
+--   CREATE POLICY "backend_all" ON user_season_pass      FOR ALL USING (true) WITH CHECK (true);
+--   CREATE POLICY "backend_all" ON user_mission_progress FOR ALL USING (true) WITH CHECK (true);
+--   CREATE POLICY "backend_all" ON boss_rush_scores      FOR ALL USING (true) WITH CHECK (true);
+--   CREATE POLICY "backend_all" ON boss_rush_stats       FOR ALL USING (true) WITH CHECK (true);
+
 -- ── 5. Verification ───────────────────────────────────────────
 -- Every table below should report rowsecurity = true and 0 policies.
 --
