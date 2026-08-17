@@ -31,14 +31,32 @@ describe('GET /api/health', () => {
 
   it('stays up and reports the outage when the database is unreachable', async () => {
     getDB.mockReturnValue({
-      from: () => ({ select: () => ({ limit: async () => ({ data: null, error: { message: 'connection refused' } }) }) })
+      from: () => ({ select: () => ({ limit: async () => { throw new Error('connection refused'); } }) })
     });
 
     const res = await request(app).get('/api/health');
 
     expect(res.status).toBe(200);
+    expect(res.body.data.database.status).toBe('unreachable');
     expect(res.body.data.database.reachable).toBe(false);
     expect(JSON.stringify(res.body)).not.toContain('connection refused');
+  });
+
+  // The exact failure you get from applying db/schema_rls.sql while the server
+  // still authenticates with the anon key.
+  it('distinguishes a permissions refusal from an outage', async () => {
+    getDB.mockReturnValue({
+      from: () => ({
+        select: () => ({
+          limit: async () => ({ data: null, error: { message: 'permission denied for table users', code: '42501' } })
+        })
+      })
+    });
+
+    const res = await request(app).get('/api/health');
+
+    expect(res.body.data.database.status).toBe('denied');
+    expect(res.body.data.database.hint).toMatch(/SUPABASE_SERVICE_ROLE_KEY/);
   });
 });
 

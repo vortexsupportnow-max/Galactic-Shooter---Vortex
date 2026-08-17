@@ -74,11 +74,25 @@ app.use('/api/leaderboard', apiLimiter, leaderboardRoutes);
 // Deployment diagnostics. Deliberately says whether things work, never why in
 // detail and never a secret — the reasons go to the server logs.
 app.get('/api/health', apiLimiter, async (req, res) => {
-  let dbReachable = false;
+  // 'denied' vs 'unreachable' is the difference between a permissions mistake
+  // (the lockdown SQL applied while still on the anon key) and a dead network.
+  let status = 'unreachable';
+  let hint = null;
   try {
     const { error } = await getDB().from('users').select('id').limit(1);
-    dbReachable = !error;
-    if (error) console.error('[health] database check failed:', error.message);
+    if (!error) {
+      status = 'ok';
+    } else {
+      console.error('[health] database check failed:', error.message);
+      const denied = /permission denied|not authorized|unauthorized|JWT|row-level security|42501|401|403/i
+        .test(`${error.message} ${error.code || ''}`);
+      if (denied) {
+        status = 'denied';
+        hint = USING_SERVICE_ROLE_KEY
+          ? 'Service-role key rejected — check SUPABASE_SERVICE_ROLE_KEY and the project URL.'
+          : 'The anon key is blocked. If db/schema_rls.sql was applied, set SUPABASE_SERVICE_ROLE_KEY and redeploy.';
+      }
+    }
   } catch (err) {
     console.error('[health] database check threw:', err && err.message);
   }
@@ -88,7 +102,12 @@ app.get('/api/health', apiLimiter, async (req, res) => {
     data: {
       env: NODE_ENV,
       serverless: IS_SERVERLESS,
-      database: { reachable: dbReachable, key: USING_SERVICE_ROLE_KEY ? 'service_role' : 'anon' },
+      database: {
+        status,
+        reachable: status === 'ok',
+        key: USING_SERVICE_ROLE_KEY ? 'service_role' : 'anon',
+        hint
+      },
       jwt: { weak: JWT_SECRET_IS_WEAK }
     }
   });
