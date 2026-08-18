@@ -640,7 +640,7 @@ function initMenuHandlers() {
 
 // ===== PATCH NOTES =====
 // Bump this when the notes in index.html change: it re-arms the "unread" dot.
-const PATCH_NOTES_VERSION = 'v2_7';
+const PATCH_NOTES_VERSION = 'v2_8';
 
 function patchNotesSeenKey() {
   return `gs_patchnotes_seen_${PATCH_NOTES_VERSION}`;
