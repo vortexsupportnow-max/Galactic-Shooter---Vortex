@@ -116,6 +116,103 @@ const GameAssets = (function() {
     return c;
   }
 
+  // Weaver enemy - fast teal dart that weaves
+  function drawEnemyWeaver(size = 22) {
+    const c = makeCanvas(size, size);
+    const ctx = c.getContext('2d');
+    const s = size / 22;
+
+    ctx.fillStyle = '#00e0c0';
+    ctx.beginPath();
+    ctx.moveTo(11*s, 20*s);
+    ctx.lineTo(20*s, 6*s);
+    ctx.lineTo(11*s, 10*s);
+    ctx.lineTo(2*s, 6*s);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#eaffff';
+    ctx.fillRect(9*s, 7*s, 4*s, 4*s);
+
+    ctx.fillStyle = '#008a7a';
+    ctx.fillRect(2*s, 6*s, 3*s, 3*s);
+    ctx.fillRect(17*s, 6*s, 3*s, 3*s);
+
+    return c;
+  }
+
+  // Splitter enemy - green cell that breaks apart when killed
+  function drawEnemySplitter(size = 30) {
+    const c = makeCanvas(size, size);
+    const ctx = c.getContext('2d');
+    const s = size / 30;
+
+    ctx.fillStyle = '#33cc55';
+    ctx.beginPath();
+    ctx.arc(15*s, 15*s, 13*s, 0, Math.PI*2);
+    ctx.fill();
+
+    // Split seam
+    ctx.strokeStyle = '#0a3d16';
+    ctx.lineWidth = 2*s;
+    ctx.beginPath();
+    ctx.moveTo(15*s, 3*s); ctx.lineTo(15*s, 27*s);
+    ctx.stroke();
+
+    // Two nuclei hinting at the split
+    ctx.fillStyle = '#d6ffdd';
+    ctx.beginPath(); ctx.arc(10*s, 15*s, 3.2*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(20*s, 15*s, 3.2*s, 0, Math.PI*2); ctx.fill();
+
+    return c;
+  }
+
+  // Fragment - tiny fast shard spawned by a dying splitter
+  function drawEnemyFragment(size = 16) {
+    const c = makeCanvas(size, size);
+    const ctx = c.getContext('2d');
+    const s = size / 16;
+
+    ctx.fillStyle = '#5fe07a';
+    ctx.beginPath();
+    ctx.moveTo(8*s, 2*s);
+    ctx.lineTo(14*s, 8*s);
+    ctx.lineTo(8*s, 14*s);
+    ctx.lineTo(2*s, 8*s);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#eafff0';
+    ctx.fillRect(6*s, 6*s, 4*s, 4*s);
+
+    return c;
+  }
+
+  // Dasher enemy - aggressive orange arrowhead that charges the player
+  function drawEnemyDasher(size = 26) {
+    const c = makeCanvas(size, size);
+    const ctx = c.getContext('2d');
+    const s = size / 26;
+
+    ctx.fillStyle = '#ff5a1f';
+    ctx.beginPath();
+    ctx.moveTo(13*s, 24*s);
+    ctx.lineTo(24*s, 8*s);
+    ctx.lineTo(13*s, 13*s);
+    ctx.lineTo(2*s, 8*s);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#ffdd55';
+    ctx.fillRect(10*s, 6*s, 6*s, 5*s);
+
+    ctx.fillStyle = '#7a1f00';
+    ctx.fillRect(2*s, 8*s, 4*s, 3*s);
+    ctx.fillRect(20*s, 8*s, 4*s, 3*s);
+
+    return c;
+  }
+
   // Boss ship - large magenta
   function drawBoss(size = 64) {
     const c = makeCanvas(size, size);
@@ -305,6 +402,10 @@ const GameAssets = (function() {
   const _enemyBasic = drawEnemyBasic(24);
   const _enemyMedium = drawEnemyMedium(28);
   const _enemyHeavy = drawEnemyHeavy(32);
+  const _enemyWeaver = drawEnemyWeaver(22);
+  const _enemySplitter = drawEnemySplitter(30);
+  const _enemyFragment = drawEnemyFragment(16);
+  const _enemyDasher = drawEnemyDasher(26);
   const _boss = drawBoss(64);
   const _playerBullet = drawPlayerBullet();
   const _enemyBullet = drawEnemyBullet();
@@ -316,6 +417,10 @@ const GameAssets = (function() {
     enemyBasic: _enemyBasic,
     enemyMedium: _enemyMedium,
     enemyHeavy: _enemyHeavy,
+    enemyWeaver: _enemyWeaver,
+    enemySplitter: _enemySplitter,
+    enemyFragment: _enemyFragment,
+    enemyDasher: _enemyDasher,
     boss: _boss,
     playerBullet: _playerBullet,
     enemyBullet: _enemyBullet,

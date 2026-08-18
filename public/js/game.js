@@ -653,6 +653,17 @@ class GalacticGame {
     gs.particles.emit(enemy.x, enemy.y, 12, '#ff8800', { speed: 4, decay: 0.03 });
     Sounds.explosion(false);
 
+    // Splitter breaks into fragments. Push onto the end of the array — safe for
+    // the backward collision loops that call this, since they never revisit tail
+    // indices. Fragments don't split again (only 'splitter' carries splitInto).
+    if (enemy.splitInto && enemy.y < 720) {
+      gs.particles.emit(enemy.x, enemy.y, 14, '#33cc55', { speed: 5, decay: 0.03 });
+      for (let i = 0; i < enemy.splitInto; i++) {
+        const fx = enemy.x + (i === 0 ? -12 : 12);
+        gs.enemies.push(new Enemy('fragment', Math.max(20, Math.min(460, fx)), enemy.y, enemy.wave));
+      }
+    }
+
     // Gem drop
     if (Math.random() < enemy.gemDropChance) gs.gemsCollected++;
 
@@ -739,9 +750,7 @@ class GalacticGame {
     for (let row = 0; row < rows && spawned < config.count; row++) {
       const perRow = Math.min(8, config.count - spawned);
       for (let col = 0; col < perRow; col++) {
-        let type = 'basic';
-        if (wave >= 3 && Math.random() < 0.25) type = 'medium';
-        if (wave >= 6 && Math.random() < 0.15) type = 'heavy';
+        const type = this._pickGridEnemyType(wave);
         const x = 40 + col * (400 / (perRow - 1 || 1));
         const y = -40 - row * 60;
         gs.enemies.push(new Enemy(type, x, y, wave));
@@ -757,8 +766,35 @@ class GalacticGame {
       gs.enemies.push(new Enemy('shooter', sx, sy, wave));
     }
 
+    // Dashers – aggressive divers that charge the player (later waves)
+    if (wave >= 5) {
+      const dasherCount = Math.min(1 + Math.floor((wave - 5) / 3), 3);
+      for (let i = 0; i < dasherCount; i++) {
+        const dx = 60 + Math.random() * 360;
+        gs.enemies.push(new Enemy('dasher', dx, -60 - i * 45, wave));
+      }
+    }
+
     gs.waveTotal = gs.enemies.length;
     gs.bossWave = false;
+  }
+
+  // Weighted pick for the formation grid. Basics stay dominant early; the newer
+  // types phase in as waves climb so the mix keeps shifting.
+  _pickGridEnemyType(wave) {
+    const weights = [['basic', 100]];
+    if (wave >= 2) weights.push(['weaver', 30]);
+    if (wave >= 3) weights.push(['medium', 45]);
+    if (wave >= 4) weights.push(['splitter', 25]);
+    if (wave >= 6) weights.push(['heavy', 30]);
+
+    const total = weights.reduce((sum, [, w]) => sum + w, 0);
+    let r = Math.random() * total;
+    for (const [type, w] of weights) {
+      r -= w;
+      if (r <= 0) return type;
+    }
+    return 'basic';
   }
 
   _spawnBoss() {

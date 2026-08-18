@@ -470,6 +470,52 @@ class Enemy {
         this.lastShot = Math.random() * this.fireRate;
         this.targetY = 90 + Math.random() * 120; // fixed firing position
         break;
+      case 'weaver':
+        // Fast, fragile, weaves hard sideways — awkward to hit
+        this.hp = this.maxHp = Math.floor(25 * waveMult);
+        this.speed = 1.1 + wave * 0.04;
+        this.damage = 18;
+        this.score = 180;
+        this.coinDrop = 3;
+        this.width = 22; this.height = 22;
+        this.sprite = GameAssets.enemyWeaver;
+        this.weaveOffset = Math.random() * Math.PI * 2;
+        break;
+      case 'splitter':
+        // Tanky; breaks into two fragments on death (see _killEnemy)
+        this.hp = this.maxHp = Math.floor(90 * waveMult);
+        this.speed = 0.6 + wave * 0.025;
+        this.damage = 22;
+        this.score = 300;
+        this.coinDrop = 7;
+        this.width = 30; this.height = 30;
+        this.sprite = GameAssets.enemySplitter;
+        this.splitInto = 2;
+        break;
+      case 'fragment':
+        // Small, fast shard — only spawned by a dying splitter
+        this.hp = this.maxHp = Math.floor(15 * waveMult);
+        this.speed = 1.6 + wave * 0.05;
+        this.damage = 12;
+        this.score = 60;
+        this.coinDrop = 1;
+        this.width = 16; this.height = 16;
+        this.sprite = GameAssets.enemyFragment;
+        this.driftVx = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random());
+        break;
+      case 'dasher':
+        // Descends, aligns to the player, then charges down fast
+        this.hp = this.maxHp = Math.floor(40 * waveMult);
+        this.speed = 1.2 + wave * 0.05;
+        this.damage = 40; // heavy on contact
+        this.score = 260;
+        this.coinDrop = 5;
+        this.width = 26; this.height = 26;
+        this.sprite = GameAssets.enemyDasher;
+        this.charging = false;
+        this.chargeTimer = 900 + Math.random() * 700;
+        this.chargeVx = 0;
+        break;
     }
 
     this.gemDropChance = 0.05;
@@ -537,6 +583,47 @@ class Enemy {
           this.x = Math.max(minX, Math.min(maxX, this.x));
         }
         break;
+      case 'weaver':
+        this.y += spd * dtF;
+        this.zigzagTimer += dt;
+        this.x += Math.sin(this.zigzagTimer * 0.006 + this.weaveOffset) * 3.2 * dtF;
+        break;
+      case 'splitter':
+        this.y += spd * dtF;
+        this.zigzagTimer += dt;
+        this.x += Math.sin(this.zigzagTimer * 0.0015) * 1.0 * dtF;
+        break;
+      case 'fragment':
+        this.y += spd * dtF;
+        this.x += this.driftVx * (this.slowTimer > 0 ? this.slowMult : 1) * dtF;
+        if (this.x <= minX || this.x >= maxX) this.driftVx = -this.driftVx;
+        break;
+      case 'dasher':
+        if (!this.charging) {
+          this.y += spd * 0.5 * dtF;
+          // Creep toward the player's column, then commit to a dive
+          if (player) {
+            const dx = player.x - this.x;
+            this.x += Math.sign(dx) * Math.min(Math.abs(dx), 1.2 * dtF);
+          }
+          this.chargeTimer -= dt;
+          if (this.chargeTimer <= 0 || this.y > 250) {
+            this.charging = true;
+            // Aim the dive so it arrives at the player's column around the time it
+            // reaches the player's row — a straight shot at them, no overshoot.
+            if (player) {
+              const vCharge = this.speed * 3.2;
+              const frames = Math.max(1, (player.y - this.y) / vCharge);
+              this.chargeVx = (player.x - this.x) / frames;
+            } else {
+              this.chargeVx = 0;
+            }
+          }
+        } else {
+          this.y += spd * 3.2 * dtF;
+          this.x += this.chargeVx * (this.slowTimer > 0 ? this.slowMult : 1) * dtF;
+        }
+        break;
     }
 
     this.x = Math.max(minX, Math.min(maxX, this.x));
@@ -571,6 +658,26 @@ class Enemy {
       ctx.arc(this.x, this.y, this.width / 2 + 3, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+    }
+
+    // Dasher: bright streak behind it while diving, and a warning pulse before
+    if (this.type === 'dasher') {
+      if (this.charging) {
+        ctx.save();
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = '#ff5a1f';
+        ctx.fillRect(this.x - 3, this.y - this.height, 6, this.height);
+        ctx.restore();
+      } else if (this.chargeTimer < 350) {
+        ctx.save();
+        ctx.globalAlpha = 0.4 + Math.sin(Date.now() * 0.02) * 0.3;
+        ctx.strokeStyle = '#ff5a1f';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.width * 0.75, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     ctx.drawImage(this.sprite, this.x - this.width/2, this.y - this.height/2);
