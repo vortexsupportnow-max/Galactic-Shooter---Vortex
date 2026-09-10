@@ -894,6 +894,13 @@ class CosmicBoss {
     this.phaseJustChanged = false;
     this.phaseFlashTimer = 0;
     this._time = 0;
+
+    // Endless-mode compatibility. Boss Rush never touches these, but the wave
+    // loop slows (time slow, pesto), knocks back (pizza) and draws its own HUD.
+    this.slowTimer = 0; this.slowMult = 1;
+    this.knockTimer = 0; this.knockVy = 0;
+    this.fireRateScale = 1;
+    this.showHealthBar = true;
   }
 
   get isPhase2() {
@@ -908,13 +915,29 @@ class CosmicBoss {
     if (this.hp <= 0) this.dead = true;
   }
 
-  update(dt, bullets) {
+  update(dt, bullets, timeSlow) {
     this._time += dt;
     const dtF = dt / 16.667;
     if (!this.arrived) {
       this.y += 2.5 * dtF;
       if (this.y >= this.targetY) { this.y = this.targetY; this.arrived = true; }
       return;
+    }
+
+    // Knockback shoves it up, then it slides back to its hover line
+    if (this.knockTimer > 0) {
+      this.knockTimer -= dt;
+      this.y -= this.knockVy * dtF;
+      this.knockVy *= Math.pow(0.9, dtF);
+      if (this.knockTimer <= 0) this.knockVy = 0;
+      this.y = Math.max(40, this.y);
+    } else if (this.y < this.targetY) {
+      this.y = Math.min(this.targetY, this.y + 0.8 * dtF);
+    }
+
+    if (this.slowTimer > 0) {
+      this.slowTimer -= dt;
+      if (this.slowTimer <= 0) this.slowMult = 1;
     }
 
     if (this.stunned || this.frozen) return;
@@ -942,7 +965,8 @@ class CosmicBoss {
 
     if (this.phaseFlashTimer > 0) this.phaseFlashTimer -= dt;
 
-    const spd = this.speed * (this.isPhase2 ? 1.3 : 1);
+    const slowMult = (timeSlow ? 0.5 : 1) * (this.slowTimer > 0 ? this.slowMult : 1);
+    const spd = this.speed * slowMult * (this.isPhase2 ? 1.3 : 1);
     const minX = this.width / 2;
     const maxX = 480 - this.width / 2;
     this.x += spd * this.moveDir * dtF;
@@ -955,8 +979,8 @@ class CosmicBoss {
       this.attackPattern = (this.attackPattern + 1) % this._patternCount();
     }
 
-    this.lastShot += dt;
-    const fr = this.isPhase2 ? this.fireRate * 0.75 : this.fireRate;
+    this.lastShot += dt * (this.slowTimer > 0 ? this.slowMult : 1);
+    const fr = (this.isPhase2 ? this.fireRate * 0.75 : this.fireRate) * (this.fireRateScale || 1);
     if (this.lastShot >= fr) {
       this.lastShot = 0;
       this.fireBullets(bullets);
@@ -1022,7 +1046,16 @@ class CosmicBoss {
     }
   }
 
+  // Retune for the endless mode: its own difficulty curve, and patterns that were
+  // balanced against a Boss Rush loadout need a gentler cadence early on.
+  scaleForWave(wave) {
+    this.maxHp = Math.floor(500 * (1 + (wave / 5 - 1) * 0.5));
+    this.hp = this.maxHp;
+    this.fireRateScale = wave < 20 ? 1.35 : 1.15;
+  }
+
   drawHealthBar(ctx) {
+    if (!this.showHealthBar) return;
     const bw = 200; const bh = 12;
     const bx = 240 - bw/2; const by = 30;
     ctx.fillStyle = '#333';

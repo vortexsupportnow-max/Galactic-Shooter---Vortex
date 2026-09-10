@@ -6,6 +6,7 @@ const { getDB } = require('../db/database');
 const { JWT_SECRET } = require('../config');
 const { containsProfanity } = require('../middleware/profanityFilter');
 const { fail } = require('../lib/respond');
+const { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } = require('../lib/recoveryCode');
 
 const router = express.Router();
 
@@ -73,9 +74,13 @@ router.post('/register', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
 
+    // Issued once, shown once, stored only as a hash
+    const recoveryCode = generateRecoveryCode();
+    const recoveryHash = await hashRecoveryCode(recoveryCode);
+
     const { data: newUser, error: insertErr } = await supabase
       .from('users')
-      .insert({ nickname, password_hash: hash })
+      .insert({ nickname, password_hash: hash, recovery_hash: recoveryHash })
       .select('id')
       .single();
 
@@ -89,7 +94,7 @@ router.post('/register', async (req, res) => {
     }
 
     const token = jwt.sign({ userId: newUser.id, nickname }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ success: true, data: { token, nickname } });
+    res.json({ success: true, data: { token, nickname, recoveryCode } });
   } catch (err) {
     return fail(res, err, 'auth/register');
   }
@@ -109,7 +114,7 @@ router.post('/login', async (req, res) => {
 
     const { data: user } = await supabase
       .from('users')
-      .select('id, nickname, password_hash')
+      .select('id, nickname, password_hash, recovery_hash')
       .eq('nickname', nickname)
       .maybeSingle();
 
@@ -120,10 +125,72 @@ router.post('/login', async (req, res) => {
       return res.json({ success: false, error: 'Invalid nickname or password' });
     }
 
+    // Accounts that predate recovery codes get one on their next login. This must
+    // never block a login, so any failure here is swallowed.
+    let recoveryCode = null;
+    if (!user.recovery_hash) {
+      try {
+        const code = generateRecoveryCode();
+        const { error } = await supabase
+          .from('users')
+          .update({ recovery_hash: await hashRecoveryCode(code) })
+          .eq('id', user.id);
+        if (!error) recoveryCode = code;
+      } catch (e) {
+        recoveryCode = null;
+      }
+    }
+
     const token = jwt.sign({ userId: user.id, nickname: user.nickname }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ success: true, data: { token, nickname: user.nickname } });
+    res.json({ success: true, data: { token, nickname: user.nickname, recoveryCode } });
   } catch (err) {
     return fail(res, err, 'auth/login');
+  }
+});
+
+// Forgotten password: prove ownership with the recovery code, set a new password.
+// The used code is replaced immediately, so it works exactly once.
+router.post('/recover', async (req, res) => {
+  try {
+    const { nickname, code, newPassword } = req.body || {};
+    if (!isNonEmptyString(nickname) || !isNonEmptyString(code) || !isNonEmptyString(newPassword)) {
+      return res.json({ success: false, error: 'Nickname, codice e nuova password sono richiesti' });
+    }
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      return res.json({ success: false, error: 'Password must be at least 8 characters' });
+    }
+    if (newPassword.length > MAX_PASSWORD_LENGTH) {
+      return res.json({ success: false, error: `Password must be at most ${MAX_PASSWORD_LENGTH} characters` });
+    }
+
+    const supabase = getDB();
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, nickname, recovery_hash')
+      .eq('nickname', nickname)
+      .maybeSingle();
+
+    // Always compare, so an unknown nickname costs the same as a wrong code, and
+    // the message never reveals which of the two was wrong.
+    const valid = await verifyRecoveryCode(code, (user && user.recovery_hash) || DUMMY_HASH);
+    if (!user || !user.recovery_hash || !valid) {
+      return res.json({ success: false, error: 'Nickname o codice di recupero non valido' });
+    }
+
+    const nextCode = generateRecoveryCode();
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update({
+        password_hash: await bcrypt.hash(newPassword, 10),
+        recovery_hash: await hashRecoveryCode(nextCode)
+      })
+      .eq('id', user.id);
+    if (updateErr) throw new Error(updateErr.message);
+
+    const token = jwt.sign({ userId: user.id, nickname: user.nickname }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ success: true, data: { token, nickname: user.nickname, recoveryCode: nextCode } });
+  } catch (err) {
+    return fail(res, err, 'auth/recover');
   }
 });
 
