@@ -108,10 +108,36 @@ async function loadProfile() {
       ${skinObj?.streak_exclusive ? `<div class="stat-row"><span style="color:#ff6600">🔥 STREAK EXCLUSIVE</span><span class="val" style="color:#ff6600">30 Giorni</span></div>` : ''}
     </div>
     <div class="profile-card">
+      <h3>🔑 CODICE DI RECUPERO</h3>
+      <div class="stat-row"><span style="font-size:0.34rem;line-height:1.6;color:rgba(255,255,255,0.7)">Serve a rientrare se dimentichi la password. Generarne uno nuovo annulla il precedente.</span></div>
+      <button class="btn btn-ghost btn-tiny" id="profile-new-recovery">GENERA NUOVO CODICE</button>
+    </div>
+    <div class="profile-card">
       <h3>ACHIEVEMENTS</h3>
       ${renderAchievements(d.achievements || [])}
     </div>
   `;
+
+  const recoveryBtn = document.getElementById('profile-new-recovery');
+  if (recoveryBtn) recoveryBtn.addEventListener('click', regenerateRecoveryCode);
+}
+
+// A new code invalidates the old one, so ask for the password first: otherwise
+// anyone at an unattended screen could walk away with a way back into the account.
+async function regenerateRecoveryCode() {
+  const password = prompt('Conferma la tua password per generare un nuovo codice:');
+  if (!password) return;
+
+  const res = await apiFetch('/game/regenerate-recovery-code', {
+    method: 'POST',
+    body: JSON.stringify({ password })
+  });
+
+  if (res.success && res.data.recoveryCode) {
+    await showRecoveryCode(res.data.recoveryCode);
+  } else {
+    alert(res.error || 'Impossibile generare il codice');
+  }
 }
 
 function renderAchievements(unlocked) {
@@ -165,9 +191,12 @@ function renderAbilityGrid(profile) {
     return _collFilter === 'all' || a.rarity === _collFilter;
   });
 
+  const loadout = getLoadout();
+
   grid.innerHTML = '';
   for (const ability of abilities) {
     const owned = ownedMap[ability.id];
+    const slotIdx = loadout.indexOf(ability.id);
     const card = document.createElement('div');
     card.className = `ability-card ${ability.rarity} ${owned ? '' : 'locked'}`;
 
@@ -181,6 +210,7 @@ function renderAbilityGrid(profile) {
     `;
     card.appendChild(icon);
     card.innerHTML += `
+      ${slotIdx >= 0 ? `<div class="ability-slot-badge">${SLOT_KEYS[slotIdx]}</div>` : ''}
       <div class="ability-name">${ability.name}</div>
       ${ability.season_exclusive ? `<div class="ability-season-tag">${ability.season_tag || 'SEASON PASS'}</div>` : ''}
       ${owned ? `<div class="ability-level">LV ${owned}/10</div>` : ability.season_exclusive ? '<div class="ability-level" style="color:#ff4400">SOLO DAL PASS</div>' : '<div class="ability-level" style="color:#555">BLOCCATA</div>'}
@@ -239,31 +269,75 @@ async function upgradeAbility(abilityId, btn, profile) {
   }
 }
 
-// Slot selection
-let _slotSelectAbility = null;
-let _slotSelectLevel = 1;
+// ===== LOADOUT =====
+// The abilities the player carries into a run, saved per account. Stored as ids
+// only: the definition and the current level are resolved at launch, so an
+// upgrade or a lost ability can never leave a stale copy in the loadout.
+const SLOT_KEYS = ['Q', 'W', 'E'];
 
-function openSlotSelect(ability, level) {
-  _slotSelectAbility = ability;
-  _slotSelectLevel = level;
+function loadoutKey() { return `gs_loadout_${getNickname() || 'guest'}`; }
+
+function getLoadout() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(loadoutKey()));
+    if (Array.isArray(raw)) return [0, 1, 2].map(i => (typeof raw[i] === 'string' ? raw[i] : null));
+  } catch (e) {}
+  return [null, null, null];
+}
+
+function setLoadout(slots) {
+  try { localStorage.setItem(loadoutKey(), JSON.stringify(slots)); } catch (e) {}
+}
+
+// Resolve the saved loadout against what the player owns right now.
+function buildLoadoutSlots(abilities) {
+  const levels = {};
+  for (const a of abilities || []) levels[a.ability_id] = a.level || 1;
+  return getLoadout().map(id => {
+    if (!id || !ABILITIES[id] || !levels[id]) return null;
+    return { ...ABILITIES[id], level: levels[id] };
+  });
+}
+
+function refreshAbilityGrid() {
+  if (_profileData && document.getElementById('ability-grid')) renderAbilityGrid(_profileData);
+}
+
+// Slot selection
+let _slotSelectAbilityId = null;
+
+function openSlotSelect(abilityId) {
+  _slotSelectAbilityId = abilityId;
+  const loadout = getLoadout();
+  document.querySelectorAll('#slot-select-overlay .slot-buttons .btn').forEach(btn => {
+    const slot = parseInt(btn.dataset.slot);
+    const heldId = loadout[slot];
+    const heldName = heldId ? (ABILITIES[heldId]?.name || heldId) : null;
+    btn.textContent = heldName
+      ? `${SLOT_KEYS[slot]} · ${heldName.slice(0, 9).toUpperCase()}`
+      : `SLOT ${SLOT_KEYS[slot]}`;
+  });
   document.getElementById('slot-select-overlay').classList.remove('hidden');
 }
 
 function initSlotSelectHandlers() {
   document.querySelectorAll('#slot-select-overlay .slot-buttons .btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!_slotSelectAbilityId) return;
       const slot = parseInt(btn.dataset.slot);
-      if (_slotSelectAbility) {
-        window._pendingSlots = window._pendingSlots || [null, null, null];
-        window._pendingSlots[slot] = { ..._slotSelectAbility, level: _slotSelectLevel };
-        btn.textContent = `SLOT ${['Q','W','E'][slot]} ✓`;
-        setTimeout(() => {
-          document.getElementById('slot-select-overlay').classList.add('hidden');
-        }, 500);
-      }
+      const loadout = getLoadout();
+      // An ability occupies a single slot: moving it clears the old one
+      const previous = loadout.indexOf(_slotSelectAbilityId);
+      if (previous >= 0) loadout[previous] = null;
+      loadout[slot] = _slotSelectAbilityId;
+      setLoadout(loadout);
+      _slotSelectAbilityId = null;
+      document.getElementById('slot-select-overlay').classList.add('hidden');
+      refreshAbilityGrid();
     });
   });
   document.getElementById('slot-cancel').addEventListener('click', () => {
+    _slotSelectAbilityId = null;
     document.getElementById('slot-select-overlay').classList.add('hidden');
   });
 }
@@ -731,14 +805,14 @@ function initModeSelectHandlers() {
   document.getElementById('mode-btn-normal').addEventListener('click', async () => {
     closeModeSelect();
     const res = await apiFetch('/game/profile');
-    const ownedAbilityIds = res.success ? (res.data.abilities || []).map(a => a.ability_id) : [];
+    const ownedAbilities  = res.success ? (res.data.abilities || []) : [];
     const equippedSkin    = res.success ? (res.data.equipped_skin || 'default') : 'default';
     const skinBoosts      = getEquippedSkinBoosts(equippedSkin);
     const skinColor       = SKINS[equippedSkin]?.color || null;
     const skinTrail       = getEquippedSkinTrail(equippedSkin);
     const skinStripes     = getEquippedSkinStripes(equippedSkin);
     showScreen('game');
-    startGame([null, null, null], ownedAbilityIds, skinBoosts, skinColor, skinTrail, skinStripes);
+    startGame(buildLoadoutSlots(ownedAbilities), ownedAbilities, skinBoosts, skinColor, skinTrail, skinStripes);
   });
 
   document.getElementById('mode-btn-boss-rush').addEventListener('click', async () => {
@@ -1129,7 +1203,10 @@ function initWheelHandlers() {
 
 // ===== ABILITY INFO POPUP =====
 
+let _infoAbilityId = null;
+
 function openAbilityInfo(ability, ownedLevel) {
+  _infoAbilityId = ability.id;
   const box = document.getElementById('ability-info-box');
   if (box) {
     box.className = `ability-info-box ${ability.rarity}`;
@@ -1155,10 +1232,40 @@ function openAbilityInfo(ability, ownedLevel) {
   icon.style.width = '56px'; icon.style.height = '56px';
   iconWrap.appendChild(icon);
 
+  // Only an owned ability can be carried into a run
+  const equipBtn = document.getElementById('ability-info-equip');
+  if (equipBtn) {
+    if (ownedLevel) {
+      const assigned = getLoadout().indexOf(ability.id);
+      equipBtn.textContent = assigned >= 0 ? `RIMUOVI DA ${SLOT_KEYS[assigned]}` : 'EQUIPAGGIA';
+      equipBtn.className = assigned >= 0 ? 'btn btn-ghost' : 'btn btn-cyan';
+      equipBtn.classList.remove('hidden');
+    } else {
+      equipBtn.classList.add('hidden');
+    }
+  }
+
   document.getElementById('ability-info-overlay').classList.remove('hidden');
 }
 
 function initAbilityInfoHandlers() {
+  const equipBtn = document.getElementById('ability-info-equip');
+  if (equipBtn) {
+    equipBtn.addEventListener('click', () => {
+      if (!_infoAbilityId) return;
+      const loadout = getLoadout();
+      const assigned = loadout.indexOf(_infoAbilityId);
+      document.getElementById('ability-info-overlay').classList.add('hidden');
+      if (assigned >= 0) {
+        loadout[assigned] = null;
+        setLoadout(loadout);
+        refreshAbilityGrid();
+      } else {
+        openSlotSelect(_infoAbilityId);
+      }
+    });
+  }
+
   document.getElementById('ability-info-close').addEventListener('click', () => {
     document.getElementById('ability-info-overlay').classList.add('hidden');
   });

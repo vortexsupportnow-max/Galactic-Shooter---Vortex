@@ -42,6 +42,7 @@
           <div id="login-error" class="error-msg"></div>
           <button class="btn btn-cyan" id="login-btn">ENTER</button>
           <button class="btn btn-ghost" id="goto-register">NEW PILOT</button>
+          <button class="btn btn-ghost btn-tiny" id="goto-recover">PASSWORD DIMENTICATA?</button>
         </div>
       </div>
     </div>
@@ -65,6 +66,33 @@
           <div id="reg-error" class="error-msg"></div>
           <button class="btn btn-purple" id="register-btn">CREATE</button>
           <button class="btn btn-ghost" id="goto-login">BACK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recovery Screen -->
+    <div id="screen-recover" class="screen">
+      <div class="stars-bg"></div>
+      <div class="auth-container">
+        <div class="game-title">
+          <div class="title-line1">GALACTIC</div>
+          <div class="title-line2">SHOOTER</div>
+        </div>
+        <div class="auth-form">
+          <h2 class="form-title">RECUPERO ACCESSO</h2>
+          <div class="recover-hint">Inserisci il codice di recupero che ti è stato dato alla registrazione.</div>
+          <div class="input-group">
+            <input type="text" id="recover-nickname" placeholder="NICKNAME" maxlength="20" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <input type="text" id="recover-code" placeholder="VRTX-XXXX-XXXX-XXXX" maxlength="24" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <input type="password" id="recover-password" placeholder="NUOVA PASSWORD (8+)" maxlength="72">
+          </div>
+          <div id="recover-error" class="error-msg"></div>
+          <button class="btn btn-cyan" id="recover-btn">RECUPERA</button>
+          <button class="btn btn-ghost" id="recover-back">INDIETRO</button>
         </div>
       </div>
     </div>
@@ -213,6 +241,23 @@
           </div>
         </div>
         <button class="btn btn-ghost" id="patchnotes-close">CHIUDI</button>
+      </div>
+    </div>
+
+    <!-- Recovery Code Overlay (shown once, right after the code is issued) -->
+    <div id="recovery-code-overlay" class="overlay hidden">
+      <div class="overlay-box recovery-box">
+        <h3>🔑 CODICE DI RECUPERO</h3>
+        <div class="recovery-warn">
+          Se dimentichi la password, questo codice è <strong>l'unico modo</strong> per rientrare.<br>
+          Viene mostrato <strong>una volta sola</strong>: salvalo adesso.
+        </div>
+        <div class="recovery-code" id="recovery-code-value">VRTX-----</div>
+        <button class="btn btn-ghost btn-tiny" id="recovery-copy">COPIA</button>
+        <label class="recovery-ack">
+          <input type="checkbox" id="recovery-ack-check"> L'ho salvato in un posto sicuro
+        </label>
+        <button class="btn btn-cyan" id="recovery-done" disabled>CONTINUA</button>
       </div>
     </div>
 
@@ -510,6 +555,7 @@
         <div id="ability-info-name" class="ability-info-name"></div>
         <div id="ability-info-desc" class="ability-info-desc"></div>
         <div id="ability-info-level" class="ability-info-level"></div>
+        <button class="btn btn-cyan hidden" id="ability-info-equip">EQUIPAGGIA</button>
         <button class="btn btn-ghost" id="ability-info-close">CLOSE</button>
       </div>
     </div>

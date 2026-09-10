@@ -12,6 +12,10 @@ class GalacticGame {
     // Starfield layers
     this.stars = this._initStars();
 
+    // Cached CRT overlays — an arcade-cabinet look drawn once, blitted each frame
+    this.scanlines = this._makeScanlines();
+    this.vignette = this._makeVignette();
+
     this._boundLoop = this._loop.bind(this);
     this._onSurrenderClick = this._onSurrenderClick.bind(this);
     this._setupInput();
@@ -31,6 +35,35 @@ class GalacticGame {
     const scale  = Math.min(availW / 480, availH / 700);
     this.canvas.style.width  = `${Math.floor(480 * scale)}px`;
     this.canvas.style.height = `${Math.floor(700 * scale)}px`;
+  }
+
+  _makeScanlines() {
+    const c = document.createElement('canvas');
+    c.width = 480; c.height = 700;
+    const x = c.getContext('2d');
+    x.fillStyle = 'rgba(0,0,0,0.12)';
+    for (let y = 0; y < 700; y += 3) x.fillRect(0, y, 480, 1);
+    return c;
+  }
+
+  _makeVignette() {
+    const c = document.createElement('canvas');
+    c.width = 480; c.height = 700;
+    const x = c.getContext('2d');
+    const g = x.createRadialGradient(240, 350, 210, 240, 350, 470);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,12,0.55)');
+    x.fillStyle = g;
+    x.fillRect(0, 0, 480, 700);
+    return c;
+  }
+
+  // Kick a brief screen shake. A weaker shake never cuts a stronger one short.
+  _shake(mag, dur) {
+    const gs = this.gs;
+    if (!gs) return;
+    if (mag * dur < gs.shakeMag * gs.shakeTime) return;
+    gs.shakeMag = mag; gs.shakeTime = dur; gs.shakeDur = dur;
   }
 
   _initStars() {
@@ -128,7 +161,10 @@ class GalacticGame {
     zone.addEventListener('touchend', onEnd);
   }
 
-  start(abilitySlots = [null, null, null], unlockedAbilityIds = [], skinBoosts = null, skinColor = null, skinTrail = null, skinStripes = null) {
+  // `ownedAbilities` accepts either plain ids or the profile's {ability_id, level}
+  // rows. Levels matter: an ability the player paid to upgrade has to actually be
+  // stronger in play, which it was not while pickups hardcoded level 1.
+  start(abilitySlots = [null, null, null], ownedAbilities = [], skinBoosts = null, skinColor = null, skinTrail = null, skinStripes = null) {
     if (this.animId) cancelAnimationFrame(this.animId);
     if (this.surrenderBtn) {
       this.surrenderBtn.disabled = false;
@@ -147,6 +183,13 @@ class GalacticGame {
     player.skinColor = skinColor || null;
     player.skinStripes = skinStripes || null;
 
+    // Level each owned ability actually sits at, keyed by id.
+    const abilityLevels = {};
+    for (const a of ownedAbilities || []) {
+      if (typeof a === 'string') abilityLevels[a] = 1;
+      else if (a && a.ability_id) abilityLevels[a.ability_id] = a.level || 1;
+    }
+
     this.gs = {
       wave: 1,
       score: 0,
@@ -160,15 +203,20 @@ class GalacticGame {
       powerUps: [],
       boss: null,
       abilitySlots: abilitySlots.map(a => a ? { ...a } : null),
-      unlockedAbilityIds: unlockedAbilityIds,
+      unlockedAbilityIds: Object.keys(abilityLevels),
+      abilityLevels,
       skinBoosts: boosts,
       skinTrail: skinTrail || null,
       trailTimer: 0,
+      shakeTime: 0, shakeMag: 0, shakeDur: 1,
+      hitFlash: 0,
       paused: false,
       gameOver: false,
       waveComplete: false,
       waveCountdown: 0,
       bossWave: false,
+      bossRotation: [],
+      waveLabel: null,
       enemiesKilled: 0,
       coinsCollected: 0,
       gemsCollected: 0,
@@ -495,6 +543,8 @@ class GalacticGame {
         if (hit) {
           gs.particles.emit(gs.player.x, gs.player.y, 12, '#ff2244', { speed: 4 });
           Sounds.hit();
+          this._shake(6, 220);
+          gs.hitFlash = 1;
           // Combo reset on damage
           gs.combo = 1;
           gs.comboTimer = 0;
@@ -510,9 +560,13 @@ class GalacticGame {
       const dx = e.x - gs.player.x, dy = e.y - gs.player.y;
       if (Math.abs(dx) < 24 && Math.abs(dy) < 24) {
         const hit = gs.player.takeDamage(e.damage * (dt / 500));
-        if (hit) { gs.combo = 1; }
+        if (hit) { gs.combo = 1; this._shake(4, 150); gs.hitFlash = Math.max(gs.hitFlash, 0.6); }
       }
     }
+
+    // Screen shake + damage flash decay
+    if (gs.shakeTime > 0) gs.shakeTime -= dt;
+    if (gs.hitFlash > 0) gs.hitFlash = Math.max(0, gs.hitFlash - dt / 400);
 
     // Combo timer
     if (gs.combo > 1) {
@@ -537,7 +591,10 @@ class GalacticGame {
     // Update boss
     if (gs.boss) {
       gs.boss.update(dt, gs.bullets, gs.timeSlow);
-      if (gs.boss.dead) gs.boss = null;
+      // The laser and several abilities damage the boss outside the bullet loop,
+      // so settle the kill here too instead of waiting for the next bullet.
+      if (gs.boss.hp <= 0) this._killBoss();
+      else if (gs.boss.dead) gs.boss = null;
     }
 
     // Update power-ups
@@ -552,7 +609,7 @@ class GalacticGame {
           if (!gs.abilitySlots[s]) {
             const ability = ABILITIES[pu.abilityId];
             if (ability) {
-              gs.abilitySlots[s] = { ...ability, level: 1 };
+              gs.abilitySlots[s] = { ...ability, level: gs.abilityLevels[pu.abilityId] || 1 };
               assigned = true;
             }
             break;
@@ -684,6 +741,7 @@ class GalacticGame {
     gs.explosions.push(new Explosion(gs.boss.x, gs.boss.y, 3));
     gs.particles.emit(gs.boss.x, gs.boss.y, 80, '#ff00aa', { speed: 8, decay: 0.015 });
     Sounds.explosion(true);
+    this._shake(14, 600);
     gs.boss = null;
     gs.bossWave = false;
     gs.enemiesKilled++;
@@ -706,6 +764,8 @@ class GalacticGame {
     gs.particles.emit(gs.player.x, gs.player.y, 40, '#ff2244', { speed: 6, decay: 0.02 });
     gs.explosions.push(new Explosion(gs.player.x, gs.player.y, 2));
     Sounds.die();
+    this._shake(11, 450);
+    gs.hitFlash = 1;
 
     // Phoenix ability
     if (gs.player.phoenixReady) {
@@ -737,6 +797,77 @@ class GalacticGame {
     Sounds.levelup();
   }
 
+  // Every 7th non-boss wave is a swarm: a dense rush of fast weavers and no
+  // shooters, so a long run has a change of rhythm instead of one repeated beat.
+  _waveSpecial(wave) {
+    if (wave >= 7 && wave % 7 === 0) return 'swarm_rush';
+    return null;
+  }
+
+  // Opening waves stay a plain grid so the game reads clearly; after that the
+  // formation shuffles every wave.
+  _waveFormation(wave) {
+    if (wave <= 2) return 'grid';
+    const pool = ['grid', 'vee', 'columns', 'arc'];
+    if (wave >= 6) pool.push('swarm');
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // Spawn points for a formation, all above the top edge so enemies fly in.
+  _formationPositions(formation, count) {
+    const pts = [];
+    const minX = 40, span = 400;
+
+    switch (formation) {
+      case 'vee': {
+        const half = (count - 1) / 2;
+        for (let i = 0; i < count; i++) {
+          const off = i - half;
+          pts.push({
+            x: 240 + off * (span / Math.max(1, count - 1)),
+            y: -40 - Math.abs(off) * 30
+          });
+        }
+        break;
+      }
+      case 'columns': {
+        const cols = 4;
+        for (let i = 0; i < count; i++) {
+          const c = i % cols;
+          const r = Math.floor(i / cols);
+          pts.push({ x: minX + (span / (cols - 1)) * c, y: -40 - r * 52 - c * 20 });
+        }
+        break;
+      }
+      case 'arc': {
+        for (let i = 0; i < count; i++) {
+          const t = count === 1 ? 0.5 : i / (count - 1);
+          const a = Math.PI * (0.15 + 0.7 * t);
+          pts.push({ x: 240 - Math.cos(a) * 195, y: -50 - Math.sin(a) * 95 });
+        }
+        break;
+      }
+      case 'swarm': {
+        for (let i = 0; i < count; i++) {
+          pts.push({ x: minX + Math.random() * span, y: -40 - Math.random() * 280 });
+        }
+        break;
+      }
+      case 'grid':
+      default: {
+        const perRow = 8;
+        for (let i = 0; i < count; i++) {
+          const row = Math.floor(i / perRow);
+          const col = i % perRow;
+          const inRow = Math.min(perRow, count - row * perRow);
+          pts.push({ x: minX + col * (span / (inRow - 1 || 1)), y: -40 - row * 60 });
+        }
+        break;
+      }
+    }
+    return pts;
+  }
+
   _spawnWave(wave) {
     const gs = this.gs;
     const config = this._waveConfig(wave);
@@ -745,25 +876,26 @@ class GalacticGame {
     // Wave start announcement timer
     gs.waveAnnounce = 1500; // ms to show wave announcement
 
-    const rows = Math.ceil(config.count / 8);
-    let spawned = 0;
-    for (let row = 0; row < rows && spawned < config.count; row++) {
-      const perRow = Math.min(8, config.count - spawned);
-      for (let col = 0; col < perRow; col++) {
-        const type = this._pickGridEnemyType(wave);
-        const x = 40 + col * (400 / (perRow - 1 || 1));
-        const y = -40 - row * 60;
-        gs.enemies.push(new Enemy(type, x, y, wave));
-        spawned++;
-      }
+    const special = this._waveSpecial(wave);
+    const formation = special === 'swarm_rush' ? 'swarm' : this._waveFormation(wave);
+    const count = special === 'swarm_rush' ? Math.min(config.count + 6, 46) : config.count;
+    gs.waveLabel = special === 'swarm_rush' ? 'SCIAME IN ARRIVO' : null;
+
+    for (const p of this._formationPositions(formation, count)) {
+      const type = special === 'swarm_rush'
+        ? (Math.random() < 0.75 ? 'weaver' : 'basic')
+        : this._pickGridEnemyType(wave);
+      gs.enemies.push(new Enemy(type, Math.max(20, Math.min(460, p.x)), p.y, wave));
     }
 
-    // Add shooter enemies – fewer in number, they stay back and fire
-    const shooterCount = Math.min(1 + Math.floor((wave - 1) / 2), 3);
-    for (let i = 0; i < shooterCount; i++) {
-      const sx = 60 + Math.random() * 360;
-      const sy = -40 - i * 35;
-      gs.enemies.push(new Enemy('shooter', sx, sy, wave));
+    // Shooters hang back and fire — skipped on swarm waves, already busy enough
+    if (special !== 'swarm_rush') {
+      const shooterCount = Math.min(1 + Math.floor((wave - 1) / 2), 3);
+      for (let i = 0; i < shooterCount; i++) {
+        const sx = 60 + Math.random() * 360;
+        const sy = -40 - i * 35;
+        gs.enemies.push(new Enemy('shooter', sx, sy, wave));
+      }
     }
 
     // Dashers – aggressive divers that charge the player (later waves)
@@ -799,8 +931,29 @@ class GalacticGame {
 
   _spawnBoss() {
     const gs = this.gs;
-    gs.boss = new Boss(gs.wave);
     gs.enemies = [];
+
+    // Wave 5 keeps the classic boss as a readable first encounter. From wave 10
+    // the five cosmic bosses — until now locked to Boss Rush — rotate in, so a
+    // long run meets a different fight instead of the same one every time.
+    const canUseCosmic = typeof createCosmicBoss === 'function' && gs.wave >= 10;
+    if (!canUseCosmic) {
+      gs.boss = new Boss(gs.wave);
+      return;
+    }
+
+    if (!gs.bossRotation || gs.bossRotation.length === 0) {
+      gs.bossRotation = [0, 1, 2, 3, 4];
+      for (let i = gs.bossRotation.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [gs.bossRotation[i], gs.bossRotation[j]] = [gs.bossRotation[j], gs.bossRotation[i]];
+      }
+    }
+
+    const boss = createCosmicBoss(gs.bossRotation.shift());
+    boss.scaleForWave(gs.wave);
+    boss.showHealthBar = false; // the endless-mode HUD draws the bar itself
+    gs.boss = boss;
   }
 
   _waveConfig(wave) {
@@ -911,6 +1064,15 @@ class GalacticGame {
 
     if (!gs) return;
 
+    // Screen shake — offsets the world layer only, so the HUD stays readable
+    let shaking = false;
+    if (gs.shakeTime > 0) {
+      const k = gs.shakeMag * Math.max(0, gs.shakeTime / gs.shakeDur);
+      ctx.save();
+      ctx.translate((Math.random() * 2 - 1) * k, (Math.random() * 2 - 1) * k);
+      shaking = true;
+    }
+
     // Singularity visual
     if (gs.singularity) {
       ctx.save();
@@ -973,6 +1135,20 @@ class GalacticGame {
     // Draw player (unless game over)
     if (!gs.gameOver) gs.player.draw(ctx);
 
+    // End of the shaken world layer — everything below stays steady
+    if (shaking) ctx.restore();
+
+    // Damage flash — red bloom from the screen edges when the player is hit
+    if (gs.hitFlash > 0) {
+      ctx.save();
+      const fg = ctx.createRadialGradient(240, 350, 170, 240, 350, 470);
+      fg.addColorStop(0, `rgba(255,0,40,0)`);
+      fg.addColorStop(1, `rgba(255,0,40,${gs.hitFlash * 0.7})`);
+      ctx.fillStyle = fg;
+      ctx.fillRect(0, 0, 480, 700);
+      ctx.restore();
+    }
+
     // HUD
     if (!gs.gameOver) this.hud.draw(ctx, gs);
 
@@ -992,6 +1168,12 @@ class GalacticGame {
         ctx.fillStyle = '#ff00aa';
         ctx.shadowColor = '#ff00aa'; ctx.shadowBlur = 15;
         ctx.fillText('⚠ BOSS INCOMING', 240, 365);
+        ctx.shadowBlur = 0;
+      } else if (gs.waveLabel) {
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillStyle = '#00e0c0';
+        ctx.shadowColor = '#00e0c0'; ctx.shadowBlur = 15;
+        ctx.fillText(gs.waveLabel, 240, 365);
         ctx.shadowBlur = 0;
       }
       ctx.restore();
@@ -1105,6 +1287,13 @@ class GalacticGame {
       ctx.fillText('TAP/PRESS TO RETURN', 240, 435);
       ctx.restore();
     }
+
+    // CRT finish — vignette then scanlines, over the whole frame
+    ctx.drawImage(this.vignette, 0, 0);
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(this.scanlines, 0, 0);
+    ctx.restore();
   }
 
   async _onGameOver() {
@@ -1153,9 +1342,9 @@ class GalacticGame {
 // Global instance
 let gameInstance = null;
 
-function startGame(abilitySlots, unlockedAbilityIds, skinBoosts, skinColor, skinTrail, skinStripes) {
+function startGame(abilitySlots, ownedAbilities, skinBoosts, skinColor, skinTrail, skinStripes) {
   if (!gameInstance) gameInstance = new GalacticGame();
-  gameInstance.start(abilitySlots || [null, null, null], unlockedAbilityIds || [], skinBoosts || null, skinColor || null, skinTrail || null, skinStripes || null);
+  gameInstance.start(abilitySlots || [null, null, null], ownedAbilities || [], skinBoosts || null, skinColor || null, skinTrail || null, skinStripes || null);
 }
 
 function stopGame() {

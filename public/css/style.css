@@ -1375,6 +1375,67 @@ html, body {
   box-shadow: 0 0 18px rgba(255,255,255,0.25);
 }
 
+/* A disabled button has to look disabled — this was missing app-wide */
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+/* ===== RECOVERY CODE ===== */
+.btn-tiny { font-size: 0.35rem; padding: 0.4rem 0.6rem; }
+.recover-hint {
+  font-size: 0.36rem;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 0.2rem;
+}
+.recovery-box { max-width: 360px; gap: 0.7rem; }
+.recovery-box h3 { color: var(--yellow); }
+.recovery-warn {
+  font-size: 0.36rem;
+  line-height: 1.8;
+  color: rgba(255,255,255,0.8);
+  text-align: center;
+}
+.recovery-warn strong { color: var(--yellow); }
+.recovery-code {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--cyan);
+  background: rgba(0,0,0,0.55);
+  border: 1px dashed var(--cyan);
+  padding: 0.7rem 0.5rem;
+  text-align: center;
+  width: 100%;
+  word-break: break-all;
+  text-shadow: 0 0 10px rgba(0,255,255,0.5);
+}
+.recovery-ack {
+  font-size: 0.34rem;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.8);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+.recovery-ack input { width: 14px; height: 14px; cursor: pointer; }
+
+/* Slot badge on an ability card that is in the loadout */
+.ability-card { position: relative; }
+.ability-slot-badge {
+  position: absolute;
+  top: 3px; right: 3px;
+  background: var(--cyan);
+  color: var(--bg);
+  font-size: 0.34rem;
+  line-height: 1;
+  padding: 0.2rem 0.28rem;
+  box-shadow: 0 0 8px rgba(0,255,255,0.5);
+}
+
 /* ===== SEASON INTRO (cinematic reveal) ===== */
 #season-intro-overlay {
   background: rgba(0,0,10,0.92);

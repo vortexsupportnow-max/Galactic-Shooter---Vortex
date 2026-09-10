@@ -1,6 +1,8 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const { getDB } = require('../db/database');
 const { fail } = require('../lib/respond');
+const { generateRecoveryCode, hashRecoveryCode } = require('../lib/recoveryCode');
 const userLock = require('../middleware/userLock');
 
 const router = express.Router();
@@ -742,6 +744,41 @@ router.post('/claim-streak', userLock('claim-streak'), async (req, res) => {
     if (updateErr) throw new Error(updateErr.message);
 
     res.json({ success: true, data: rewardResult });
+  } catch (err) {
+    return fail(res, err, `game${req.path}`);
+  }
+});
+
+// Issue a fresh recovery code, invalidating the previous one. Requires the current
+// password so someone at an unattended screen cannot walk off with a new code.
+router.post('/regenerate-recovery-code', userLock('recovery-code'), async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (typeof password !== 'string' || !password) {
+      return res.json({ success: false, error: 'Password richiesta' });
+    }
+
+    const supabase = getDB();
+    const userId = req.user.userId;
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('password_hash')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!user) return res.json({ success: false, error: 'User not found' });
+
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) return res.json({ success: false, error: 'Password non corretta' });
+
+    const recoveryCode = generateRecoveryCode();
+    const { error } = await supabase
+      .from('users')
+      .update({ recovery_hash: await hashRecoveryCode(recoveryCode) })
+      .eq('id', userId);
+    if (error) throw new Error(error.message);
+
+    res.json({ success: true, data: { recoveryCode } });
   } catch (err) {
     return fail(res, err, `game${req.path}`);
   }

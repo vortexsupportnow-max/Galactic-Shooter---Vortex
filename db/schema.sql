@@ -81,6 +81,11 @@ ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS streak_last_claim DATE;
 -- Developer role column (see db/schema_roles.sql for full role management)
 ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'player';
 
+-- Recovery code (bcrypt hash of it). Accounts have no email, so this is the only
+-- self-service way back in after a forgotten password. NULL for accounts created
+-- before the feature: they are issued one on their next login.
+ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS recovery_hash TEXT;
+
 -- ── Seasons / Space Pass ──────────────────────────────────────────────────────
 
 -- Tracks each user's season pass progress (pulsar earned, tiers claimed)
