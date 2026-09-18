@@ -121,6 +121,13 @@
           <div class="title-line2">SHOOTER</div>
         </div>
 
+        <section id="season-pause-notice" class="season-pause-notice hidden" aria-labelledby="season-pause-title">
+          <h2 id="season-pause-title">SVILUPPO IN PAUSA</h2>
+          <p>La stagione è terminata. Lo sviluppo e gli aggiornamenti di Galactic Shooter sono momentaneamente in pausa.</p>
+          <p>I tuoi dati rimarranno salvati nel database: la pausa non cancellerà i tuoi progressi. Se desideri eliminare i tuoi dati, puoi farlo qui.</p>
+          <button class="btn btn-red" id="btn-delete-account">ELIMINA ACCOUNT</button>
+        </section>
+
         <!-- Two-column layout: left = season pass, right = game buttons -->
         <div class="menu-split">
           <!-- LEFT: Season Pass Panel -->
@@ -153,6 +160,21 @@
         </div>
       </div>
     </div>
+
+    <dialog id="delete-account-dialog" class="account-delete-dialog" aria-labelledby="delete-account-title" aria-describedby="delete-account-description">
+      <form id="delete-account-form">
+        <h2 id="delete-account-title">ELIMINA ACCOUNT</h2>
+        <p id="delete-account-description">L'account e tutti i progressi, acquisti con valuta di gioco e punteggi saranno eliminati definitivamente. Questa operazione non può essere annullata.</p>
+        <label for="delete-account-password">Conferma con la tua password</label>
+        <input id="delete-account-password" type="password" autocomplete="current-password" maxlength="72" required>
+        <label class="delete-account-ack"><input id="delete-account-ack" type="checkbox" required> Voglio eliminare definitivamente il mio account e i miei dati.</label>
+        <p id="delete-account-error" role="alert"></p>
+        <div class="delete-account-actions">
+          <button class="btn btn-ghost" id="delete-account-cancel" type="button">ANNULLA</button>
+          <button class="btn btn-red" id="delete-account-confirm" type="submit">ELIMINA DEFINITIVAMENTE</button>
+        </div>
+      </form>
+    </dialog>
 
     <!-- Mode Select Overlay -->
     <div id="mode-select-overlay" class="overlay hidden">

@@ -6,6 +6,7 @@ const { getDB } = require('../db/database');
 const { JWT_SECRET } = require('../config');
 const { containsProfanity } = require('../middleware/profanityFilter');
 const { fail } = require('../lib/respond');
+const authMiddleware = require('../middleware/auth');
 const { generateRecoveryCode, hashRecoveryCode, verifyRecoveryCode } = require('../lib/recoveryCode');
 
 const router = express.Router();
@@ -216,6 +217,33 @@ router.get('/me', async (req, res) => {
     res.json({ success: true, data: user });
   } catch (err) {
     res.json({ success: false, error: 'Invalid token' });
+  }
+});
+
+// schema.sql cascades this deletion to the player's progress and scores.
+router.delete('/account', authMiddleware, async (req, res) => {
+  try {
+    const { password, confirmation } = req.body || {};
+    if (confirmation !== 'ELIMINA' || !isNonEmptyString(password) || password.length > MAX_PASSWORD_LENGTH) {
+      return res.status(400).json({ success: false, error: 'Inserisci la password e conferma la cancellazione.' });
+    }
+    const supabase = getDB();
+    const { data: user, error } = await supabase.from('users')
+      .select('id, password_hash').eq('id', req.user.userId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!user) return res.status(401).json({ success: false, error: 'Account non trovato.' });
+    if (!await bcrypt.compare(password, user.password_hash)) {
+      return res.status(403).json({ success: false, error: 'Password non corretta.' });
+    }
+    const { data: deleted, error: deleteError } = await supabase.from('users')
+      .delete().eq('id', req.user.userId).eq('password_hash', user.password_hash).select('id');
+    if (deleteError) throw new Error(deleteError.message);
+    if (!deleted || deleted.length !== 1) {
+      return res.status(409).json({ success: false, error: 'Account non eliminato. Accedi di nuovo e riprova.' });
+    }
+    return res.json({ success: true });
+  } catch (err) {
+    return fail(res, err, 'auth/delete-account');
   }
 });
 

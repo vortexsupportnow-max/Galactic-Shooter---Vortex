@@ -98,6 +98,50 @@ async function handleRecover() {
 }
 
 function initAuthHandlers() {
+  const deleteDialog = document.getElementById('delete-account-dialog');
+  const deleteForm = document.getElementById('delete-account-form');
+  let deleting = false;
+  document.getElementById('btn-delete-account').addEventListener('click', () => {
+    deleteForm.reset();
+    document.getElementById('delete-account-error').textContent = '';
+    deleteDialog.showModal();
+  });
+  document.getElementById('delete-account-cancel').addEventListener('click', () => deleteDialog.close());
+  deleteDialog.addEventListener('cancel', e => { if (deleting) e.preventDefault(); });
+  deleteForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (deleting || !deleteForm.reportValidity()) return;
+    deleting = true;
+    const confirm = document.getElementById('delete-account-confirm');
+    const cancel = document.getElementById('delete-account-cancel');
+    const password = document.getElementById('delete-account-password');
+    confirm.disabled = cancel.disabled = true;
+    confirm.textContent = 'ELIMINAZIONE…';
+    document.getElementById('delete-account-error').textContent = '';
+    const res = await apiFetch('/auth/account', {
+      method: 'DELETE',
+      body: JSON.stringify({ password: password.value, confirmation: 'ELIMINA' })
+    });
+    password.value = '';
+    deleting = false;
+    confirm.disabled = cancel.disabled = false;
+    confirm.textContent = 'ELIMINA DEFINITIVAMENTE';
+    if (res.success) {
+      const nickname = getNickname();
+      localStorage.removeItem(`gs_loadout_${nickname}`);
+      localStorage.removeItem(`gs_tutorial_done_${nickname}`);
+      Object.keys(localStorage).filter(key => key.startsWith('gs_season_intro_') && key.endsWith(`_${nickname}`))
+        .forEach(key => localStorage.removeItem(key));
+      clearToken();
+      setNickname('');
+      // Reload also drops all cached profile, pass and game data from memory.
+      window.location.reload();
+    } else if (!getToken()) {
+      deleteDialog.close();
+    } else {
+      document.getElementById('delete-account-error').textContent = res.error || 'Eliminazione non riuscita. Riprova.';
+    }
+  });
   document.getElementById('login-btn').addEventListener('click', handleLogin);
   document.getElementById('login-nickname').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
   document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });

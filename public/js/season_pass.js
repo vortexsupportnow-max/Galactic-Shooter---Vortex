@@ -61,6 +61,23 @@ const SEASON_INTRO_FLAKE_COLORS = ['#009246', '#f4f5f0', '#ce2b37'];
 const SEASON_INTRO_FLAKE_COUNT = 26;
 
 let _passData = null;
+let _seasonPauseTimer = null;
+
+function updateSeasonPauseNotice(data) {
+  clearTimeout(_seasonPauseTimer);
+  const notice = document.getElementById('season-pause-notice');
+  const end = Date.parse(data?.season_end);
+  if (!notice || !Number.isFinite(end)) return;
+  const remaining = end - Date.now();
+  const ended = data.active === false || remaining <= 0;
+  notice.classList.toggle('hidden', !ended);
+  const label = document.querySelector('.season-panel-end');
+  if (ended && label) label.textContent = 'Stagione terminata';
+  if (!ended) {
+    // Recheck even when the player leaves the menu open across the deadline.
+    _seasonPauseTimer = setTimeout(() => updateSeasonPauseNotice(data), Math.min(remaining, 2147483647));
+  }
+}
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -68,6 +85,7 @@ async function fetchPassData() {
   const res = await apiFetch('/game/season-pass');
   if (res.success) {
     _passData = res.data;
+    updateSeasonPauseNotice(res.data);
     return res.data;
   }
   return null;
