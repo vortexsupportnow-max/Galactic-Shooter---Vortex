@@ -22,6 +22,26 @@ Everything is drawn from code (`public/js/visuals.js`) at 2× resolution — no 
 
 ---
 
+## Play on localhost (no database needed)
+
+```bash
+npm install
+npm run local        # http://localhost:3000
+```
+
+Accounts, crates, skins, season pass and leaderboards all work against a local
+JSON file (`db/local-data.json`, git-ignored) instead of Supabase.
+
+| Command | What it does |
+|---------|--------------|
+| `npm run local` | Start with the local database (data is kept between runs) |
+| `npm run local:rich` | Same, but new accounts start with 1,000,000 coins and 100,000 gems — handy for testing crates and upgrades |
+| `npm run local:reset` | Wipe the local database, then start |
+
+Local mode refuses to run with `NODE_ENV=production`. Set `PORT` to use another port.
+
+---
+
 ## Prerequisites
 
 | Tool | Version |

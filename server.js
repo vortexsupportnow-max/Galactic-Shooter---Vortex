@@ -7,7 +7,7 @@ const rateLimit = require('express-rate-limit');
 const { initDB, getDB } = require('./db/database');
 const {
   ALLOWED_ORIGINS, isProduction, isTest, NODE_ENV,
-  USING_SERVICE_ROLE_KEY, JWT_SECRET_IS_WEAK
+  USING_SERVICE_ROLE_KEY, JWT_SECRET_IS_WEAK, LOCAL_DB
 } = require('./config');
 const authRoutes = require('./routes/auth');
 const gameRoutes = require('./routes/game');
@@ -105,7 +105,7 @@ app.get('/api/health', apiLimiter, async (req, res) => {
       database: {
         status,
         reachable: status === 'ok',
-        key: USING_SERVICE_ROLE_KEY ? 'service_role' : 'anon',
+        key: LOCAL_DB ? 'local' : USING_SERVICE_ROLE_KEY ? 'service_role' : 'anon',
         hint
       },
       jwt: { weak: JWT_SECRET_IS_WEAK }

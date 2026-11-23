@@ -5,7 +5,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "jest --forceExit"
+    "test": "jest --forceExit",
+    "local": "node scripts/local.js",
+    "local:rich": "node scripts/local.js --rich",
+    "local:reset": "node scripts/local.js --reset"
   },
   "jest": {
     "testEnvironment": "node",
