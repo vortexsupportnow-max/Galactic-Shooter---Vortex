@@ -228,3 +228,43 @@ function getEquippedSkinStripes(skinId) {
   if (!skinId || skinId === 'default' || !SKINS[skinId]) return null;
   return SKINS[skinId].stripes || null;
 }
+
+// ── Ship visuals ──────────────────────────────────────────────────────────────
+// Each aura now changes the actual ship: hull shape, palette, engine colour and
+// an animated aura. Used in-game (ShipRenderer) and for the skin-card previews.
+// Rarity shows: commons recolour the base hulls, legendaries get unique hulls
+// and the most elaborate auras.
+const SKIN_VISUALS = {
+  aurora:            { hull: 'arrow',       primary: '#36e8ff', secondary: '#1660d8', accent: '#e0fbff', cockpit: '#c8f8ff', engine: '#36c8ff', aura: 'glow' },
+  solar_flare:       { hull: 'arrow',       primary: '#ffe14a', secondary: '#d87a12', accent: '#fff6c8', cockpit: '#fff1a8', engine: '#ffb020', aura: 'glow' },
+  ice_storm:         { hull: 'dart',        primary: '#d8f0ff', secondary: '#5a9ad8', accent: '#ffffff', cockpit: '#a8e0ff', engine: '#a8e8ff', aura: 'sparkle', auraColor: '#ffffff', auraColor2: '#a8ddff' },
+  toxic_drift:       { hull: 'dart',        primary: '#5aff9a', secondary: '#128a3a', accent: '#d8ffe8', cockpit: '#c8ffd8', engine: '#44ff66', aura: 'glow' },
+
+  phantom:           { hull: 'phantom',     primary: '#b86aff', secondary: '#4a128a', accent: '#f0d8ff', cockpit: '#e0c0ff', engine: '#c044ff', aura: 'ring' },
+  crimson_nova:      { hull: 'interceptor', primary: '#ff4a5a', secondary: '#8a0a1a', accent: '#ffd8d8', cockpit: '#ffc0c8', engine: '#ff5533', aura: 'ring', auraColor2: '#ffaa44' },
+  nebula:            { hull: 'manta',       primary: '#ff7ae0', secondary: '#5a2ab8', accent: '#ffe0f8', cockpit: '#f8d0ff', engine: '#ff66dd', aura: 'sparkle', auraColor: '#ff99ee', auraColor2: '#aa88ff' },
+  thunder:           { hull: 'interceptor', primary: '#fff36a', secondary: '#3a4ad8', accent: '#ffffff', cockpit: '#e8f0ff', engine: '#88ccff', aura: 'sparkle', auraColor: '#ffee00', auraColor2: '#88ccff' },
+
+  void_wraith:       { hull: 'phantom',     primary: '#7a2aff', secondary: '#1a0640', accent: '#d0a8ff', cockpit: '#b088ff', engine: '#aa44ff', aura: 'void', auraColor: '#cc44ff' },
+  celestial:         { hull: 'dragon',      primary: '#ff6a1a', secondary: '#8a1a00', accent: '#ffe08a', cockpit: '#ffe8a8', engine: '#ffaa00', aura: 'flame', auraColor: '#ff6600', auraColor2: '#ffcc00' },
+  quantum_rift:      { hull: 'manta',       primary: '#22ffd0', secondary: '#0a4a8a', accent: '#d8fff8', cockpit: '#b8fff0', engine: '#00ffee', aura: 'orbit', auraColor: '#00ffcc', auraColor2: '#0088ff', orbitCount: 4 },
+  galactic_overlord: { hull: 'crown',       primary: '#ffc23a', secondary: '#8a4a00', accent: '#ffffff', cockpit: '#fff0b8', engine: '#ffaa22', aura: 'orbit', auraColor: '#ffcc33', auraColor2: '#ffffff', orbitCount: 5 },
+
+  rising_sun:        { hull: 'interceptor', primary: '#ffffff', secondary: '#d8d8e0', accent: '#ff2a1a', cockpit: '#ffb0a8', engine: '#ff4422', aura: 'ring', auraColor: '#ff2200', auraColor2: '#ffcc00' },
+  torii_gate:        { hull: 'fortress',    primary: '#ff2a3a', secondary: '#5a0008', accent: '#ffffff', cockpit: '#ffd0d0', engine: '#ff6688', aura: 'sparkle', auraColor: '#ff88aa', auraColor2: '#ffffff' },
+  tricolore:         { hull: 'arrow',       primary: '#f4f4f4', secondary: '#9aa0a8', accent: '#ffffff', cockpit: '#d8ffe0', engine: '#ffffff', aura: 'ring', auraColor: '#009246', auraColor2: '#ce2b37', stripes: ['#009246', '#ffffff', '#ce2b37'] },
+  colosseo:          { hull: 'fortress',    primary: '#e8c860', secondary: '#7a5a1a', accent: '#fff6d8', cockpit: '#fff0c0', engine: '#ffd070', aura: 'orbit', auraColor: '#d4af37', auraColor2: '#f5e6a8', orbitCount: 4 },
+
+  streak_inferno:    { hull: 'dragon',      primary: '#ff5a00', secondary: '#6a0a00', accent: '#ffff66', cockpit: '#ffe066', engine: '#ff8800', aura: 'flame', auraColor: '#ff3300', auraColor2: '#ffdd00' },
+
+  br_singularity:    { hull: 'phantom',     primary: '#3a3a44', secondary: '#0a0a10', accent: '#cc66ff', cockpit: '#a066ff', engine: '#aa33ff', aura: 'void', auraColor: '#aa33ff' },
+  br_nova_crown:     { hull: 'crown',       primary: '#ffe04a', secondary: '#a36a00', accent: '#ffffff', cockpit: '#fff8c8', engine: '#ffee66', aura: 'flame', auraColor: '#ffcc00', auraColor2: '#ffffff' },
+  br_void_wraith:    { hull: 'manta',       primary: '#5a22c8', secondary: '#12002a', accent: '#c088ff', cockpit: '#9a66ff', engine: '#7a22ff', aura: 'void', auraColor: '#7a22ff' },
+  br_binary_star:    { hull: 'dart',        primary: '#f0faff', secondary: '#5aaad8', accent: '#ffffff', cockpit: '#c8eeff', engine: '#aaeeff', aura: 'binary', auraColor: '#ffffff', auraColor2: '#66ccff' },
+  br_eternal_nemesis:{ hull: 'dragon',      primary: '#ff1a1a', secondary: '#3a0000', accent: '#ffaa66', cockpit: '#ff8866', engine: '#ff2200', aura: 'orbit', auraColor: '#ff2200', auraColor2: '#ff8800', orbitCount: 6 }
+};
+
+function getSkinVisual(skinId) {
+  if (!skinId || skinId === 'default') return null;
+  return SKIN_VISUALS[skinId] || null;
+}

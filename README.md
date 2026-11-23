@@ -4,6 +4,24 @@ A browser-based space shooter built with HTML5 Canvas + a Node.js/Express backen
 
 ---
 
+## Gameplay
+
+| System | How it works |
+|--------|--------------|
+| Movement | Free 2D (WASD / arrows / joystick). Hold **Shift** to move precisely and show the hit-box — only the ship's core can be hit. |
+| Weapon | Enemies drop **P cores**; collecting them raises the gun from level 1 to 6 (twin, spread, quad, missiles). Losing a life drops one level. |
+| Abilities | Equipped abilities (**Q / E / R**) recharge on a cooldown instead of being single-use. Picking up an equipped ability's power-up recharges it. |
+| Chain | Kills within 2.5s extend the chain; every 10 links add ×0.25 (max ×10). Getting hit halves it, letting an enemy escape costs a quarter. |
+| Graze | Bullets that brush past the ship score, refresh the chain and charge Overdrive. |
+| Medals | Each medal caught in a row is worth more (100 → 10,000); missing one drops the value. |
+| Overdrive | Fill the bar, press **Space** / **OD**: 6s of double score, faster piercing shots and magnet pickups. |
+| Waves | Formations fly in and dive; reinforcements (kamikaze, sniper, shielder, minelayer, flanker) arrive during the wave; elite variants; random events (meteors, ambush, minefield…); a new sector look every 10 waves; boss every 5. |
+| Skins | Every skin is a different ship: hull, palette, engines and animated aura (`SKIN_VISUALS` in `public/js/skins.js`). |
+
+Everything is drawn from code (`public/js/visuals.js`) at 2× resolution — no image files.
+
+---
+
 ## Prerequisites
 
 | Tool | Version |

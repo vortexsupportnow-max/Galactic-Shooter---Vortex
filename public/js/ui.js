@@ -273,7 +273,7 @@ async function upgradeAbility(abilityId, btn, profile) {
 // The abilities the player carries into a run, saved per account. Stored as ids
 // only: the definition and the current level are resolved at launch, so an
 // upgrade or a lost ability can never leave a stale copy in the loadout.
-const SLOT_KEYS = ['Q', 'W', 'E'];
+const SLOT_KEYS = ['Q', 'E', 'R'];
 
 function loadoutKey() { return `gs_loadout_${getNickname() || 'guest'}`; }
 
@@ -811,8 +811,9 @@ function initModeSelectHandlers() {
     const skinColor       = SKINS[equippedSkin]?.color || null;
     const skinTrail       = getEquippedSkinTrail(equippedSkin);
     const skinStripes     = getEquippedSkinStripes(equippedSkin);
+    const skinVisual      = getSkinVisual(equippedSkin);
     showScreen('game');
-    startGame(buildLoadoutSlots(ownedAbilities), ownedAbilities, skinBoosts, skinColor, skinTrail, skinStripes);
+    startGame(buildLoadoutSlots(ownedAbilities), ownedAbilities, skinBoosts, skinColor, skinTrail, skinStripes, skinVisual);
   });
 
   document.getElementById('mode-btn-boss-rush').addEventListener('click', async () => {
@@ -825,7 +826,7 @@ function initModeSelectHandlers() {
     const skinTrail    = getEquippedSkinTrail(equippedSkin);
     const skinStripes  = getEquippedSkinStripes(equippedSkin);
     showScreen('game');
-    startBossRush(skinBoosts, skinColor, skinTrail, skinStripes);
+    startBossRush(skinBoosts, skinColor, skinTrail, skinStripes, getSkinVisual(equippedSkin));
   });
 }
 
@@ -905,17 +906,17 @@ const TUTORIAL_SLIDES = [
   {
     emoji: '🕹️',
     title: 'CONTROLS',
-    body: 'MOVE: joystick (bottom-left) or arrow keys\nSHOOT: automatic — just move!\nFIRE BUTTON: hold for rapid fire\nQ / W / E: activate equipped abilities\nOn desktop, use WASD or arrows to move.'
+    body: 'MOVE: joystick or WASD / arrows (all directions)\nSHOOT: automatic\nSHIFT: precise movement, shows your hit-box\nQ / E / R: abilities (they recharge!)\nSPACE / OD: fire OVERDRIVE when the bar is full'
   },
   {
     emoji: '👾',
     title: 'ENEMIES & WAVES',
-    body: 'Enemies spawn every few seconds.\nEach wave is stronger than the last.\nEvery 10 waves a BOSS appears!\nKill enemies to earn score and currency.\nSurvive as many waves as you can!'
+    body: 'Formations fly in and dive at you.\nCollect P cores to power up your gun,\ngold medals for score (don\'t miss them!).\nKill fast to grow the CHAIN multiplier,\nbrush past bullets to GRAZE. Boss every 5 waves!'
   },
   {
     emoji: '⚡',
     title: 'ABILITIES & CRATES',
-    body: 'Open CRATES with 💎 Gems to unlock abilities.\nAssign abilities to slots Q / W / E\nfrom your COLLECTION.\nUse abilities in battle for massive power!\nUpgrade abilities with 🪙 Coins.'
+    body: 'Open CRATES with 💎 Gems to unlock abilities.\nAssign abilities to slots Q / E / R\nfrom your COLLECTION.\nUse abilities in battle for massive power!\nUpgrade abilities with 🪙 Coins.'
   },
   {
     emoji: '💰',
@@ -1215,7 +1216,9 @@ function openAbilityInfo(ability, ownedLevel) {
   document.getElementById('ability-info-rarity').textContent = ability.rarity.toUpperCase();
   document.getElementById('ability-info-rarity').className = `ability-info-rarity ${ability.rarity}`;
   document.getElementById('ability-info-name').textContent = ability.name;
-  document.getElementById('ability-info-desc').textContent = ability.description;
+  const cdLevel = Math.max(1, ownedLevel || 1);
+  const cdText = ability.boss_rush_only ? '' : ` · Ricarica ${(getAbilityCooldown(ability.id, cdLevel) / 1000).toFixed(1)}s`;
+  document.getElementById('ability-info-desc').textContent = ability.description + cdText;
 
   const levelEl = document.getElementById('ability-info-level');
   if (ability.season_exclusive && !ownedLevel) {
@@ -1302,6 +1305,12 @@ async function loadSkins() {
   renderSkinGrid();
 }
 
+const _skinPreviewCache = {};
+function _skinPreview(skinId) {
+  if (!_skinPreviewCache[skinId]) _skinPreviewCache[skinId] = ShipRenderer.previewURL(getSkinVisual(skinId), 144);
+  return _skinPreviewCache[skinId];
+}
+
 function renderSkinGrid() {
   const grid = document.getElementById('skin-grid');
   if (!grid) return;
@@ -1323,7 +1332,7 @@ function renderSkinGrid() {
     defCard.className = `skin-card common ${equipped === 'default' ? 'equipped' : ''}`;
     defCard.innerHTML = `
       <div class="skin-rarity-tag">DEFAULT</div>
-      <div class="skin-emoji">🚀</div>
+      <div class="skin-emoji"><img class="skin-ship-preview" alt="" src="${_skinPreview('default')}"></div>
       <div class="skin-name">DEFAULT</div>
       <div class="skin-desc" style="color:#555">No boost</div>
       ${equipped === 'default'
@@ -1362,7 +1371,10 @@ function renderSkinGrid() {
     }
 
     // Flag skins get the CSS tricolore: the 🇮🇹 emoji has no glyph on Windows.
-    const skinIcon = skin.stripes ? '<span class="it-flag"></span>' : skin.emoji;
+    // Real ship preview (hull, colours, engines, aura) instead of an emoji
+    const skinIcon = (typeof ShipRenderer !== 'undefined' && getSkinVisual(skin.id))
+      ? `<img class="skin-ship-preview" alt="" src="${_skinPreview(skin.id)}">`
+      : (skin.stripes ? '<span class="it-flag"></span>' : skin.emoji);
 
     card.innerHTML = `
       <div class="skin-rarity-tag">${skin.rarity.toUpperCase()}</div>

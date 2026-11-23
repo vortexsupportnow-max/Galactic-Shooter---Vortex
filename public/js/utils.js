@@ -64,12 +64,21 @@ function formatNumber(n) {
 }
 
 // ===== PARTICLE SYSTEM =====
+// Additive sparks. Time-based (callers may pass dt; without it a 60fps frame is
+// assumed) and capped so a screen-clearing ability can't tank the frame rate.
+const MAX_PARTICLES = 1400;
+
 class ParticleSystem {
   constructor() { this.particles = []; }
 
   emit(x, y, count, color, options = {}) {
+    const room = MAX_PARTICLES - this.particles.length;
+    if (room <= 0) return;
+    count = Math.min(count, room);
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
+      const angle = options.angle != null
+        ? options.angle + (Math.random() - 0.5) * (options.spread || 0.6)
+        : Math.random() * Math.PI * 2;
       const speed = (options.speed || 2) * (0.5 + Math.random());
       this.particles.push({
         x, y,
@@ -78,31 +87,41 @@ class ParticleSystem {
         life: 1,
         decay: options.decay || (0.02 + Math.random() * 0.02),
         color,
-        size: options.size || (2 + Math.random() * 3),
-        gravity: options.gravity || 0
+        size: options.size || (1.5 + Math.random() * 2.5),
+        gravity: options.gravity || 0,
+        drag: options.drag || 0.985
       });
     }
   }
 
-  update() {
+  update(dt = 16.667) {
+    const f = Math.min(3, dt / 16.667);
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += p.gravity;
-      p.life -= p.decay;
-      if (p.life <= 0) this.particles.splice(i, 1);
+      p.x += p.vx * f;
+      p.y += p.vy * f;
+      p.vx *= Math.pow(p.drag, f);
+      p.vy = p.vy * Math.pow(p.drag, f) + p.gravity * f;
+      p.life -= p.decay * f;
+      if (p.life <= 0) {
+        // swap-remove: order doesn't matter for particles
+        this.particles[i] = this.particles[this.particles.length - 1];
+        this.particles.pop();
+      }
     }
   }
 
   draw(ctx) {
+    if (!this.particles.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
     for (const p of this.particles) {
-      ctx.save();
       ctx.globalAlpha = p.life;
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-      ctx.restore();
+      const s = p.size * (0.4 + p.life * 0.6);
+      ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
     }
+    ctx.restore();
   }
 }
 

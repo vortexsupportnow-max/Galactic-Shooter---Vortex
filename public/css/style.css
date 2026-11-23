@@ -828,6 +828,8 @@ html, body {
   touch-action: none;
 }
 .touch-ability-btn:active { background: rgba(170,0,255,0.5); transform: scale(0.92); }
+.touch-od-btn { border-color: #ffcc33; color: #ffcc33; background: rgba(255,190,40,0.15); }
+.touch-od-btn:active { background: rgba(255,190,40,0.45); }
 
 /* ===== SHOP / EXCHANGE ===== */
 .shop-scroll-list {
@@ -1012,6 +1014,7 @@ html, body {
 .skin-card.legendary .skin-rarity-tag { color: var(--legendary); }
 
 .skin-emoji   { font-size: 1.6rem; }
+.skin-ship-preview { width: 72px; height: 72px; display: block; margin: 0 auto; image-rendering: auto; }
 .skin-name    { font-size: 0.38rem; color: var(--white); line-height: 1.4; }
 .skin-desc    { font-size: 0.35rem; color: #ff66cc; }
 .skin-boosts  { font-size: 0.3rem; color: var(--yellow); line-height: 1.6; }

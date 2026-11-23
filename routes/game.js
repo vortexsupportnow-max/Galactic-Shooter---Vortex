@@ -331,9 +331,11 @@ const PASS_TIERS = [
 
 const MAX_WAVE = 1000;
 const MAX_ABILITIES_USED = 500;
-// Headroom over a perfect run: ~40 enemies/wave at max combo, plus boss score.
-const MAX_SCORE_PER_WAVE = 500000;
-const MAX_ENEMIES_PER_WAVE = 60;
+// Headroom over a perfect run: ~50 enemies/wave at ×10 chain during Overdrive,
+// a full medal chain, perfect-wave and boss bonuses, with a ×1.5 skin.
+const MAX_SCORE_PER_WAVE = 2000000;
+// Formation + reinforcements + splitter fragments on the busiest waves.
+const MAX_ENEMIES_PER_WAVE = 90;
 
 function toCount(value, fallback = 0) {
   const n = Number(value);
@@ -583,7 +585,10 @@ router.post('/save-score', userLock('save-score'), async (req, res) => {
     const coinsMult = skin ? skin.boost.coins_mult : 1;
     const gemsMult  = skin ? skin.boost.gems_mult  : 1;
 
-    const coinsEarned = Math.floor(score / 100 * coinsMult);
+    // Coins follow progress (waves, kills) more than raw score: the chain
+    // multiplier and medals make score swing by 10× between runs, and paying
+    // coins on score alone would flood the upgrade economy.
+    const coinsEarned = Math.floor((wave * 40 + (enemiesKilled || 0) * 2 + score / 500) * coinsMult);
 
     let gemsEarned = Math.max(0, Math.floor(gemsCollected));
     gemsEarned += Math.floor(wave / 5);

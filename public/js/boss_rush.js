@@ -15,7 +15,7 @@ class BossRushGame extends GalacticGame {
     this._brMode = true;
   }
 
-  startBossRush(skinBoosts = null, skinColor = null, skinTrail = null, skinStripes = null) {
+  startBossRush(skinBoosts = null, skinColor = null, skinTrail = null, skinStripes = null, skinVisual = null) {
     if (this.animId) cancelAnimationFrame(this.animId);
 
     const player = new Player(480, 700);
@@ -25,6 +25,7 @@ class BossRushGame extends GalacticGame {
     if (boosts.starting_shield) { player.shielded = true; player.shieldTimer = 5000; }
     player.skinColor = skinColor || null;
     player.skinStripes = skinStripes || null;
+    player.visual = skinVisual || null;
 
     // Build random boss order
     const order = _shuffleArray([0, 1, 2, 3, 4]);
@@ -154,8 +155,12 @@ class BossRushGame extends GalacticGame {
     const spd = (p.speedBoost ? 5.5 : 3.5) * dt/16.667;
     if (this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A']) p.x -= spd;
     if (this.keys['ArrowRight'] || this.keys['d'] || this.keys['D']) p.x += spd;
+    if (this.keys['ArrowUp'] || this.keys['w'] || this.keys['W']) p.y -= spd;
+    if (this.keys['ArrowDown'] || this.keys['s'] || this.keys['S']) p.y += spd;
     if (p.joystickVX) p.x += p.joystickVX * spd;
+    if (p.joystickVY) p.y += p.joystickVY * spd;
     p.x = Math.max(18, Math.min(462, p.x));
+    p.y = Math.max(300, Math.min(674, p.y));
 
     // Update timers
     if (p.shieldTimer > 0) { p.shieldTimer -= dt; if (p.shieldTimer <= 0) p.shielded = false; }
@@ -510,36 +515,12 @@ class BossRushGame extends GalacticGame {
       ctx.stroke();
       ctx.restore();
     }
-    // Draw player ship
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    if (p.skinColor) {
-      const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 14);
-      g.addColorStop(0, '#ffffff');
-      g.addColorStop(0.4, p.skinColor);
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g;
-    } else {
-      ctx.fillStyle = '#00ccff';
-    }
-    ctx.beginPath();
-    ctx.moveTo(0, -16); ctx.lineTo(12, 10); ctx.lineTo(-12, 10); ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
+    ShipRenderer.draw(ctx, p.x, p.y, p.visual, { scale: 0.8 });
   }
 
   _renderStars(ctx, dt) {
-    for (const star of this.stars) {
-      star.y += star.speed * (dt/16.667);
-      if (star.y > 700) { star.y = 0; star.x = Math.random()*480; }
-      ctx.globalAlpha = star.alpha;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(star.x, star.y, star.size, star.size);
-    }
-    ctx.globalAlpha = 1;
+    this.background.update(dt);
+    this.background.draw(ctx);
   }
 
   _renderBossRushHUD(ctx, gs) {
@@ -575,7 +556,7 @@ class BossRushGame extends GalacticGame {
     ctx.fillText(`BOSS ${gs.bossesDefeated + (gs.boss ? 1 : 0)} / ${BR_BOSS_SEQUENCE_LEN}`, 472, 18);
 
     // Ability slots
-    const slotNames = ['Q', 'W', 'E'];
+    const slotNames = ['Q', 'E', 'R'];
     const slotColors = { void_pulse: '#9900ff', phase_lock: '#00ffff', core_breach: '#ff4400' };
     for (let s = 0; s < 3; s++) {
       const ab = gs.abilitySlots[s];
@@ -693,9 +674,9 @@ function _shuffleArray(arr) {
 // Global instance
 let bossRushInstance = null;
 
-function startBossRush(skinBoosts, skinColor, skinTrail, skinStripes) {
+function startBossRush(skinBoosts, skinColor, skinTrail, skinStripes, skinVisual) {
   if (!bossRushInstance) bossRushInstance = new BossRushGame();
-  bossRushInstance.startBossRush(skinBoosts || null, skinColor || null, skinTrail || null, skinStripes || null);
+  bossRushInstance.startBossRush(skinBoosts || null, skinColor || null, skinTrail || null, skinStripes || null, skinVisual || null);
 }
 
 function stopBossRush() {

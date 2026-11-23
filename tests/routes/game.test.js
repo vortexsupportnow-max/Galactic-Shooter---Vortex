@@ -73,7 +73,7 @@ describe('POST /api/game/save-score', () => {
       .send({ score: 3000, wave: 5, enemiesKilled: 50 });
 
     expect(res.body.success).toBe(true);
-    expect(res.body.data.coinsEarned).toBe(30);
+    expect(res.body.data.coinsEarned).toBe(306); // 5*40 + 50*2 + 3000/500
     expect(res.body.data.gemsEarned).toBe(11);
     expect(res.body.data.newMaxScore).toBe(3000);
     expect(res.body.data.newMaxWave).toBe(5);
