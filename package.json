@@ -8,7 +8,8 @@
     "test": "jest --forceExit",
     "local": "node scripts/local.js",
     "local:rich": "node scripts/local.js --rich",
-    "local:reset": "node scripts/local.js --reset"
+    "local:reset": "node scripts/local.js --reset",
+    "build:sandbox": "node scripts/build-sandbox.js"
   },
   "jest": {
     "testEnvironment": "node",
@@ -26,6 +27,7 @@
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
+    "esbuild": "^0.24.2",
     "jest": "^30.4.2",
     "supertest": "^7.2.2"
   }

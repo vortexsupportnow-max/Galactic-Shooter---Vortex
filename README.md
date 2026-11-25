@@ -25,6 +25,25 @@ Everything is drawn from code (`public/js/visuals.js`) at 2× resolution — no 
 
 ---
 
+## Sandbox (no login, everything unlocked)
+
+`/sandbox.html` is the whole game with every ability at max level, every aura,
+Boss Rush open and plenty of currency — no account and no database. The real
+server routes (`routes/game.js`, `routes/leaderboard.js`) are bundled for the
+browser and run against `db/localDb.js` persisted in `localStorage`, so crates,
+wheel, season pass, missions and leaderboards behave like the live game.
+Add `?reset` to the URL to start over.
+
+```bash
+npm run build:sandbox                          # regenerates public/sandbox.html + public/sandbox/*
+npm run build:sandbox -- --single dist/sandbox.html   # also one self-contained HTML file
+```
+
+The generated files are committed (the deployment has no build step): re-run the
+build after changing `routes/`, `db/localDb.js` or the client.
+
+---
+
 ## Play on localhost (no database needed)
 
 ```bash

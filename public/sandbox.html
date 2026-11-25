@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Galactic Shooter · Sandbox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>.sandbox-badge{position:fixed;left:8px;bottom:8px;z-index:9999;font:8px "Press Start 2P",monospace;color:#0a0a14;background:#ffcc33;padding:4px 6px;border-radius:3px;opacity:.85;pointer-events:auto}</style>
+</head>
+<body>
+  <div id="app">
+
+    <!-- Intro Screen -->
+    <div id="screen-intro" class="screen active">
+      <div class="intro-stars" id="introStars"></div>
+      <div class="intro-content">
+        <div class="intro-title-large">GALACTIC</div>
+        <div class="intro-title-sub">SHOOTER</div>
+        <div class="intro-tagline">VORTEX EDITION</div>
+        <div class="intro-skip">TAP TO START</div>
+      </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="screen-login" class="screen">
+      <div class="stars-bg" id="loginStars"></div>
+      <div class="auth-container">
+        <div class="game-title">
+          <div class="title-line1">GALACTIC</div>
+          <div class="title-line2">SHOOTER</div>
+        </div>
+        <div class="auth-form">
+          <h2 class="form-title">LOGIN</h2>
+          <div class="input-group">
+            <input type="text" id="login-nickname" placeholder="NICKNAME" maxlength="20" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <input type="password" id="login-password" placeholder="PASSWORD" maxlength="50">
+          </div>
+          <div id="login-error" class="error-msg"></div>
+          <button class="btn btn-cyan" id="login-btn">ENTER</button>
+          <button class="btn btn-ghost" id="goto-register">NEW PILOT</button>
+          <button class="btn btn-ghost btn-tiny" id="goto-recover">PASSWORD DIMENTICATA?</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register Screen -->
+    <div id="screen-register" class="screen">
+      <div class="stars-bg"></div>
+      <div class="auth-container">
+        <div class="game-title">
+          <div class="title-line1">GALACTIC</div>
+          <div class="title-line2">SHOOTER</div>
+        </div>
+        <div class="auth-form">
+          <h2 class="form-title">NEW PILOT</h2>
+          <div class="input-group">
+            <input type="text" id="reg-nickname" placeholder="NICKNAME (3-20)" maxlength="20" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <input type="password" id="reg-password" placeholder="PASSWORD (8+)" maxlength="50">
+          </div>
+          <div id="reg-error" class="error-msg"></div>
+          <button class="btn btn-purple" id="register-btn">CREATE</button>
+          <button class="btn btn-ghost" id="goto-login">BACK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recovery Screen -->
+    <div id="screen-recover" class="screen">
+      <div class="stars-bg"></div>
+      <div class="auth-container">
+        <div class="game-title">
+          <div class="title-line1">GALACTIC</div>
+          <div class="title-line2">SHOOTER</div>
+        </div>
+        <div class="auth-form">
+          <h2 class="form-title">RECUPERO ACCESSO</h2>
+          <div class="recover-hint">Inserisci il codice di recupero che ti è stato dato alla registrazione.</div>
+          <div class="input-group">
+            <input type="text" id="recover-nickname" placeholder="NICKNAME" maxlength="20" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <input type="text" id="recover-code" placeholder="VRTX-XXXX-XXXX-XXXX" maxlength="24" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <input type="password" id="recover-password" placeholder="NUOVA PASSWORD (8+)" maxlength="72">
+          </div>
+          <div id="recover-error" class="error-msg"></div>
+          <button class="btn btn-cyan" id="recover-btn">RECUPERA</button>
+          <button class="btn btn-ghost" id="recover-back">INDIETRO</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="screen-menu" class="screen">
+      <div class="stars-bg" id="menuStars"></div>
+
+      <!-- Top HUD bar -->
+      <div class="menu-topbar">
+        <div class="menu-topbar-left">
+          <span class="coin-display">🪙 <span id="menu-coins">0</span></span>
+          <span class="gem-display">💎 <span id="menu-gems">0</span></span>
+          <span class="menu-topbar-pilot">👾 <span id="menu-nickname">-</span></span>
+        </div>
+        <div class="menu-topbar-icons">
+          <button class="menu-icon-btn" id="btn-topbar-profile" title="Profilo" aria-label="Profilo">👤</button>
+          <button class="menu-icon-btn menu-icon-btn--news" id="btn-topbar-news" title="Patch Notes" aria-label="Patch Notes">📋</button>
+          <button class="menu-icon-btn" id="btn-topbar-settings" title="Impostazioni" aria-label="Impostazioni">⚙</button>
+        </div>
+      </div>
+
+      <div class="menu-container">
+        <div class="game-title">
+          <div class="title-line1">GALACTIC</div>
+          <div class="title-line2">SHOOTER</div>
+        </div>
+
+        <section id="season-pause-notice" class="season-pause-notice hidden" aria-labelledby="season-pause-title">
+          <h2 id="season-pause-title">STAGIONE TERMINATA</h2>
+          <p>La Stagione Italia è finita: la prossima è in preparazione. Il gioco continua a ricevere aggiornamenti e i tuoi progressi restano salvati.</p>
+        </section>
+
+        <!-- Two-column layout: left = season pass, right = game buttons -->
+        <div class="menu-split">
+          <!-- LEFT: Season Pass Panel -->
+          <div class="menu-left">
+            <div class="season-panel">
+              <div class="season-panel-title"><span class="it-flag"></span> ITALIA SEASON</div>
+              <div class="season-panel-end">Fino al 5 Ott</div>
+              <div class="season-pulsar-bar-wrap">
+                <div class="season-pulsar-label">⚡ PULSAR: <span id="menu-pulsar">0</span></div>
+                <div class="season-pulsar-bar">
+                  <div class="season-pulsar-fill" id="menu-pulsar-fill" style="width:0%"></div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-season" id="btn-pass"><span class="it-flag"></span> SPACE PASS</button>
+            <button class="btn btn-mission" id="btn-missions">📋 MISSIONI</button>
+            <button class="btn btn-streak" id="btn-streak">🔥 STREAK<span class="menu-btn-subtitle" id="streak-button-status"></span></button>
+          </div>
+
+          <!-- RIGHT: Game buttons -->
+          <div class="menu-right">
+            <button class="btn btn-cyan btn-large" id="btn-play">▶ PLAY</button>
+            <button class="btn btn-purple" id="btn-collection">⚡ ABILITÀ</button>
+            <button class="btn btn-pink" id="btn-skins">🌟 AURE</button>
+            <button class="btn btn-yellow" id="btn-crates">🛒 NEGOZIO</button>
+            <button class="btn btn-green" id="btn-wheel">&#127922; WHEEL<span class="menu-btn-subtitle" id="wheel-button-status">LOADING...</span></button>
+            <button class="btn btn-blue" id="btn-leaderboard">&#127942; TOP</button>
+            <button class="btn btn-ghost" id="btn-logout">LOGOUT</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <dialog id="delete-account-dialog" class="account-delete-dialog" aria-labelledby="delete-account-title" aria-describedby="delete-account-description">
+      <form id="delete-account-form">
+        <h2 id="delete-account-title">ELIMINA ACCOUNT</h2>
+        <p id="delete-account-description">L'account e tutti i progressi, acquisti con valuta di gioco e punteggi saranno eliminati definitivamente. Questa operazione non può essere annullata.</p>
+        <label for="delete-account-password">Conferma con la tua password</label>
+        <input id="delete-account-password" type="password" autocomplete="current-password" maxlength="72" required>
+        <label class="delete-account-ack"><input id="delete-account-ack" type="checkbox" required> Voglio eliminare definitivamente il mio account e i miei dati.</label>
+        <p id="delete-account-error" role="alert"></p>
+        <div class="delete-account-actions">
+          <button class="btn btn-ghost" id="delete-account-cancel" type="button">ANNULLA</button>
+          <button class="btn btn-red" id="delete-account-confirm" type="submit">ELIMINA DEFINITIVAMENTE</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Mode Select Overlay -->
+    <div id="mode-select-overlay" class="overlay hidden">
+      <div class="overlay-box mode-select-box">
+        <h3 class="mode-select-title">⚡ SELECT MODE</h3>
+        <div class="mode-cards">
+          <div class="mode-card mode-card--normal" id="mode-card-normal">
+            <div class="mode-card-icon">🚀</div>
+            <div class="mode-card-name">NORMALE</div>
+            <div class="mode-card-desc">Onde infinite di nemici.<br>Sopravvivi il più a lungo possibile.</div>
+            <button class="btn btn-cyan" id="mode-btn-normal">PLAY</button>
+          </div>
+          <div class="mode-card mode-card--boss-rush" id="mode-card-boss-rush">
+            <div class="mode-card-icon">💀</div>
+            <div class="mode-card-name">BOSS RUSH</div>
+            <div class="mode-card-desc">5 boss cosmici in sequenza.<br>Nessun respawn. Solo il migliore sopravvive.</div>
+            <div class="mode-card-locked" id="boss-rush-lock">
+              <div class="br-lock-icon">🔒</div>
+              <div class="br-lock-label">SI SBLOCCA IL 1 GIUGNO 2026</div>
+              <div class="br-countdown" id="br-countdown">--:--:--</div>
+            </div>
+            <button class="btn btn-red hidden" id="mode-btn-boss-rush">PLAY BOSS RUSH</button>
+          </div>
+        </div>
+        <button class="btn btn-ghost" id="mode-select-close">ANNULLA</button>
+      </div>
+    </div>
+
+    <!-- Patch Notes Overlay -->
+    <div id="patchnotes-overlay" class="overlay hidden">
+      <div class="overlay-box patchnotes-box">
+        <div class="patchnotes-header">
+          <span class="patchnotes-badge">NOVITÀ</span>
+          <h3 class="patchnotes-title">📋 PATCH NOTES</h3>
+        </div>
+        <div class="patchnotes-version">V2.8 · Nuovi Nemici</div>
+        <div class="patchnotes-date">🗓 Agosto 2026</div>
+        <div class="patchnotes-list">
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title"><span class="it-flag"></span> STAGIONE 2: ITALIA</div>
+            <ul>
+              <li>Nuovo Space Pass tricolore, 30 tier fino a 50.000 Pulsar</li>
+              <li>70 missioni in 7 settimane: dal Gladiatore al Vulcano</li>
+              <li>Intro animata di presentazione al primo accesso</li>
+              <li>La Japan Season si chiude: i suoi premi restano a chi li ha presi</li>
+            </ul>
+          </div>
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title">👾 NUOVI NEMICI</div>
+            <ul>
+              <li>Sfrecciante: veloce e ondeggiante, difficile da colpire (da onda 2)</li>
+              <li>Divisore: se lo abbatti si spezza in due frammenti rapidi (da onda 4)</li>
+              <li>Kamikaze: si allinea a te e carica in picchiata (da onda 5)</li>
+            </ul>
+          </div>
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title">⚔ NUOVE ABILITÀ</div>
+            <ul>
+              <li>🌿 Pesto Genovese (RARE, tier 6): impantana i nemici al 40% di velocità e rallenta anche il loro fuoco</li>
+              <li>🍕 Pizza Gigante (EPIC, tier 14): danno ad area e nemici sbalzati indietro, boss compreso</li>
+            </ul>
+          </div>
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title">🌟 NUOVE AURE</div>
+            <ul>
+              <li><span class="it-flag"></span> Tricolore (EPIC, tier 9): bande verde-bianco-rosso sulla nave, +20% score</li>
+              <li>🏛️ Colosseo (LEGENDARY, tier 30): aura dorata, scudo iniziale e vita extra</li>
+            </ul>
+          </div>
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title">🔒 ACCOUNT &amp; SICUREZZA</div>
+            <ul>
+              <li>Nickname protetti: niente caratteri usabili per attacchi</li>
+              <li>Sessione scaduta: rientro automatico alla schermata di accesso</li>
+              <li>Nuovi controlli anti-cheat sui punteggi inviati</li>
+              <li>Classifiche più pulite: le run manomesse vengono rifiutate</li>
+            </ul>
+          </div>
+          <div class="patchnotes-section">
+            <div class="patchnotes-section-title">⚙ MIGLIORAMENTI</div>
+            <ul>
+              <li>Risolto il limite di richieste che poteva bloccare più giocatori insieme</li>
+              <li>Niente più doppie spese di gemme su click ravvicinati</li>
+              <li>Messaggi di errore più chiari e meno tecnici</li>
+            </ul>
+          </div>
+        </div>
+        <button class="btn btn-ghost" id="patchnotes-close">CHIUDI</button>
+      </div>
+    </div>
+
+    <!-- Recovery Code Overlay (shown once, right after the code is issued) -->
+    <div id="recovery-code-overlay" class="overlay hidden">
+      <div class="overlay-box recovery-box">
+        <h3>🔑 CODICE DI RECUPERO</h3>
+        <div class="recovery-warn">
+          Se dimentichi la password, questo codice è <strong>l'unico modo</strong> per rientrare.<br>
+          Viene mostrato <strong>una volta sola</strong>: salvalo adesso.
+        </div>
+        <div class="recovery-code" id="recovery-code-value">VRTX-----</div>
+        <button class="btn btn-ghost btn-tiny" id="recovery-copy">COPIA</button>
+        <label class="recovery-ack">
+          <input type="checkbox" id="recovery-ack-check"> L'ho salvato in un posto sicuro
+        </label>
+        <button class="btn btn-cyan" id="recovery-done" disabled>CONTINUA</button>
+      </div>
+    </div>
+
+    <!-- Season Intro Overlay (cinematic reveal of the current season) -->
+    <div id="season-intro-overlay" class="overlay hidden">
+      <div class="season-intro" id="season-intro">
+        <div class="season-intro-sweep" aria-hidden="true"></div>
+        <div class="season-intro-confetti" id="season-intro-confetti" aria-hidden="true"></div>
+        <div class="season-intro-content">
+          <div class="season-intro-kicker">NUOVA STAGIONE</div>
+          <div class="season-intro-emblem" id="season-intro-emblem"><span class="it-flag it-flag--lg"></span></div>
+          <h2 class="season-intro-title" id="season-intro-title">ITALIA SEASON</h2>
+          <div class="season-intro-sub" id="season-intro-sub"></div>
+          <div class="season-intro-tagline" id="season-intro-tagline"></div>
+          <div class="season-intro-cards" id="season-intro-cards"></div>
+          <div class="season-intro-actions">
+            <button class="btn btn-season" id="season-intro-open">APRI IL PASS</button>
+            <button class="btn btn-ghost" id="season-intro-close">PIÙ TARDI</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="screen-game" class="screen">
+      <div class="game-wrapper">
+        <button id="btn-surrender" class="btn btn-red game-surrender-btn" type="button">ARRENDITI</button>
+        <canvas id="gameCanvas" width="480" height="700"></canvas>
+        <!-- Touch controls (optimized for mobile) -->
+        <div id="touch-controls">
+          <div id="joystick-zone">
+            <div id="joystick-base">
+              <div id="joystick-stick"></div>
+            </div>
+          </div>
+          <div id="touch-right">
+            <button class="touch-ability-btn" data-slot="0" aria-label="Ability Slot 1">1</button>
+            <button class="touch-ability-btn" data-slot="1" aria-label="Ability Slot 2">2</button>
+            <button class="touch-ability-btn" data-slot="2" aria-label="Ability Slot 3">3</button>
+            <button id="touch-od-btn" class="touch-ability-btn touch-od-btn" aria-label="Overdrive">OD</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Screen -->
+    <div id="screen-profile" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="profile-back">← BACK</button>
+        <h2 class="screen-title">PROFILE</h2>
+      </div>
+      <div class="profile-content" id="profile-content">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- Abilities Screen -->
+    <div id="screen-collection" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="collection-back">← BACK</button>
+        <h2 class="screen-title">ABILITÀ</h2>
+        <div class="header-currency">
+          🪙 <span id="coll-coins">0</span>
+        </div>
+      </div>
+      <div class="ability-filters">
+        <button class="filter-btn active" data-rarity="all">ALL</button>
+        <button class="filter-btn common" data-rarity="common">COMMON</button>
+        <button class="filter-btn rare" data-rarity="rare">RARE</button>
+        <button class="filter-btn epic" data-rarity="epic">EPIC</button>
+        <button class="filter-btn legendary" data-rarity="legendary">LEGENDARY</button>
+      </div>
+      <div class="ability-grid" id="ability-grid">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- Aure Screen -->
+    <div id="screen-skins" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="skins-back">← BACK</button>
+        <h2 class="screen-title">🌟 AURE</h2>
+        <div class="header-currency">
+          🪙 <span id="skins-coins">0</span> &nbsp; 💎 <span id="skins-gems">0</span>
+        </div>
+      </div>
+
+      <div class="skin-filters" id="skin-filters">
+        <button class="skin-filter-btn active" data-filter="all">ALL</button>
+        <button class="skin-filter-btn boss-rush-filter-btn" data-filter="boss_rush">⚡ BOSS RUSH</button>
+      </div>
+
+      <div class="skin-grid" id="skin-grid">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- Negozio (Shop) Screen -->
+    <div id="screen-crates" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="crates-back">← BACK</button>
+        <h2 class="screen-title">🛒 NEGOZIO</h2>
+        <div class="header-currency">
+          🪙 <span id="crates-coins">0</span> &nbsp; 💎 <span id="crates-gems">0</span>
+        </div>
+      </div>
+      <div class="crates-content shop-scroll-list">
+        <div class="crate-tabs">
+          <button class="crate-tab active" data-tab="abilities">ABILITY CRATES</button>
+          <button class="crate-tab" data-tab="skins">CASSE AURE</button>
+        </div>
+
+        <div id="crate-tab-abilities" class="crate-tab-content">
+          <!-- Crate type selector -->
+          <div class="crate-selector">
+            <div class="crate-card active" data-crate="mystery">
+              <div class="crate-card-icon">📦</div>
+              <div class="crate-card-label">MYSTERY</div>
+              <div class="crate-card-cost">10 💎</div>
+            </div>
+            <div class="crate-card" data-crate="galactic">
+              <div class="crate-card-icon">🌌</div>
+              <div class="crate-card-label">GALACTIC</div>
+              <div class="crate-card-cost">50 💎</div>
+            </div>
+            <div class="crate-card" data-crate="void">
+              <div class="crate-card-icon">🕳️</div>
+              <div class="crate-card-label">VOID</div>
+              <div class="crate-card-cost">150 💎</div>
+            </div>
+          </div>
+
+          <!-- Animated crate display -->
+          <div class="crate-box" id="crate-box">
+            <div class="crate-icon" id="selected-crate-icon">📦</div>
+            <div class="crate-label" id="selected-crate-name">MYSTERY CRATE</div>
+            <div class="crate-cost" id="selected-crate-cost">10 💎</div>
+          </div>
+
+          <!-- Flash overlay for opening effect -->
+          <div id="crate-flash-overlay" class="crate-flash-overlay hidden"></div>
+
+          <button class="btn btn-yellow btn-large" id="open-crate-btn">OPEN CRATE</button>
+          <div id="crate-result" class="crate-result hidden"></div>
+          <div class="crate-info" id="crate-info">
+            <div class="rarity-chance common">■ COMMON: 50%</div>
+            <div class="rarity-chance rare">■ RARE: 30%</div>
+            <div class="rarity-chance epic">■ EPIC: 15%</div>
+            <div class="rarity-chance legendary">■ LEGENDARY: 5%</div>
+          </div>
+        </div>
+
+        <div id="crate-tab-skins" class="crate-tab-content hidden">
+          <div class="skins-shop-content">
+            <div class="skin-crate-selector">
+              <div class="skin-crate-card active" data-crate="stellar">
+                <div class="skin-crate-icon">✨</div>
+                <div class="skin-crate-label">STELLAR</div>
+                <div class="skin-crate-cost">200🪙 + 5💎</div>
+              </div>
+              <div class="skin-crate-card" data-crate="nova">
+                <div class="skin-crate-icon">🌠</div>
+                <div class="skin-crate-label">NOVA</div>
+                <div class="skin-crate-cost">1000🪙 + 20💎</div>
+              </div>
+            </div>
+
+            <div class="skin-crate-box" id="skin-crate-box">
+              <div class="skin-crate-box-icon" id="skin-crate-box-icon">✨</div>
+              <div class="skin-crate-box-label" id="skin-crate-box-label">STELLAR CRATE</div>
+              <div class="skin-crate-box-cost" id="skin-crate-box-cost">200🪙 + 5💎</div>
+            </div>
+
+            <div id="skin-crate-flash" class="crate-flash-overlay hidden"></div>
+
+            <button class="btn btn-pink btn-large" id="open-skin-crate-btn">APRI CASSA AURA</button>
+            <div id="skin-crate-result" class="skin-crate-result hidden"></div>
+            <div class="crate-info" id="skin-crate-info"></div>
+          </div>
+        </div>
+
+        <!-- Currency Exchange Tab -->
+      </div>
+    </div>
+
+    <!-- Leaderboard Screen -->
+    <div id="screen-leaderboard" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="lb-back">← BACK</button>
+        <h2 class="screen-title">LEADERBOARD</h2>
+      </div>
+      <div class="lb-tabs">
+        <button class="lb-tab active" data-type="scores">SCORE</button>
+        <button class="lb-tab" data-type="waves">WAVE</button>
+        <button class="lb-tab lb-tab--boss-rush" data-type="boss_rush">⚡ BOSS RUSH</button>
+      </div>
+      <div class="lb-filters" id="lb-filters-normal">
+        <button class="lb-filter active" data-filter="all">ALL TIME</button>
+        <button class="lb-filter" data-filter="weekly">WEEKLY</button>
+        <button class="lb-filter" data-filter="daily">DAILY</button>
+      </div>
+      <div class="lb-table-wrapper">
+        <table class="lb-table" id="lb-table-normal">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>PILOT</th>
+              <th id="lb-value-header">SCORE</th>
+              <th>WAVE</th>
+            </tr>
+          </thead>
+          <tbody id="lb-tbody">
+            <tr><td colspan="4" class="loading">LOADING...</td></tr>
+          </tbody>
+        </table>
+        <table class="lb-table hidden" id="lb-table-boss-rush">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>PILOT</th>
+              <th>BOSS</th>
+              <th>TEMPO</th>
+            </tr>
+          </thead>
+          <tbody id="lb-tbody-boss-rush">
+            <tr><td colspan="4" class="loading">LOADING...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Ability Slot Selection Overlay -->
+    <div id="slot-select-overlay" class="overlay hidden">
+      <div class="overlay-box">
+        <h3>ASSIGN TO SLOT</h3>
+        <div class="slot-buttons">
+          <button class="btn btn-cyan" data-slot="0">SLOT Q</button>
+          <button class="btn btn-purple" data-slot="1">SLOT W</button>
+          <button class="btn btn-yellow" data-slot="2">SLOT E</button>
+        </div>
+        <button class="btn btn-ghost" id="slot-cancel">CANCEL</button>
+      </div>
+    </div>
+
+    <!-- Settings Overlay -->
+    <div id="settings-overlay" class="overlay hidden">
+      <div class="overlay-box">
+        <h3>⚙ IMPOSTAZIONI</h3>
+        <div class="settings-section-title">AUDIO</div>
+        <div class="settings-row">
+          <span class="settings-label">VOLUME</span>
+          <div class="settings-slider-wrap">
+            <input type="range" id="settings-volume" class="settings-slider" min="0" max="100" value="100">
+            <span id="settings-volume-val" class="settings-vol-val">100%</span>
+          </div>
+        </div>
+        <button class="btn btn-red" id="settings-mute-btn">🔊 MUTE</button>
+        <div class="settings-section-title">GIOCO</div>
+        <label class="settings-check"><input type="checkbox" id="settings-shake"> Scossa dello schermo</label>
+        <label class="settings-check"><input type="checkbox" id="settings-lowfx"> Effetti ridotti (dispositivi lenti)</label>
+        <label class="settings-check"><input type="checkbox" id="settings-hitbox"> Mostra sempre il punto d'impatto</label>
+        <p class="settings-hint">Tastiera: WASD/frecce · SHIFT preciso · Q E R abilità · SPAZIO overdrive · ESC pausa.<br>Controller: levetta/croce · X Y B abilità · A overdrive · RB preciso · START pausa.</p>
+        <div class="settings-section-title">ACCOUNT</div>
+        <button class="btn btn-red btn-small" id="btn-delete-account">ELIMINA ACCOUNT</button>
+        <button class="btn btn-ghost" id="settings-close">CHIUDI</button>
+      </div>
+    </div>
+
+    <!-- Fortune Wheel Overlay -->
+    <div id="wheel-overlay" class="overlay hidden">
+      <div class="wheel-box">
+        <h3>&#127922; FORTUNE WHEEL</h3>
+        <div class="wheel-status" id="wheel-status">LOADING...</div>
+        <div class="fortune-wheel-wrap">
+          <div class="wheel-pointer"></div>
+          <div class="fortune-wheel" id="fortune-wheel"></div>
+        </div>
+        <button class="btn btn-yellow" id="wheel-spin-btn">SPIN NOW</button>
+        <div class="wheel-result hidden" id="wheel-result"></div>
+        <button class="btn btn-ghost" id="wheel-close">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Tutorial Overlay -->
+    <div id="tutorial-overlay" class="overlay hidden">
+      <div class="tutorial-box">
+        <div class="tutorial-slide-area" id="tutorial-slide-area">
+          <!-- slides injected by JS -->
+        </div>
+        <div class="tutorial-dots" id="tutorial-dots"></div>
+        <div class="tutorial-nav">
+          <button class="btn btn-ghost tutorial-nav-btn" id="tutorial-prev">◀ PREV</button>
+          <button class="btn btn-cyan tutorial-nav-btn" id="tutorial-next">NEXT ▶</button>
+        </div>
+        <button class="btn btn-ghost tutorial-skip" id="tutorial-skip">SKIP</button>
+      </div>
+    </div>
+
+    <!-- Ability Info Overlay -->
+    <div id="ability-info-overlay" class="overlay hidden">
+      <div class="ability-info-box" id="ability-info-box">
+        <div id="ability-info-rarity" class="ability-info-rarity"></div>
+        <div id="ability-info-icon-wrap"></div>
+        <div id="ability-info-name" class="ability-info-name"></div>
+        <div id="ability-info-desc" class="ability-info-desc"></div>
+        <div id="ability-info-level" class="ability-info-level"></div>
+        <button class="btn btn-cyan hidden" id="ability-info-equip">EQUIPAGGIA</button>
+        <button class="btn btn-ghost" id="ability-info-close">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Daily Streak Overlay -->
+    <div id="streak-overlay" class="overlay hidden">
+      <div class="streak-box">
+        <h3>🔥 STREAK GIORNALIERA</h3>
+        <div class="streak-info">
+          <div class="streak-day-display">GIORNO <span id="streak-day-num">0</span></div>
+          <div class="streak-progress-bar-wrap">
+            <div class="streak-progress-bar" id="streak-progress-bar" style="width:0%"></div>
+          </div>
+          <div class="streak-progress-label" id="streak-progress-label">0 / 30</div>
+        </div>
+        <div class="streak-rewards-grid" id="streak-rewards-grid"></div>
+        <div class="streak-next-reward" id="streak-next-reward"></div>
+        <button class="btn btn-yellow" id="streak-claim-btn">RISCUOTI</button>
+        <div class="streak-result hidden" id="streak-result"></div>
+        <button class="btn btn-ghost" id="streak-close">CHIUDI</button>
+      </div>
+    </div>
+
+    <!-- Season Pass Screen -->
+    <div id="screen-pass" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="pass-back">← BACK</button>
+        <h2 class="screen-title"><span class="it-flag"></span> SPACE PASS</h2>
+        <div class="header-currency">
+          ⚡ <span id="pass-pulsar-header">0</span> Pulsar
+        </div>
+      </div>
+      <div class="pass-content" id="pass-content">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- Missions Screen -->
+    <div id="screen-missions" class="screen">
+      <div class="screen-header">
+        <button class="btn btn-ghost btn-back" id="missions-back">← BACK</button>
+        <h2 class="screen-title">📋 MISSIONI</h2>
+        <div class="header-currency">
+          ⚡ <span id="missions-pulsar-header">0</span> Pulsar
+        </div>
+      </div>
+      <div class="missions-content" id="missions-content">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script src="/sandbox/server.js"></script>
+  <script src="/sandbox/client.js"></script>
+  <script src="/js/assets.js"></script>
+  <script src="/js/visuals.js"></script>
+  <script src="/js/abilities.js"></script>
+  <script src="/js/skins.js"></script>
+  <script src="/js/entities.js"></script>
+  <script src="/js/perks.js"></script>
+  <script src="/js/hud.js"></script>
+  <script src="/js/game.js"></script>
+  <script src="/js/boss_rush.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/season_pass.js"></script>
+  <script src="/js/main.js"></script>
+  <div class="sandbox-badge" title="Tutto sbloccato · dati salvati solo in questo browser · aggiungi ?reset all'indirizzo per ricominciare">SANDBOX</div>
+</body>
+</html>

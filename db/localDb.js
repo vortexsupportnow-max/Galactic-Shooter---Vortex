@@ -62,14 +62,22 @@ function keyOf(row, cols, table) {
   }).join('\u0000');
 }
 
+// `target` is a file path (Node), a { load(), save(data) } adapter (e.g. the
+// browser sandbox persisting to localStorage), or null for memory only.
 class LocalStore {
-  constructor(file) {
-    this.file = file;
+  constructor(target) {
+    this.adapter = target && typeof target === 'object' ? target : null;
+    this.file = typeof target === 'string' ? target : null;
     this.data = { tables: {}, seq: {} };
-    if (file && fs.existsSync(file)) {
-      try { this.data = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) {
-        console.warn(`[local-db] could not read ${file}, starting empty: ${e.message}`);
+    try {
+      if (this.adapter) {
+        const loaded = this.adapter.load();
+        if (loaded && loaded.tables) this.data = loaded;
+      } else if (this.file && fs.existsSync(this.file)) {
+        this.data = JSON.parse(fs.readFileSync(this.file, 'utf8'));
       }
+    } catch (e) {
+      console.warn(`[local-db] could not load saved data, starting empty: ${e.message}`);
     }
     this._saveTimer = null;
   }
@@ -85,6 +93,10 @@ class LocalStore {
   }
 
   save() {
+    if (this.adapter) {
+      try { this.adapter.save(this.data); } catch (e) { console.warn(`[local-db] save failed: ${e.message}`); }
+      return;
+    }
     if (!this.file) return;
     // Coalesce bursts of writes into one disk write
     if (this._saveTimer) return;

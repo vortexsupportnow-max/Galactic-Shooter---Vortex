@@ -4,3 +4,4 @@ db/game.db-shm
 db/game.db-wal
 .env
 db/local-data.json
+dist/
