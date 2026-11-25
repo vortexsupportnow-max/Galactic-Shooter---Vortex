@@ -768,7 +768,12 @@ class GalacticGame {
 
     // Enemies
     const spawned = [];
-    const world = { sway: gs.sway, spawn: e => spawned.push(e) };
+    const world = {
+      sway: gs.sway,
+      spawn: e => spawned.push(e),
+      explode: (x, y, size, color) => { gs.explosions.push(new Explosion(x, y, size, color)); Sounds.explosion(false); },
+      enemies: gs.enemies
+    };
     for (let i = gs.enemies.length - 1; i >= 0; i--) {
       const e = gs.enemies[i];
       e.update(dt, gs.bullets, gs.timeSlow, p, world);
@@ -790,7 +795,16 @@ class GalacticGame {
     if (gs.boss) {
       if (gs.bossStunTimer > 0) { gs.bossStunTimer -= dt; if (gs.bossStunTimer <= 0) gs.boss.stunned = false; }
       if (gs.bossFreezeTimer > 0) { gs.bossFreezeTimer -= dt; if (gs.bossFreezeTimer <= 0) gs.boss.frozen = false; }
-      gs.boss.update(dt, gs.bullets, gs.timeSlow);
+      gs.boss.update(dt, gs.bullets, gs.timeSlow, p, world);
+      if (spawned.length) { gs.enemies.push(...spawned); spawned.length = 0; }
+      if (gs.boss.affectPlayer) {
+        // beams, gravity and body contact of the bosses in bosses.js
+        const dmg = gs.boss.affectPlayer(p, dt);
+        if (dmg > 0 && p.takeDamage(dmg)) {
+          this._onPlayerHit(p.x, p.y);
+          if (p.hp <= 0) { this._playerDeath(); return; }
+        }
+      }
       if (gs.boss.hp <= 0) this._killBoss();
       else if (gs.boss.dead) gs.boss = null;
     }
@@ -1106,13 +1120,22 @@ class GalacticGame {
         if (!b.piercing) { b.dead = true; break; }
       }
 
-      if (!b.dead && gs.boss && this._rectOverlap(b, gs.boss)) {
-        gs.boss.hp -= b.damage;
-        gs.chainTimer = Math.max(0, gs.chainTimer - 400);
-        gs.particles.emit(b.x, b.y, 3, '#ff66cc', { speed: 3, decay: 0.07 });
-        Sounds.hit();
-        b.dead = true;
-        if (gs.boss.hp <= 0) this._killBoss();
+      if (!b.dead && gs.boss) {
+        const boss = gs.boss;
+        // Multi-part bosses decide what was hit (weak point, armour, mirror…)
+        const part = boss.hitTest ? boss.hitTest(b) : (this._rectOverlap(b, boss) ? boss : null);
+        if (part) {
+          const dealt = boss.damagePart ? boss.damagePart(part, b.damage, b) : (boss.hp -= b.damage, b.damage);
+          if (dealt > 0) {
+            gs.chainTimer = Math.max(0, gs.chainTimer - 400);
+            gs.particles.emit(b.x, b.y, 3, '#ff66cc', { speed: 3, decay: 0.07 });
+            Sounds.hit();
+          } else {
+            gs.particles.emit(b.x, b.y, 3, '#bfe8ff', { speed: 2.5, decay: 0.09 }); // blocked
+          }
+          b.dead = true;
+          if (boss.hp <= 0) this._killBoss();
+        }
       }
     }
   }
@@ -1668,6 +1691,46 @@ class GalacticGame {
     return Math.round(900 * Math.pow(wave / 5, 1.25));
   }
 
+  // Boss roster: 1 classic + 5 cosmic + 6 mega bosses. Wave 5 draws from the
+  // gentler three; from wave 10 a shuffled bag deals every boss once before
+  // any repeats (and never the same one twice in a row).
+  _bossRoster() {
+    const list = [];
+    if (typeof createCosmicBoss === 'function') {
+      for (let i = 0; i < 5; i++) list.push({ id: 'cosmic' + i, make: w => { const b = createCosmicBoss(i); b.scaleForWave(w); b.showHealthBar = false; return b; } });
+    }
+    if (typeof MEGA_BOSSES !== 'undefined') {
+      MEGA_BOSSES.forEach((Cls, i) => list.push({ id: 'mega' + i, make: w => new Cls(w) }));
+    }
+    return list;
+  }
+
+  _pickBoss(wave) {
+    const gs = this.gs;
+    if (wave < 10) {
+      const early = [{ id: 'classic', make: w => new Boss(w) }];
+      if (typeof MEGA_BOSSES !== 'undefined') early.push({ id: 'mega0', make: w => new MEGA_BOSSES[0](w) }, { id: 'mega1', make: w => new MEGA_BOSSES[1](w) });
+      const pick = early[Math.floor(Math.random() * early.length)];
+      gs.lastBossId = pick.id;
+      return pick.make(wave);
+    }
+    const roster = this._bossRoster();
+    if (!roster.length) return new Boss(wave);
+    if (!gs.bossBag || !gs.bossBag.length) {
+      gs.bossBag = roster.map(r => r.id);
+      for (let i = gs.bossBag.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [gs.bossBag[i], gs.bossBag[j]] = [gs.bossBag[j], gs.bossBag[i]];
+      }
+      if (gs.bossBag[gs.bossBag.length - 1] === gs.lastBossId && gs.bossBag.length > 1) {
+        gs.bossBag.unshift(gs.bossBag.pop());
+      }
+    }
+    const id = gs.bossBag.pop();
+    gs.lastBossId = id;
+    return roster.find(r => r.id === id).make(wave);
+  }
+
   _spawnBoss() {
     const gs = this.gs;
     gs.enemies = [];
@@ -1680,23 +1743,8 @@ class GalacticGame {
     gs.powerScale = enemyWaveMult(gs.wave);
     gs.player.dmgScale = 1 + (gs.wave - 1) * 0.05;
 
-    const canUseCosmic = typeof createCosmicBoss === 'function' && gs.wave >= 10;
-    if (!canUseCosmic) {
-      gs.boss = new Boss(gs.wave);
-    } else {
-      if (!gs.bossRotation || gs.bossRotation.length === 0) {
-        gs.bossRotation = [0, 1, 2, 3, 4];
-        for (let i = gs.bossRotation.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [gs.bossRotation[i], gs.bossRotation[j]] = [gs.bossRotation[j], gs.bossRotation[i]];
-        }
-      }
-      const boss = createCosmicBoss(gs.bossRotation.shift());
-      boss.scaleForWave(gs.wave);
-      boss.showHealthBar = false; // the HUD draws the bar
-      gs.boss = boss;
-    }
-    gs.boss.maxHp = gs.boss.hp = this._bossHp(gs.wave);
+    gs.boss = this._pickBoss(gs.wave);
+    gs.boss.maxHp = gs.boss.hp = Math.round(this._bossHp(gs.wave) * (gs.boss.hpScale || 1));
     gs.waveTotal = 1;
 
     // From wave 15 the boss brings an escort of kamikazes
