@@ -368,7 +368,7 @@ async function loadCrateShop() {
 
 const CRATE_DEFS = {
   mystery: {
-    icon: '📦', name: 'MYSTERY CRATE', cost: 10,
+    icon: '📦', svg: 'crate-mystery', name: 'MYSTERY CRATE', cost: 10,
     count: 1,
     odds: [
       { cls: 'common',    label: '■ COMMON: 50%' },
@@ -378,7 +378,7 @@ const CRATE_DEFS = {
     ]
   },
   galactic: {
-    icon: '🌌', name: 'GALACTIC CRATE', cost: 50,
+    icon: '🌌', svg: 'crate-galactic', name: 'GALACTIC CRATE', cost: 50,
     count: 2,
     odds: [
       { cls: 'common',    label: '■ COMMON: 20%' },
@@ -388,7 +388,7 @@ const CRATE_DEFS = {
     ]
   },
   void: {
-    icon: '🕳️', name: 'VOID CRATE', cost: 150,
+    icon: '🕳️', svg: 'crate-void', name: 'VOID CRATE', cost: 150,
     count: 3,
     odds: [
       { cls: 'rare',      label: '■ RARE: 10%' },
@@ -457,7 +457,7 @@ function updateCrateDisplay(type) {
 
   box.className = `crate-box type-${type}`;
 
-  document.getElementById('selected-crate-icon').textContent = def.icon;
+  document.getElementById('selected-crate-icon').innerHTML = `<svg class="i" aria-hidden="true"><use href="#i-${def.svg}"/></svg>`;
   document.getElementById('selected-crate-name').textContent = def.name;
   document.getElementById('selected-crate-cost').textContent = freeCrates > 0 ? `FREE x${freeCrates} · ${def.cost} 💎` : `${def.cost} 💎`;
   document.getElementById('open-crate-btn').textContent = freeCrates > 0 ? 'OPEN FREE CRATE' : 'OPEN CRATE';
@@ -1451,7 +1451,7 @@ function updateSkinCrateDisplay(type) {
   const labelEl = document.getElementById('skin-crate-box-label');
   const costEl  = document.getElementById('skin-crate-box-cost');
 
-  if (iconEl)  iconEl.textContent  = def.icon;
+  if (iconEl)  iconEl.innerHTML = def.svg ? `<svg class="i" aria-hidden="true"><use href="#i-${def.svg}"/></svg>` : def.icon;
   if (labelEl) labelEl.textContent = def.name;
 
   const freeCrates = Number(_profileData?.free_skin_crates || 0);

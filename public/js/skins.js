@@ -192,7 +192,7 @@ const SKINS = {
 
 const SKIN_CRATE_DEFS = {
   stellar: {
-    icon: '✨', name: 'STELLAR CRATE', costCoins: 200, costGems: 5,
+    icon: '✨', svg: 'crate-stellar', name: 'STELLAR CRATE', costCoins: 200, costGems: 5,
     odds: [
       { cls: 'common',    label: '■ COMMON: 50%' },
       { cls: 'rare',      label: '■ RARE: 35%' },
@@ -201,7 +201,7 @@ const SKIN_CRATE_DEFS = {
     ]
   },
   nova: {
-    icon: '🌠', name: 'NOVA CRATE', costCoins: 1000, costGems: 20,
+    icon: '🌠', svg: 'crate-nova', name: 'NOVA CRATE', costCoins: 1000, costGems: 20,
     odds: [
       { cls: 'common',    label: '■ COMMON: 15%' },
       { cls: 'rare',      label: '■ RARE: 40%' },
