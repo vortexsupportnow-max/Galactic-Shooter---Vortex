@@ -168,12 +168,12 @@ class Pickup {
     this.missed = false;
   }
 
-  update(dt, player, magnetAll) {
+  update(dt, player, magnetAll, range = 75) {
     const dtF = dt / 16.667;
     this.age += dt;
     const dx = player.x - this.x, dy = player.y - this.y;
     const d = Math.sqrt(dx * dx + dy * dy) || 1;
-    const pull = magnetAll ? 900 : 75;
+    const pull = magnetAll ? 900 : range;
     if (d < pull && this.age > 250) {
       const sp = magnetAll ? 9 : 6;
       this.x += (dx / d) * sp * dtF;
@@ -290,7 +290,7 @@ class Player {
   }
 
   get effectiveDamage() {
-    let dmg = 20 * (this.dmgScale || 1);
+    let dmg = 20 * (this.dmgScale || 1) * (this.perkDmg || 1);
     if (this.overcharge) dmg *= (this.overchargeMultiplier || 2);
     return dmg;
   }
@@ -301,7 +301,7 @@ class Player {
     if (this.rapidFire) rate /= 2;
     if (this.speedBoost) rate /= 1.3;
     if (this.overdrive) rate /= 1.5;
-    return rate;
+    return rate / (this.perkRate || 1);
   }
 
   get effectiveSpeed() {

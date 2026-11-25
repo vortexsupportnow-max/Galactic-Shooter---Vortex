@@ -1,3 +1,7 @@
+.settings-section-title { font-size: 0.42rem; color: var(--cyan, #00ffff); margin: 0.9rem 0 0.4rem; letter-spacing: 0.1em; text-align: left; }
+.settings-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.42rem; margin: 0.35rem 0; cursor: pointer; text-align: left; }
+.settings-check input { width: 14px; height: 14px; accent-color: #00ffff; }
+.settings-hint { font-size: 0.34rem; line-height: 1.8; color: #8890b8; margin: 0.5rem 0 0; text-align: left; }
 .season-pause-notice {
   width: 100%; max-width: 640px; padding: 1rem; margin-bottom: 1rem;
   border: 1px solid var(--yellow); background: var(--panel); border-radius: 8px;
@@ -363,6 +367,7 @@ html, body {
   50%      { box-shadow: 0 0 20px rgba(255,170,0,0.8); }
 }
 .ability-icon-canvas { image-rendering: pixelated; }
+.ability-icon-img { display: block; margin: 0.2rem auto; }
 .ability-name {
   font-size: 0.48rem;
   text-align: center;

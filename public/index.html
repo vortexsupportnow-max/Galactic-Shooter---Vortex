@@ -122,10 +122,8 @@
         </div>
 
         <section id="season-pause-notice" class="season-pause-notice hidden" aria-labelledby="season-pause-title">
-          <h2 id="season-pause-title">SVILUPPO IN PAUSA</h2>
-          <p>La stagione è terminata. Lo sviluppo e gli aggiornamenti di Galactic Shooter sono momentaneamente in pausa.</p>
-          <p>I tuoi dati rimarranno salvati nel database: la pausa non cancellerà i tuoi progressi. Se desideri eliminare i tuoi dati, puoi farlo qui.</p>
-          <button class="btn btn-red" id="btn-delete-account">ELIMINA ACCOUNT</button>
+          <h2 id="season-pause-title">STAGIONE TERMINATA</h2>
+          <p>La Stagione Italia è finita: la prossima è in preparazione. Il gioco continua a ricevere aggiornamenti e i tuoi progressi restano salvati.</p>
         </section>
 
         <!-- Two-column layout: left = season pass, right = game buttons -->
@@ -527,7 +525,8 @@
     <!-- Settings Overlay -->
     <div id="settings-overlay" class="overlay hidden">
       <div class="overlay-box">
-        <h3>⚙ AUDIO SETTINGS</h3>
+        <h3>⚙ IMPOSTAZIONI</h3>
+        <div class="settings-section-title">AUDIO</div>
         <div class="settings-row">
           <span class="settings-label">VOLUME</span>
           <div class="settings-slider-wrap">
@@ -536,7 +535,14 @@
           </div>
         </div>
         <button class="btn btn-red" id="settings-mute-btn">🔊 MUTE</button>
-        <button class="btn btn-ghost" id="settings-close">CLOSE</button>
+        <div class="settings-section-title">GIOCO</div>
+        <label class="settings-check"><input type="checkbox" id="settings-shake"> Scossa dello schermo</label>
+        <label class="settings-check"><input type="checkbox" id="settings-lowfx"> Effetti ridotti (dispositivi lenti)</label>
+        <label class="settings-check"><input type="checkbox" id="settings-hitbox"> Mostra sempre il punto d'impatto</label>
+        <p class="settings-hint">Tastiera: WASD/frecce · SHIFT preciso · Q E R abilità · SPAZIO overdrive · ESC pausa.<br>Controller: levetta/croce · X Y B abilità · A overdrive · RB preciso · START pausa.</p>
+        <div class="settings-section-title">ACCOUNT</div>
+        <button class="btn btn-red btn-small" id="btn-delete-account">ELIMINA ACCOUNT</button>
+        <button class="btn btn-ghost" id="settings-close">CHIUDI</button>
       </div>
     </div>
 
@@ -638,6 +644,7 @@
   <script src="/js/abilities.js"></script>
   <script src="/js/skins.js"></script>
   <script src="/js/entities.js"></script>
+  <script src="/js/perks.js"></script>
   <script src="/js/hud.js"></script>
   <script src="/js/game.js"></script>
   <script src="/js/boss_rush.js"></script>

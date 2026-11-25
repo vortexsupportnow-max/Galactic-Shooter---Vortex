@@ -48,6 +48,68 @@ class GalacticGame {
     this._resizeCanvas = this._resizeCanvas.bind(this);
     this._resizeCanvas();
     window.addEventListener('resize', this._resizeCanvas);
+
+    // Auto-pause when the tab or window loses focus mid-run
+    this._padHeld = new Set();
+    this._padPrev = [];
+    const autoPause = () => {
+      const gs = this.gs;
+      if (gs && !gs.gameOver && !gs.paused && !gs.perkChoice) this._pauseToggle();
+    };
+    document.addEventListener('visibilitychange', () => { if (document.hidden) autoPause(); });
+    window.addEventListener('blur', autoPause);
+  }
+
+  // ── Gamepad ────────────────────────────────────────────────────────────────
+  // Standard mapping: stick / d-pad move, RB or RT precise, X Y B abilities,
+  // A overdrive (or pick a perk), START pause. Movement is fed through the same
+  // key map as the keyboard so both modes (normal, Boss Rush) understand it.
+  _pollGamepad() {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let pad = null;
+    for (const p of pads) if (p && p.connected) { pad = p; break; }
+    if (!pad) {
+      for (const k of this._padHeld) this.keys[k] = false;
+      this._padHeld.clear();
+      this._padPrev = [];
+      return;
+    }
+    const dead = 0.35;
+    const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
+    const pressed = pad.buttons.map(b => !!(b && b.pressed));
+    const want = new Set();
+    if (ax < -dead || pressed[14]) want.add('ArrowLeft');
+    if (ax > dead || pressed[15]) want.add('ArrowRight');
+    if (ay < -dead || pressed[12]) want.add('ArrowUp');
+    if (ay > dead || pressed[13]) want.add('ArrowDown');
+    if (pressed[5] || pressed[7]) want.add('Shift');
+    for (const k of this._padHeld) if (!want.has(k)) this.keys[k] = false;
+    for (const k of want) this.keys[k] = true;
+    this._padHeld = want;
+
+    const edge = i => pressed[i] && !this._padPrev[i];
+    const gs = this.gs;
+    this._padPrev = pressed;
+    if (!gs) return;
+    if (gs.gameOver) {
+      if (pressed.some((p, i) => p && !this._padPrevGO?.[i])) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      this._padPrevGO = pressed;
+      return;
+    }
+    this._padPrevGO = pressed;
+    if (gs.perkChoice) {
+      if (edge(14) || (ax < -0.6 && !this._padStickLatch)) this._perkKey('ArrowLeft');
+      if (edge(15) || (ax > 0.6 && !this._padStickLatch)) this._perkKey('ArrowRight');
+      this._padStickLatch = Math.abs(ax) > 0.6;
+      if (edge(0)) this._perkKey('Enter');
+      return;
+    }
+    if (edge(9)) this._pauseToggle();
+    if (gs.paused) return;
+    if (edge(2)) this._useAbility(0);
+    if (edge(3)) this._useAbility(1);
+    if (edge(1)) this._useAbility(2);
+    if (edge(0)) this._activateOverdrive();
   }
 
   _resizeCanvas() {
@@ -84,6 +146,7 @@ class GalacticGame {
   _shake(mag, dur) {
     const gs = this.gs;
     if (!gs) return;
+    if (window.gameSettings && window.gameSettings.shake === false) return;
     if (mag * dur < gs.shakeMag * gs.shakeTime) return;
     gs.shakeMag = mag; gs.shakeTime = dur; gs.shakeDur = dur;
   }
@@ -116,11 +179,13 @@ class GalacticGame {
     document.addEventListener('keydown', e => {
       this.keys[e.key] = true;
       if (!this.gs) return;
+      // Prevent page scroll on every keydown, auto-repeats included
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
       if (e.repeat) return;
+      if (this.gs.perkChoice) { this._perkKey(e.key); return; }
       if (SLOT_KEY_MAP[e.key] !== undefined) this._useAbility(SLOT_KEY_MAP[e.key]);
       if (e.key === ' ' || e.key === 'x' || e.key === 'X') this._activateOverdrive();
       if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') this._pauseToggle();
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
     });
     document.addEventListener('keyup', e => { this.keys[e.key] = false; });
     // Releasing keys while the window is unfocused would leave them "stuck"
@@ -137,8 +202,120 @@ class GalacticGame {
       odBtn.addEventListener('touchstart', e => { e.preventDefault(); this._activateOverdrive(); }, { passive: false });
     }
 
+    // Perk cards are picked by clicking / tapping them on the canvas
+    const pick = e => {
+      const gs = this.gs;
+      if (!gs || !gs.perkChoice) return;
+      const t = e.changedTouches ? e.changedTouches[0] : e;
+      const r = this.canvas.getBoundingClientRect();
+      const x = (t.clientX - r.left) / r.width * 480;
+      const y = (t.clientY - r.top) / r.height * 700;
+      const i = this._perkCardAt(x, y);
+      if (i !== -1) { e.preventDefault(); this._choosePerk(i); }
+    };
+    this.canvas.addEventListener('click', pick);
+    this.canvas.addEventListener('touchend', pick, { passive: false });
+
     this.touchActive = false;
     this._setupJoystick();
+  }
+
+  // ── Perk choice ────────────────────────────────────────────────────────────
+
+  _perkCardRect(i) {
+    const w = 134, h = 196, gap = 10;
+    const x0 = (480 - (w * 3 + gap * 2)) / 2;
+    return { x: x0 + i * (w + gap), y: 250, w, h };
+  }
+
+  _perkCardAt(x, y) {
+    const n = this.gs.perkChoice.options.length;
+    for (let i = 0; i < n; i++) {
+      const r = this._perkCardRect(i);
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i;
+    }
+    return -1;
+  }
+
+  _perkKey(key) {
+    const pc = this.gs.perkChoice;
+    const n = pc.options.length;
+    if (key === '1' || key === '2' || key === '3') { const i = +key - 1; if (i < n) this._choosePerk(i); return; }
+    if (key === 'ArrowLeft' || key === 'a' || key === 'A') pc.hover = (pc.hover + n - 1) % n;
+    if (key === 'ArrowRight' || key === 'd' || key === 'D') pc.hover = (pc.hover + 1) % n;
+    if (key === 'Enter' || key === ' ') this._choosePerk(pc.hover);
+  }
+
+  _choosePerk(i) {
+    const gs = this.gs;
+    const pc = gs.perkChoice;
+    if (!pc || performance.now() - pc.shownAt < 500) return; // no accidental picks
+    const id = pc.options[i];
+    const def = PERKS[id];
+    if (!def) return;
+    def.apply(gs);
+    gs.perks[id] = (gs.perks[id] || 0) + 1;
+    gs.perkChoice = null;
+    gs.floaters.add(240, 360, def.name, def.color, 9, 1400);
+    gs.particles.emit(gs.player.x, gs.player.y, 30, def.color, { speed: 5, decay: 0.025 });
+    Sounds.levelup();
+  }
+
+  _renderPerkChoice(ctx, gs, now) {
+    const pc = gs.perkChoice;
+    ctx.save();
+    ctx.globalAlpha = 0.78;
+    ctx.fillStyle = '#02030d';
+    ctx.fillRect(0, 0, 480, 700);
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center';
+    this._glowText(ctx, 'SCEGLI UN POTENZIAMENTO', 240, 205, 11, '#ffdd33', 18);
+    ctx.font = '5px "Press Start 2P"';
+    ctx.fillStyle = '#9aa3c8';
+    ctx.fillText('Dura per tutta la partita · 1 2 3 / frecce + INVIO / tocca', 240, 226);
+
+    pc.options.forEach((id, i) => {
+      const def = PERKS[id];
+      const r = this._perkCardRect(i);
+      const hot = pc.hover === i;
+      const lift = hot ? -6 : 0;
+      if (hot) FX.glow(ctx, r.x + r.w / 2, r.y + r.h / 2 + lift, 110, def.color, 0.35 + Math.sin(now * 0.008) * 0.1);
+      ctx.fillStyle = 'rgba(8,12,32,0.95)';
+      ctx.fillRect(r.x, r.y + lift, r.w, r.h);
+      ctx.strokeStyle = def.color;
+      ctx.lineWidth = hot ? 2.5 : 1.2;
+      ctx.strokeRect(r.x + 0.5, r.y + lift + 0.5, r.w - 1, r.h - 1);
+
+      ctx.font = '5px "Press Start 2P"';
+      ctx.fillStyle = '#6f7aa8';
+      ctx.fillText(String(i + 1), r.x + 10, r.y + lift + 12);
+      const stacks = gs.perks[id] || 0;
+      if (def.max > 1) ctx.fillText(`${stacks}/${def.max}`, r.x + r.w - 16, r.y + lift + 12);
+
+      ctx.font = '34px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(def.icon, r.x + r.w / 2, r.y + lift + 64);
+
+      ctx.font = '6px "Press Start 2P"';
+      ctx.fillStyle = def.color;
+      this._wrapText(ctx, def.name, r.x + r.w / 2, r.y + lift + 96, r.w - 16, 10);
+      ctx.font = '5px "Press Start 2P"';
+      ctx.fillStyle = '#dfe6ff';
+      this._wrapText(ctx, def.desc, r.x + r.w / 2, r.y + lift + 128, r.w - 16, 10);
+    });
+    ctx.restore();
+  }
+
+  _wrapText(ctx, text, cx, y, maxW, lineH) {
+    const words = String(text).split(' ');
+    let line = '';
+    for (const w of words) {
+      const test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW && line) {
+        ctx.fillText(line, cx, y); y += lineH; line = w;
+      } else line = test;
+    }
+    if (line) ctx.fillText(line, cx, y);
   }
 
   _setupJoystick() {
@@ -193,7 +370,7 @@ class GalacticGame {
 
   // `ownedAbilities` accepts either plain ids or the profile's {ability_id, level}
   // rows, so upgraded abilities are actually stronger in play.
-  start(abilitySlots = [null, null, null], ownedAbilities = [], skinBoosts = null, skinColor = null, skinTrail = null, skinStripes = null, skinVisual = null) {
+  start(abilitySlots = [null, null, null], ownedAbilities = [], skinBoosts = null, skinColor = null, skinTrail = null, skinStripes = null, skinVisual = null, opts = {}) {
     if (this.animId) cancelAnimationFrame(this.animId);
     if (this.surrenderBtn) {
       this.surrenderBtn.disabled = false;
@@ -219,6 +396,7 @@ class GalacticGame {
     }
 
     this.background = new SpaceBackground();
+    this.hud.shownScore = 0;
 
     this.gs = {
       wave: 1,
@@ -269,6 +447,10 @@ class GalacticGame {
       grazes: 0,
       medalLevel: 0, medalsCollected: 0,
       od: 0, odTimer: 0,
+      // run perks (picked after each boss)
+      perks: {}, perkChoice: null,
+      chainWindow: CHAIN_WINDOW, magnetRange: 75, cooldownMult: 1, odGainMult: 1,
+      medalMissPenalty: 3, grazeMult: 1, coreChance: 0.10, waveShield: false,
       // ability effects
       timeSlow: false, timeSlowTimer: 0,
       freezeActive: false, freezeTimer: 0, bossFreezeTimer: 0,
@@ -284,7 +466,9 @@ class GalacticGame {
       abilitiesUsed: 0,
       waveAnnounce: 1800,
       keys: this.keys,
-      time: 0
+      time: 0,
+      bestScore: opts.bestScore || 0,
+      recordBroken: false
     };
 
     this._spawnWave(1);
@@ -321,7 +505,12 @@ class GalacticGame {
     this.lastTime = now;
 
     if (!this.gs) return;
-    if (!this.gs.paused && !this.gs.gameOver) this._update(dt, now);
+    this._pollGamepad();
+    if (this.gs.perkChoice && !this.gs.gameOver) {
+      this.background.update(dt);
+      this.gs.particles.update(dt);
+      this.gs.floaters.update(dt);
+    } else if (!this.gs.paused && !this.gs.gameOver) this._update(dt, now);
     else if (this.gs.gameOver) {
       // keep the background and the last explosions alive behind the overlay
       this.background.update(dt);
@@ -368,7 +557,7 @@ class GalacticGame {
     const gs = this.gs;
     if (gs.odTimer > 0) return;
     const was = gs.od;
-    gs.od = Math.min(100, gs.od + amount);
+    gs.od = Math.min(100, gs.od + amount * (gs.odGainMult || 1));
     if (was < 100 && gs.od >= 100) {
       gs.floaters.add(240, 600, 'OVERDRIVE PRONTO!', '#ffcc33', 8, 1400);
       Sounds.levelup();
@@ -443,7 +632,7 @@ class GalacticGame {
     // Chain timer — frozen while a wave is being cleared or announced
     if (gs.chain > 0 && !gs.waveComplete && gs.waveAnnounce <= 0) {
       gs.chainTimer += dt;
-      if (gs.chainTimer > CHAIN_WINDOW) {
+      if (gs.chainTimer > gs.chainWindow) {
         if (gs.chain >= 20) gs.floaters.add(240, 120, `CHAIN ${gs.chain} PERSA`, '#ff6688', 7, 1000);
         gs.chain = 0; gs.chainTimer = 0;
         this._recalcMult();
@@ -452,6 +641,14 @@ class GalacticGame {
 
     if (gs.waveAnnounce > 0) gs.waveAnnounce -= dt;
     if (!gs.waveComplete) gs.waveTime += dt;
+
+    // Personal best beaten mid-run
+    if (!gs.recordBroken && gs.bestScore > 0 && gs.score > gs.bestScore) {
+      gs.recordBroken = true;
+      gs.floaters.add(240, 300, 'NUOVO RECORD!', '#ffff33', 13, 1800);
+      gs.particles.emit(240, 300, 40, '#ffff66', { speed: 6, decay: 0.02 });
+      Sounds.levelup();
+    }
 
     // Spawn queue (reinforcements arrive through the wave, not all at once)
     for (let i = gs.spawnQueue.length - 1; i >= 0; i--) {
@@ -830,12 +1027,13 @@ class GalacticGame {
           this._onPlayerHit(b.x, b.y);
           if (p.hp <= 0) { this._playerDeath(); return true; }
         }
-      } else if (!b.grazed && d < p.grazeRadius) {
+      } else if (!b.grazed && d < p.grazeRadius && !p.shielded && p.invulnTimer <= 0) {
+        // (no grazing while invulnerable: it would be free points)
         b.grazed = true;
         this._onGraze(b);
       }
     }
-    p.showHitbox = close;
+    p.showHitbox = close || !!(window.gameSettings && window.gameSettings.hitbox);
     return false;
   }
 
@@ -879,7 +1077,7 @@ class GalacticGame {
     const gs = this.gs;
     gs.grazes++;
     gs.chainTimer = 0;
-    const pts = Math.round(40 * gs.mult * this._scoreMult());
+    const pts = Math.round(40 * gs.grazeMult * gs.mult * this._scoreMult());
     gs.score += pts;
     this._addOD(3);
     gs.particles.emit(b.x, b.y, 4, '#ffffff', { speed: 3, decay: 0.08 });
@@ -944,7 +1142,7 @@ class GalacticGame {
 
     // Drops
     if (Math.random() < enemy.gemDropChance) gs.gemsCollected++;
-    if (enemy.elite || Math.random() < 0.10) gs.pickups.push(new Pickup('core', enemy.x, enemy.y));
+    if (enemy.elite || Math.random() < gs.coreChance) gs.pickups.push(new Pickup('core', enemy.x, enemy.y));
     if (enemy.elite || Math.random() < 0.18) gs.pickups.push(new Pickup('medal', enemy.x + 6, enemy.y));
     if (Math.random() < 0.04 && gs.unlockedAbilityIds.length > 0) {
       const abilityId = gs.unlockedAbilityIds[Math.floor(Math.random() * gs.unlockedAbilityIds.length)];
@@ -991,9 +1189,12 @@ class GalacticGame {
 
     gs.boss = null;
     gs.bossWave = false;
+    gs.spawnQueue = []; // escorts still queued would arrive during the break
     // Enemy bullets left over become harmless sparks
     for (const b of gs.bullets) if (b.owner === 'enemy') { b.dead = true; gs.particles.emit(b.x, b.y, 1, '#ffffff', { speed: 1 }); }
     this._onWaveCleared();
+    const offer = rollPerkOffer(gs.perks);
+    if (offer.length) gs.perkChoice = { options: offer, hover: 1, shownAt: performance.now() };
   }
 
   _onWaveCleared() {
@@ -1055,11 +1256,11 @@ class GalacticGame {
     const magnetAll = gs.odTimer > 0 || gs.vacuum;
     for (let i = gs.pickups.length - 1; i >= 0; i--) {
       const pk = gs.pickups[i];
-      pk.update(dt, p, magnetAll);
+      pk.update(dt, p, magnetAll, gs.magnetRange);
       if (pk.dead) {
         gs.pickups.splice(i, 1);
         if (pk.missed && pk.kind === 'medal' && gs.medalLevel > 0) {
-          gs.medalLevel = Math.max(0, gs.medalLevel - 3);
+          gs.medalLevel = Math.max(0, gs.medalLevel - gs.medalMissPenalty);
         }
         continue;
       }
@@ -1074,6 +1275,7 @@ class GalacticGame {
         Sounds.coin ? Sounds.coin() : playTone(1320, 'square', 0.05, 0.08);
       } else {
         if (p.addCore()) {
+          if (p.weaponLevel >= WEAPON_MAX_LEVEL) gs.reachedWeaponMax = true;
           gs.floaters.add(p.x, p.y - 44, p.weaponLevel >= WEAPON_MAX_LEVEL ? 'ARMA MAX!' : `ARMA LV ${p.weaponLevel}`, '#ffb366', 9, 1200);
           gs.particles.emit(p.x, p.y, 30, '#ffb366', { speed: 5, decay: 0.025 });
           Sounds.levelup();
@@ -1238,6 +1440,7 @@ class GalacticGame {
     gs.diveTimer = 3000;
     gs.powerScale = enemyWaveMult(wave);
     p.dmgScale = 1 + (wave - 1) * 0.05;
+    if (gs.waveShield) { p.shielded = true; p.shieldTimer = Math.max(p.shieldTimer, 3000); }
 
     const special = this._waveSpecial(wave);
     const formation = special === 'swarm_rush' ? 'swarm' : this._waveFormation(wave);
@@ -1386,14 +1589,14 @@ class GalacticGame {
 
   _useAbility(slot) {
     const gs = this.gs;
-    if (!gs || gs.gameOver || gs.paused) return;
+    if (!gs || gs.gameOver || gs.paused || gs.perkChoice) return;
     const ability = gs.abilitySlots[slot];
     if (!ability) return;
     if (ability.cooldown > 0) { playTone(180, 'square', 0.06, 0.06); return; }
     const def = ABILITIES[ability.id];
     if (!def) return;
     def.apply(gs, ability.level || 1);
-    ability.cooldownMax = getAbilityCooldown(ability.id, ability.level || 1);
+    ability.cooldownMax = getAbilityCooldown(ability.id, ability.level || 1) * gs.cooldownMult;
     ability.cooldown = ability.cooldownMax;
     gs.abilitiesUsed++;
     gs.floaters.add(gs.player.x, gs.player.y - 46, def.name.toUpperCase(), RARITY_COLORS[def.rarity] || '#ffffff', 6, 700);
@@ -1593,7 +1796,8 @@ class GalacticGame {
 
     if (!gs.gameOver) this.hud.draw(ctx, gs);
 
-    this._renderAnnouncements(ctx, gs, now);
+    if (gs.perkChoice && !gs.gameOver) this._renderPerkChoice(ctx, gs, now);
+    else this._renderAnnouncements(ctx, gs, now);
 
     if (gs.paused) {
       ctx.save();
@@ -1615,10 +1819,12 @@ class GalacticGame {
     if (gs.gameOver) this._renderGameOver(ctx, gs);
 
     ctx.drawImage(this.vignette, 0, 0);
-    ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.drawImage(this.scanlines, 0, 0);
-    ctx.restore();
+    if (!(window.gameSettings && window.gameSettings.lowfx)) {
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.drawImage(this.scanlines, 0, 0);
+      ctx.restore();
+    }
   }
 
   _glowText(ctx, text, x, y, size, color, blur = 16) {
@@ -1705,7 +1911,8 @@ class GalacticGame {
       ['CHAIN MAX', gs.maxChain],
       ['GRAZE', gs.grazes],
       ['MEDAGLIE', gs.medalsCollected],
-      ['WAVE PERFETTE', gs.perfectWaves]
+      ['WAVE PERFETTE', gs.perfectWaves],
+      ['POTENZIAMENTI', Object.values(gs.perks).reduce((a, b) => a + b, 0)]
     ];
     ctx.font = '7px "Press Start 2P"';
     rows.forEach(([k, v], i) => {
@@ -1714,7 +1921,7 @@ class GalacticGame {
       ctx.textAlign = 'right'; ctx.fillStyle = '#ffffff'; ctx.fillText(String(v), 360, y);
     });
     ctx.textAlign = 'center';
-    let y = 412;
+    let y = 430;
     if (gs.coinsEarned !== undefined) {
       ctx.fillStyle = '#ffff00';
       ctx.fillText(`+${formatNumber(gs.coinsEarned)} MONETE`, 240, y); y += 18;
@@ -1725,10 +1932,20 @@ class GalacticGame {
     }
     if (gs.newRecord) {
       this._glowText(ctx, 'NUOVO RECORD!', 240, y + 8, 11, '#ffff00', 12);
+      y += 26;
+    }
+    if (gs.newAchievements && gs.newAchievements.length) {
+      ctx.font = '6px "Press Start 2P"';
+      ctx.fillStyle = '#ffcc33';
+      gs.newAchievements.slice(0, 3).forEach((a, i) => ctx.fillText(`★ TROFEO: ${a.name.toUpperCase()}`, 240, y + 6 + i * 13));
+      if (gs.newAchievements.length > 3) {
+        ctx.fillStyle = '#9aa3c8';
+        ctx.fillText(`+${gs.newAchievements.length - 3} ALTRI TROFEI (PROFILO)`, 240, y + 6 + 3 * 13);
+      }
     }
     ctx.font = '7px "Press Start 2P"';
     ctx.fillStyle = '#00ffff';
-    ctx.fillText('TOCCA / PREMI UN TASTO', 240, 490);
+    ctx.fillText('TOCCA / PREMI UN TASTO', 240, 560);
     ctx.restore();
   }
 
@@ -1749,13 +1966,20 @@ class GalacticGame {
           wave: gs.wave,
           enemiesKilled: gs.enemiesKilled,
           gemsCollected: gs.gemsCollected,
-          abilitiesUsed: gs.abilitiesUsed || 0
+          abilitiesUsed: gs.abilitiesUsed || 0,
+          maxChain: gs.maxChain,
+          perfectWaves: gs.perfectWaves,
+          grazes: gs.grazes,
+          medals: gs.medalsCollected,
+          weaponMax: gs.reachedWeaponMax === true
         })
       });
       if (res.success) {
         if (res.data.newMaxScore >= gs.score && gs.score > 0) gs.newRecord = true;
         gs.coinsEarned = res.data.coinsEarned;
         gs.gemsEarned  = res.data.gemsEarned;
+        gs.newAchievements = (res.data.newAchievements || [])
+          .map(id => (typeof ACHIEVEMENT_DEFS !== 'undefined' && ACHIEVEMENT_DEFS.find(a => a.id === id)) || { name: id });
       }
     }
 
@@ -1777,9 +2001,9 @@ class GalacticGame {
 // Global instance
 let gameInstance = null;
 
-function startGame(abilitySlots, ownedAbilities, skinBoosts, skinColor, skinTrail, skinStripes, skinVisual) {
+function startGame(abilitySlots, ownedAbilities, skinBoosts, skinColor, skinTrail, skinStripes, skinVisual, opts) {
   if (!gameInstance) gameInstance = new GalacticGame();
-  gameInstance.start(abilitySlots || [null, null, null], ownedAbilities || [], skinBoosts || null, skinColor || null, skinTrail || null, skinStripes || null, skinVisual || null);
+  gameInstance.start(abilitySlots || [null, null, null], ownedAbilities || [], skinBoosts || null, skinColor || null, skinTrail || null, skinStripes || null, skinVisual || null, opts || {});
 }
 
 function stopGame() {

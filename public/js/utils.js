@@ -9,6 +9,16 @@ function setNickname(n) { localStorage.setItem('gs_nickname', n); }
 
 // ===== AUDIO SETTINGS =====
 window.audioVolume = parseFloat(localStorage.getItem('gs_audio_volume') || '1.0');
+
+// ── Game settings (per device) ──
+const DEFAULT_GAME_SETTINGS = { shake: true, lowfx: false, hitbox: false };
+window.gameSettings = (() => {
+  try { return { ...DEFAULT_GAME_SETTINGS, ...JSON.parse(localStorage.getItem('gs_settings') || '{}') }; }
+  catch { return { ...DEFAULT_GAME_SETTINGS }; }
+})();
+function saveGameSettings() {
+  try { localStorage.setItem('gs_settings', JSON.stringify(window.gameSettings)); } catch { /* private mode */ }
+}
 window.audioMuted  = localStorage.getItem('gs_audio_muted') === 'true';
 
 async function apiFetch(path, options = {}) {
@@ -72,7 +82,8 @@ class ParticleSystem {
   constructor() { this.particles = []; }
 
   emit(x, y, count, color, options = {}) {
-    const room = MAX_PARTICLES - this.particles.length;
+    const cap = window.gameSettings && window.gameSettings.lowfx ? 350 : MAX_PARTICLES;
+    const room = cap - this.particles.length;
     if (room <= 0) return;
     count = Math.min(count, room);
     for (let i = 0; i < count; i++) {

@@ -122,6 +122,7 @@ class BossRushGame extends GalacticGame {
     const dt = Math.min(now - this.lastTime, 50);
     this.lastTime = now;
     if (!this.gs) return;
+    this._pollGamepad();
     if (!this.gs.paused && !this.gs.gameOver) {
       this._brUpdate(dt);
     }

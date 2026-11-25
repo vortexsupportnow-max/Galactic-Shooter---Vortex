@@ -163,7 +163,7 @@ class HUD {
     ctx.fillText(`CHAIN ${gs.chain}`, rx, 32);
     if (gs.chain > 0) {
       const cbW = 70, cbX = rx - cbW, cbY = 36;
-      const left = Math.max(0, 1 - (gs.chainTimer || 0) / CHAIN_WINDOW);
+      const left = Math.max(0, 1 - (gs.chainTimer || 0) / (gs.chainWindow || CHAIN_WINDOW));
       ctx.fillStyle = 'rgba(255,255,255,0.1)';
       ctx.fillRect(cbX, cbY, cbW, 3);
       ctx.fillStyle = left < 0.3 && Math.sin(now * 0.03) > 0 ? '#ffffff' : mColor;
@@ -306,6 +306,26 @@ class HUD {
       effectsY += 12;
     }
     ctx.textBaseline = 'alphabetic';
+
+    // Perks taken this run (small icons under the medal value)
+    const perkIds = Object.keys(gs.perks || {});
+    if (perkIds.length) {
+      ctx.textAlign = 'right';
+      ctx.font = '9px sans-serif';
+      let px = W - 10;
+      for (const id of perkIds) {
+        const def = PERKS[id];
+        if (!def) continue;
+        ctx.fillText(def.icon, px, 66);
+        if (gs.perks[id] > 1) {
+          ctx.font = '4px "Press Start 2P"';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(String(gs.perks[id]), px + 2, 70);
+          ctx.font = '9px sans-serif';
+        }
+        px -= 14;
+      }
+    }
     ctx.restore();
   }
 

@@ -140,18 +140,27 @@ async function regenerateRecoveryCode() {
   }
 }
 
+const ACHIEVEMENT_DEFS = [
+  { id: 'score_1k',   name: 'First Blood',   desc: 'Score 1,000' },
+  { id: 'score_10k',  name: 'Gunslinger',     desc: 'Score 10,000' },
+  { id: 'score_100k', name: 'Space Legend',   desc: 'Score 100,000' },
+  { id: 'score_1m',   name: 'Milionario',     desc: 'Score 1,000,000' },
+  { id: 'wave_5',     name: 'Survivor',       desc: 'Reach Wave 5' },
+  { id: 'wave_10',    name: 'Veteran',        desc: 'Reach Wave 10' },
+  { id: 'wave_25',    name: 'Elite Pilot',    desc: 'Reach Wave 25' },
+  { id: 'wave_50',    name: 'Galactic Hero',  desc: 'Reach Wave 50' },
+  { id: 'kills_100',  name: 'Centurion',      desc: 'Kill 100 enemies' },
+  { id: 'kills_500',  name: 'Annihilator',    desc: 'Kill 500 enemies' },
+  { id: 'chain_50',   name: 'Concatenatore',  desc: 'Chain 50 in a run' },
+  { id: 'chain_150',  name: 'Reazione a Catena', desc: 'Chain 150 in a run' },
+  { id: 'perfect_5',  name: 'Intoccabile',    desc: '5 perfect waves in a run' },
+  { id: 'graze_100',  name: 'Pelo di Cometa', desc: '100 grazes in a run' },
+  { id: 'medals_50',  name: 'Collezionista',  desc: '50 medals in a run' },
+  { id: 'weapon_max', name: 'Arsenale Completo', desc: 'Max out your weapon' }
+];
+
 function renderAchievements(unlocked) {
-  const all = [
-    { id: 'score_1k',   name: 'First Blood',   desc: 'Score 1,000' },
-    { id: 'score_10k',  name: 'Gunslinger',     desc: 'Score 10,000' },
-    { id: 'score_100k', name: 'Space Legend',   desc: 'Score 100,000' },
-    { id: 'wave_5',     name: 'Survivor',       desc: 'Reach Wave 5' },
-    { id: 'wave_10',    name: 'Veteran',        desc: 'Reach Wave 10' },
-    { id: 'wave_25',    name: 'Elite Pilot',    desc: 'Reach Wave 25' },
-    { id: 'wave_50',    name: 'Galactic Hero',  desc: 'Reach Wave 50' },
-    { id: 'kills_100',  name: 'Centurion',      desc: 'Kill 100 enemies' },
-    { id: 'kills_500',  name: 'Annihilator',    desc: 'Kill 500 enemies' }
-  ];
+  const all = ACHIEVEMENT_DEFS;
   const unlockedIds = unlocked.map(a => a.achievement_id);
   return all.map(a => {
     const done = unlockedIds.includes(a.id);
@@ -200,16 +209,11 @@ function renderAbilityGrid(profile) {
     const card = document.createElement('div');
     card.className = `ability-card ${ability.rarity} ${owned ? '' : 'locked'}`;
 
-    const icon = GameAssets.drawAbilityIcon(ability.id, ability.rarity);
-    icon.className = 'ability-icon-canvas';
-    icon.width = 24; icon.height = 24;
-    icon.style.width = '32px'; icon.style.height = '32px';
-
+    // (innerHTML is built in one go: `+=` after appendChild would re-serialise
+    // the card and wipe a canvas icon, which is why the icons used to be blank)
     card.innerHTML = `
       <div class="ability-rarity-tag">${ability.rarity.toUpperCase()}</div>
-    `;
-    card.appendChild(icon);
-    card.innerHTML += `
+      <img class="ability-icon-img" alt="" style="width:32px;height:32px" src="${GameAssets.abilityIconURL(ability.id, ability.rarity)}">
       ${slotIdx >= 0 ? `<div class="ability-slot-badge">${SLOT_KEYS[slotIdx]}</div>` : ''}
       <div class="ability-name">${ability.name}</div>
       ${ability.season_exclusive ? `<div class="ability-season-tag">${ability.season_tag || 'SEASON PASS'}</div>` : ''}
@@ -531,12 +535,8 @@ async function openCrate() {
     const ability = ABILITIES[abilityId];
     const resultEl = document.getElementById('crate-result');
 
-    const icon = GameAssets.drawAbilityIcon(abilityId, rarity);
-    icon.style.width = '40px'; icon.style.height = '40px';
-
-    resultEl.innerHTML = `<div style="font-size:0.5rem;margin-bottom:0.5rem">${rarity.toUpperCase()}</div>`;
-    resultEl.appendChild(icon);
-    resultEl.innerHTML += `
+    resultEl.innerHTML = `<div style="font-size:0.5rem;margin-bottom:0.5rem">${rarity.toUpperCase()}</div>
+      <img class="ability-icon-img" alt="" style="width:40px;height:40px" src="${GameAssets.abilityIconURL(abilityId, rarity)}">
       <div style="font-size:0.6rem;margin-top:0.5rem">${ability ? ability.name : abilityId}</div>
       <div style="font-size:0.45rem;margin-top:0.3rem;color:#aaa">
         ${alreadyOwned ? `UPGRADED TO LV ${level}` : 'NEW ABILITY!'}
@@ -812,8 +812,9 @@ function initModeSelectHandlers() {
     const skinTrail       = getEquippedSkinTrail(equippedSkin);
     const skinStripes     = getEquippedSkinStripes(equippedSkin);
     const skinVisual      = getSkinVisual(equippedSkin);
+    const bestScore       = res.success ? (res.data.max_score || 0) : 0;
     showScreen('game');
-    startGame(buildLoadoutSlots(ownedAbilities), ownedAbilities, skinBoosts, skinColor, skinTrail, skinStripes, skinVisual);
+    startGame(buildLoadoutSlots(ownedAbilities), ownedAbilities, skinBoosts, skinColor, skinTrail, skinStripes, skinVisual, { bestScore });
   });
 
   document.getElementById('mode-btn-boss-rush').addEventListener('click', async () => {
@@ -838,6 +839,10 @@ function openSettings() {
   const valEl = document.getElementById('settings-volume-val');
   if (valEl) valEl.textContent = `${vol}%`;
   _updateMuteBtn();
+  const gsSet = window.gameSettings || {};
+  document.getElementById('settings-shake').checked = gsSet.shake !== false;
+  document.getElementById('settings-lowfx').checked = !!gsSet.lowfx;
+  document.getElementById('settings-hitbox').checked = !!gsSet.hitbox;
 }
 
 function _updateMuteBtn() {
@@ -847,6 +852,17 @@ function _updateMuteBtn() {
 
 function initSettingsHandlers() {
   document.getElementById('settings-close').addEventListener('click', () => {
+    document.getElementById('settings-overlay').classList.add('hidden');
+  });
+
+  for (const key of ['shake', 'lowfx', 'hitbox']) {
+    document.getElementById(`settings-${key}`).addEventListener('change', e => {
+      window.gameSettings[key] = e.target.checked;
+      saveGameSettings();
+    });
+  }
+  // Account deletion lives in settings; close the panel so the dialog is on top
+  document.getElementById('btn-delete-account').addEventListener('click', () => {
     document.getElementById('settings-overlay').classList.add('hidden');
   });
 
@@ -1231,9 +1247,7 @@ function openAbilityInfo(ability, ownedLevel) {
 
   const iconWrap = document.getElementById('ability-info-icon-wrap');
   iconWrap.innerHTML = '';
-  const icon = GameAssets.drawAbilityIcon(ability.id, ability.rarity);
-  icon.style.width = '56px'; icon.style.height = '56px';
-  iconWrap.appendChild(icon);
+  iconWrap.appendChild(GameAssets.abilityIconImg(ability.id, ability.rarity, 56));
 
   // Only an owned ability can be carried into a run
   const equipBtn = document.getElementById('ability-info-equip');

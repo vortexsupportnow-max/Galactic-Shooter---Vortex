@@ -16,6 +16,9 @@ A browser-based space shooter built with HTML5 Canvas + a Node.js/Express backen
 | Medals | Each medal caught in a row is worth more (100 → 10,000); missing one drops the value. |
 | Overdrive | Fill the bar, press **Space** / **OD**: 6s of double score, faster piercing shots and magnet pickups. |
 | Waves | Formations fly in and dive; reinforcements (kamikaze, sniper, shielder, minelayer, flanker) arrive during the wave; elite variants; random events (meteors, ambush, minefield…); a new sector look every 10 waves; boss every 5. |
+| Perks | After every boss pick 1 of 3 upgrades for the rest of the run (hull, damage, fire rate, magnet, cooldowns, Overdrive gain, longer chain, extra life…) — see `public/js/perks.js`. |
+| Controls | Keyboard, touch joystick, or a **gamepad** (stick/d-pad move, X Y B abilities, A Overdrive, RB precise, START pause). The game pauses itself when the tab loses focus. |
+| Settings | Screen shake, reduced effects for slow devices, always-visible hit-box; account deletion lives here too. |
 | Skins | Every skin is a different ship: hull, palette, engines and animated aura (`SKIN_VISUALS` in `public/js/skins.js`). |
 
 Everything is drawn from code (`public/js/visuals.js`) at 2× resolution — no image files.
