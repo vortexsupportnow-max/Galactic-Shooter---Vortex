@@ -27,8 +27,21 @@ class GalacticGame {
     // canvas is scaled up to fill the screen.
     this.canvas.width = 480 * RES;
     this.canvas.height = 700 * RES;
-    this.ctx = this.canvas.getContext('2d');
+    // With WebGL the 2D scene goes to an offscreen canvas and postfx.js builds
+    // the final frame (shader background, bloom, shockwaves). Otherwise the
+    // 2D renderer draws straight to the visible canvas.
+    this.useGL = typeof PostFX !== 'undefined' && PostFX.init(this.canvas);
+    if (this.useGL) {
+      this.sceneCanvas = document.createElement('canvas');
+      this.sceneCanvas.width = 480 * RES;
+      this.sceneCanvas.height = 700 * RES;
+      this.ctx = this.sceneCanvas.getContext('2d');
+    } else {
+      this.ctx = this.canvas.getContext('2d');
+    }
+    SpaceBackground.gpu = this.useGL;
     this.ctx.scale(RES, RES);
+    this._lastPresent = performance.now();
     this.hud = new HUD();
     this.animId = null;
     this.lastTime = 0;
@@ -1077,6 +1090,7 @@ class GalacticGame {
     this._shake(6, 220);
     gs.hitFlash = 1;
     gs.waveHit = true;
+    if (typeof PostFX !== 'undefined') PostFX.kick(1);
     if (gs.chain > 0) {
       this._cutChain(0.5);
       gs.floaters.add(gs.player.x, gs.player.y - 34, 'CHAIN ½', '#ff6688', 7);
@@ -1853,6 +1867,7 @@ class GalacticGame {
 
     if (gs.gameOver) this._renderGameOver(ctx, gs);
 
+    if (this.useGL) { this._present(); return; }
     ctx.drawImage(this.vignette, 0, 0);
     if (!(window.gameSettings && window.gameSettings.lowfx)) {
       ctx.save();
@@ -1860,6 +1875,15 @@ class GalacticGame {
       ctx.drawImage(this.scanlines, 0, 0);
       ctx.restore();
     }
+  }
+
+  // Hand the finished 2D scene to the WebGL compositor
+  _present() {
+    if (!this.useGL) return;
+    const now = performance.now();
+    const dt = Math.min(50, now - this._lastPresent);
+    this._lastPresent = now;
+    PostFX.present(this.sceneCanvas, this.background, dt, now);
   }
 
   _glowText(ctx, text, x, y, size, color, blur = 16) {

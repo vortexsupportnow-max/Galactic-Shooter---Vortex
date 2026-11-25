@@ -1985,6 +1985,8 @@ class Explosion {
     this.age = 0;
     this.duration = 420 + size * 160;
     this.dead = false;
+    // Big blasts bend the screen (WebGL renderer only)
+    if (size >= 1.3 && typeof PostFX !== 'undefined' && PostFX.active) PostFX.shock(x, y, size);
   }
 
   update(dt) {

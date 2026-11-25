@@ -127,6 +127,7 @@ class BossRushGame extends GalacticGame {
       this._brUpdate(dt);
     }
     this._brRender(now);
+    this._present();
     this.animId = requestAnimationFrame(this._boundLoop);
   }
 

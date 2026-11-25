@@ -22,7 +22,13 @@ A browser-based space shooter built with HTML5 Canvas + a Node.js/Express backen
 | Settings | Screen shake, reduced effects for slow devices, always-visible hit-box; account deletion lives here too. |
 | Skins | Every skin is a different ship: hull, palette, engines and animated aura (`SKIN_VISUALS` in `public/js/skins.js`). |
 
-Everything is drawn from code (`public/js/visuals.js`) at 2× resolution — no image files.
+Everything is drawn from code at 2× resolution — no image files. With WebGL,
+`public/js/postfx.js` renders the background with shaders (procedural nebulae with
+dust lanes, a galactic band, parallax stars, lit rotating planets with atmosphere
+and rings, distant suns) and post-processes the frame (bloom, shockwave distortion
+on big explosions, chromatic aberration on hits, vignette, grain). Without WebGL,
+or with `?nogl`, the 2D renderer in `public/js/visuals.js` takes over; "reduced
+effects" in Settings turns off the heavy passes.
 
 ---
 

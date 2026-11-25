@@ -109,6 +109,10 @@ function sectorForWave(wave) {
 class SpaceBackground {
   constructor() {
     this.W = 480; this.H = 700;
+    // With WebGL (postfx.js) the nebula, far stars and planets are drawn by
+    // shaders; this class then only animates them and draws the near stars.
+    this.gpu = !!SpaceBackground.gpu;
+    this.travel = 0;           // unbounded scroll distance, for the shaders
     this.sectorIndex = -1;
     this.layer = null;       // current nebula tile
     this.prevLayer = null;   // previous one, cross-fading out
@@ -181,11 +185,38 @@ class SpaceBackground {
 
   setSector(index, instant = false) {
     if (index === this.sectorIndex) return;
+    this.prevSector = instant ? null : this.sector;
+    this.prevSectorIndex = instant ? null : this.sectorIndex;
     this.sectorIndex = index;
     this.sector = SECTORS[index % SECTORS.length];
-    this.prevLayer = instant ? null : this.layer;
-    this.layer = this._buildNebula(this.sector);
+    if (!this.gpu) {
+      this.prevLayer = instant ? null : this.layer;
+      this.layer = this._buildNebula(this.sector);
+    }
     this.fade = instant ? 1 : 0;
+  }
+
+  // GPU planets carry only parameters; the composite shader draws them lit,
+  // rotating, with atmosphere and rings. Every few spawns it is a distant sun.
+  _spawnGpuBody() {
+    const s = this.sector;
+    const rgb = hex => { const { r, g, b } = FX.hexToRgb(hex); return [r / 255, g / 255, b / 255]; };
+    const sun = Math.random() < 0.22;
+    const type = sun ? 3 : [0, 1, 1, 2][Math.floor(Math.random() * 4)];
+    const r = sun ? 26 + Math.random() * 20 : 45 + Math.random() * 105;
+    let A, B;
+    if (sun) { A = rgb(s.star); B = [1, 1, 1]; }
+    else if (type === 0) { A = rgb(s.planet[0]); B = rgb(s.planet[1]); }
+    else if (type === 1) { A = rgb(s.planet[0]); B = rgb(s.nebula[1]); }
+    else { A = [0.42, 0.56, 0.31]; B = rgb('#1d5fa8'); }
+    this.planets.push({
+      x: 40 + Math.random() * 400, y: -r * 2.4, r,
+      speed: sun ? 0.06 : 0.1 + Math.random() * 0.14,
+      gpuType: type, gpuA: A, gpuB: B,
+      seed: Math.random() * 10, spin: (0.01 + Math.random() * 0.03) * (Math.random() < 0.5 ? -1 : 1),
+      ring: !sun && type !== 2 && Math.random() < 0.45, ringTilt: (Math.random() - 0.5) * 0.7,
+      size: r * 4.8
+    });
   }
 
   _spawnPlanet() {
@@ -246,6 +277,7 @@ class SpaceBackground {
     const dtF = dt / 16.667;
     const warpMul = 1 + this.warp * 9;
     this.scroll = (this.scroll + 0.18 * dtF * (1 + this.warp * 3)) % (this.H * 2);
+    this.travel += 0.18 * dtF * (1 + this.warp * 6);
     if (this.fade < 1) this.fade = Math.min(1, this.fade + dt / 1800);
 
     for (const s of this.stars) {
@@ -255,9 +287,9 @@ class SpaceBackground {
     }
 
     this.planetTimer -= dt;
-    if (this.planetTimer <= 0 && this.planets.length < 2) {
-      this._spawnPlanet();
-      this.planetTimer = 20000 + Math.random() * 25000;
+    if (this.planetTimer <= 0 && this.planets.length < (this.gpu ? 3 : 2)) {
+      if (this.gpu) this._spawnGpuBody(); else this._spawnPlanet();
+      this.planetTimer = (this.gpu ? 14000 : 20000) + Math.random() * 20000;
     }
     for (let i = this.planets.length - 1; i >= 0; i--) {
       const p = this.planets[i];
@@ -277,6 +309,7 @@ class SpaceBackground {
   }
 
   draw(ctx) {
+    if (this.gpu) { this._drawStars(ctx); return; }
     ctx.fillStyle = this.sector.base;
     ctx.fillRect(0, 0, this.W, this.H);
     if (this.prevLayer && this.fade < 1) this._drawLayer(ctx, this.prevLayer, 1);
@@ -288,6 +321,10 @@ class SpaceBackground {
       ctx.globalAlpha = 1;
     }
 
+    this._drawStars(ctx);
+  }
+
+  _drawStars(ctx) {
     // Stars: twinkle, and streak into lines while warping between waves
     const streak = this.warp > 0.05;
     for (const s of this.stars) {
