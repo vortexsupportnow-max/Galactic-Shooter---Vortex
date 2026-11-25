@@ -65,7 +65,7 @@ function showProfile() {
 
 async function loadProfile() {
   const content = document.getElementById('profile-content');
-  content.innerHTML = '<div class="loading">LOADING...</div>';
+  content.innerHTML = '<div class="loading">CARICAMENTO…</div>';
 
   const res = await apiFetch('/game/profile');
   if (!res.success) { content.innerHTML = `<div class="loading">ERROR: ${escapeHtml(res.error)}</div>`; return; }
@@ -180,7 +180,7 @@ function showCollection() {
 
 async function loadCollection() {
   const grid = document.getElementById('ability-grid');
-  grid.innerHTML = '<div class="loading">LOADING...</div>';
+  grid.innerHTML = '<div class="loading">CARICAMENTO…</div>';
 
   const res = await apiFetch('/game/profile');
   if (!res.success) { grid.innerHTML = '<div class="loading">ERROR</div>'; return; }
@@ -460,10 +460,10 @@ function updateCrateDisplay(type) {
   document.getElementById('selected-crate-icon').innerHTML = `<svg class="i" aria-hidden="true"><use href="#i-${def.svg}"/></svg>`;
   document.getElementById('selected-crate-name').textContent = def.name;
   document.getElementById('selected-crate-cost').textContent = freeCrates > 0 ? `FREE x${freeCrates} · ${def.cost} 💎` : `${def.cost} 💎`;
-  document.getElementById('open-crate-btn').textContent = freeCrates > 0 ? 'OPEN FREE CRATE' : 'OPEN CRATE';
+  document.getElementById('open-crate-btn').textContent = freeCrates > 0 ? 'APRI CASSA GRATIS' : 'APRI CASSA';
 
   const info = document.getElementById('crate-info');
-  const freeLine = freeCrates > 0 ? `<div class="rarity-chance legendary">★ FREE CRATES AVAILABLE: ${freeCrates}</div>` : '';
+  const freeLine = freeCrates > 0 ? `<div class="rarity-chance legendary">★ CASSE GRATIS: ${freeCrates}</div>` : '';
   const countLine = def.count > 1 ? `<div class="rarity-chance epic">★ GIVES ${def.count} ABILITIES PER OPEN</div>` : '';
   info.innerHTML = freeLine + countLine + def.odds.map(o => `<div class="rarity-chance ${o.cls}">${o.label}</div>`).join('');
 
@@ -516,7 +516,7 @@ async function openCrate() {
   const res = await resPromise;
 
   if (!res.success) {
-    btn.textContent = 'OPEN CRATE';
+    btn.textContent = 'APRI CASSA';
     btn.disabled = false;
     alert(res.error || 'Failed to open crate');
     return;
@@ -539,9 +539,9 @@ async function openCrate() {
       <img class="ability-icon-img" alt="" style="width:40px;height:40px" src="${GameAssets.abilityIconURL(abilityId, rarity)}">
       <div style="font-size:0.6rem;margin-top:0.5rem">${ability ? ability.name : abilityId}</div>
       <div style="font-size:0.45rem;margin-top:0.3rem;color:#aaa">
-        ${alreadyOwned ? `UPGRADED TO LV ${level}` : 'NEW ABILITY!'}
+        ${alreadyOwned ? `POTENZIATA A LV ${level}` : 'NUOVA ABILITÀ!'}
         ${usedFreeCrate ? '<br>FREE CRATE USED' : ''}
-        ${coinsCompensation ? `<br>COMPENSATION: ${formatNumber(coinsCompensation)} COINS` : ''}
+        ${coinsCompensation ? `<br>RIMBORSO: ${formatNumber(coinsCompensation)} MONETE` : ''}
       </div>
       <div class="crate-continue-hint">[ PREMI UN TASTO O CLICCA PER CONTINUARE ]</div>
     `;
@@ -563,7 +563,7 @@ async function openCrate() {
     });
   }
 
-  btn.textContent = 'OPEN CRATE';
+  btn.textContent = 'APRI CASSA';
   btn.disabled = false;
 
   // Update gem display (also hides the result)
@@ -597,7 +597,7 @@ async function loadLeaderboard() {
   }
 
   const tbody = document.getElementById('lb-tbody');
-  tbody.innerHTML = '<tr><td colspan="4" class="loading">LOADING...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" class="loading">CARICAMENTO…</td></tr>';
 
   const endpoint = _lbType === 'scores' ? '/leaderboard/scores' : '/leaderboard/waves';
   const res = await apiFetch(`${endpoint}?filter=${_lbFilter}`);
@@ -630,7 +630,7 @@ async function loadLeaderboard() {
 
 async function loadBossRushLeaderboard() {
   const tbody = document.getElementById('lb-tbody-boss-rush');
-  tbody.innerHTML = '<tr><td colspan="4" class="loading">LOADING...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" class="loading">CARICAMENTO…</td></tr>';
   const res = await apiFetch('/leaderboard/boss-rush');
   if (!res.success) {
     tbody.innerHTML = '<tr><td colspan="4" class="loading">ERROR</td></tr>';
@@ -714,7 +714,7 @@ function initMenuHandlers() {
 
 // ===== PATCH NOTES =====
 // Bump this when the notes in index.html change: it re-arms the "unread" dot.
-const PATCH_NOTES_VERSION = 'v2_8';
+const PATCH_NOTES_VERSION = 'v3_0';
 
 function patchNotesSeenKey() {
   return `gs_patchnotes_seen_${PATCH_NOTES_VERSION}`;
@@ -916,34 +916,34 @@ window.showMainMenu = showMainMenu;
 const TUTORIAL_SLIDES = [
   {
     emoji: '🚀',
-    title: 'WELCOME, PILOT!',
-    body: 'Welcome to Galactic Shooter — Vortex Edition!\nYou are the last defender of the galaxy.\nSurvive endless waves of alien enemies\nand become a legend!'
+    title: 'BENVENUTO, PILOTA!',
+    body: "Sei l'ultimo difensore della galassia.\nSopravvivi a ondate infinite di nemici,\nabbatti i boss e scala la classifica!"
   },
   {
     emoji: '🕹️',
-    title: 'CONTROLS',
-    body: 'MOVE: joystick or WASD / arrows (all directions)\nSHOOT: automatic\nSHIFT: precise movement, shows your hit-box\nQ / E / R: abilities (they recharge!)\nSPACE / OD: fire OVERDRIVE when the bar is full'
-  },
-  {
-    emoji: '👾',
-    title: 'ENEMIES & WAVES',
-    body: 'Formations fly in and dive at you.\nCollect P cores to power up your gun,\ngold medals for score (don\'t miss them!).\nKill fast to grow the CHAIN multiplier,\nbrush past bullets to GRAZE. Boss every 5 waves!'
+    title: 'COMANDI',
+    body: 'PC: WASD o frecce per muoverti, SHIFT per la precisione.\nTELEFONO: trascina il dito ovunque, la nave lo segue.\nSi spara da soli. Ti colpiscono solo al centro della nave.'
   },
   {
     emoji: '⚡',
-    title: 'ABILITIES & CRATES',
-    body: 'Open CRATES with 💎 Gems to unlock abilities.\nAssign abilities to slots Q / E / R\nfrom your COLLECTION.\nUse abilities in battle for massive power!\nUpgrade abilities with 🪙 Coins.'
+    title: 'ABILITÀ',
+    body: "Equipaggia 3 abilità da ABILITÀ: si usano con Q / E / R\n(o toccando gli slot) e si ricaricano col tempo.\nLe abilità extra raccolte vanno nello slot F: un solo uso."
   },
   {
-    emoji: '💰',
-    title: 'CURRENCY',
-    body: '🪙 COINS: earned from score — upgrade abilities.\n💎 GEMS: dropped by enemies & bosses.\n   Earn more by reaching higher waves!\n   Use gems to open crates and unlock\n   powerful new abilities.'
+    emoji: '🔺',
+    title: 'POTENZIAMENTI',
+    body: 'Raccogli i nuclei P per potenziare l\'arma (livelli 1-6).\nI potenziamenti caduti si attivano subito.\nDopo ogni boss scegli 1 UPGRADE su 3 per tutta la partita.'
+  },
+  {
+    emoji: '🏆',
+    title: 'PUNTEGGIO',
+    body: 'Uccidi in fretta per far salire la CATENA (fino a ×10).\nSfiora i proiettili (GRAZE) e raccogli le medaglie di fila.\nBarra piena: SPAZIO o tocca la barra per l\'OVERDRIVE ×2!'
   },
   {
     emoji: '🎁',
-    title: 'STARTER GIFT!',
-    body: "You're ready to fight!\nAs a welcome gift, here's your starter pack:",
-    reward: '🪙 1,000 COINS\n💎 10 GEMS'
+    title: 'REGALO DI BENVENUTO!',
+    body: 'Sei pronto a combattere!\nEcco il tuo pacchetto iniziale:',
+    reward: '🪙 1.000 MONETE\n💎 10 GEMME'
   }
 ];
 
@@ -1086,7 +1086,7 @@ function refreshWheelStatus() {
   const spinBtn = document.getElementById('wheel-spin-btn');
 
   if (buttonStatus) {
-    buttonStatus.textContent = availability.canSpin ? 'READY NOW' : `IN ${formatWheelCountdown(availability.remainingMs)}`;
+    buttonStatus.textContent = availability.canSpin ? 'PRONTA' : `IN ${formatWheelCountdown(availability.remainingMs)}`;
   }
 
   if (status) {
@@ -1097,7 +1097,7 @@ function refreshWheelStatus() {
 
   if (spinBtn && !_wheelSpinning) {
     spinBtn.disabled = !availability.canSpin;
-    spinBtn.textContent = availability.canSpin ? 'SPIN NOW' : `WAIT ${formatWheelCountdown(availability.remainingMs)}`;
+    spinBtn.textContent = availability.canSpin ? 'GIRA ORA' : `ATTENDI ${formatWheelCountdown(availability.remainingMs)}`;
   }
 }
 

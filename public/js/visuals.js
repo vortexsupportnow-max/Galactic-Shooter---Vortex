@@ -11,6 +11,15 @@
 
 const RES = 2; // backing-store pixels per logical pixel
 
+// Canvas text in the interface's typefaces. Sizes in the code were tuned for
+// the old pixel font, so they are scaled here: Orbitron for big titles,
+// Chakra Petch (semibold) for everything else.
+function gameFont(px) {
+  px = +px;
+  if (px >= 10) return `800 ${(px * 1.22).toFixed(1)}px Orbitron, "Chakra Petch", sans-serif`;
+  return `600 ${(px * 1.6).toFixed(1)}px "Chakra Petch", "Segoe UI", sans-serif`;
+}
+
 // ── Colour helpers ───────────────────────────────────────────────────────────
 const FX = (function () {
   function hexToRgb(hex) {
@@ -1031,7 +1040,7 @@ class FloatingText {
       const k = f.life / f.max;
       const pop = k > 0.85 ? 1 + (k - 0.85) * 2.5 : 1;
       ctx.globalAlpha = Math.min(1, k * 2);
-      ctx.font = `${Math.round(f.size * pop)}px "Press Start 2P"`;
+      ctx.font = gameFont(Math.round(f.size * pop));
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(0,0,0,0.85)';
       ctx.strokeText(f.text, f.x, f.y);

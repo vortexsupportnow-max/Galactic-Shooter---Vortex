@@ -88,7 +88,7 @@ class GalacticGame {
     if (this._slowMs > 3000) {
       this._autoLow = true;
       settings.lowfx = true;
-      if (gs.floaters) gs.floaters.add(240, 640, 'GRAFICA ALLEGGERITA PER LA FLUIDITÀ', '#9aa3c8', 5, 2200);
+      if (gs.floaters) gs.floaters.add(240, 560, 'GRAFICA ALLEGGERITA PER LA FLUIDITÀ', '#9aa3c8', 5, 2200);
     }
   }
 
@@ -303,7 +303,7 @@ class GalacticGame {
     ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
     this._glowText(ctx, 'SCEGLI UN UPGRADE', 240, 205, 11, '#ffdd33', 18);
-    ctx.font = '5px "Press Start 2P"';
+    ctx.font = gameFont(5);
     ctx.fillStyle = '#9aa3c8';
     ctx.fillText('Dura per tutta la partita · 1 2 3 / frecce + INVIO / tocca', 240, 226);
 
@@ -319,7 +319,7 @@ class GalacticGame {
       ctx.lineWidth = hot ? 2.5 : 1.2;
       ctx.strokeRect(r.x + 0.5, r.y + lift + 0.5, r.w - 1, r.h - 1);
 
-      ctx.font = '5px "Press Start 2P"';
+      ctx.font = gameFont(5);
       ctx.fillStyle = '#6f7aa8';
       ctx.fillText(String(i + 1), r.x + 10, r.y + lift + 12);
       const stacks = gs.perks[id] || 0;
@@ -329,10 +329,10 @@ class GalacticGame {
       ctx.fillStyle = '#ffffff';
       ctx.fillText(def.icon, r.x + r.w / 2, r.y + lift + 64);
 
-      ctx.font = '6px "Press Start 2P"';
+      ctx.font = gameFont(6);
       ctx.fillStyle = def.color;
       this._wrapText(ctx, def.name, r.x + r.w / 2, r.y + lift + 96, r.w - 16, 10);
-      ctx.font = '5px "Press Start 2P"';
+      ctx.font = gameFont(5);
       ctx.fillStyle = '#dfe6ff';
       this._wrapText(ctx, def.desc, r.x + r.w / 2, r.y + lift + 128, r.w - 16, 10);
     });
@@ -1986,10 +1986,10 @@ class GalacticGame {
       ctx.fillRect(0, 0, 480, 700);
       ctx.globalAlpha = 1;
       ctx.textAlign = 'center';
-      ctx.font = '20px "Press Start 2P"';
+      ctx.font = gameFont(20);
       ctx.fillStyle = '#ffffff';
       ctx.fillText('PAUSA', 240, 330);
-      ctx.font = '7px "Press Start 2P"';
+      ctx.font = gameFont(7);
       ctx.fillStyle = '#aab4d8';
       const lines = ['FRECCE / WASD  muovi', 'SHIFT  precisione', 'Q E R  abilità · F bonus', 'SPAZIO  overdrive', 'ESC  riprendi'];
       lines.forEach((l, i) => ctx.fillText(l, 240, 370 + i * 18));
@@ -2018,7 +2018,7 @@ class GalacticGame {
   }
 
   _glowText(ctx, text, x, y, size, color, blur = 16) {
-    ctx.font = `${size}px "Press Start 2P"`;
+    ctx.font = gameFont(size);
     ctx.fillStyle = color;
     ctx.shadowColor = color; ctx.shadowBlur = blur;
     ctx.fillText(text, x, y);
@@ -2060,7 +2060,7 @@ class GalacticGame {
       ctx.shadowBlur = 0;
       const scale = 1 + Math.sin(now * 0.008) * 0.05;
       this._glowText(ctx, gs.lastWaveBonus > 0 ? 'PERFETTO!' : 'WAVE CLEAR!', 240, 310, Math.round(18 * scale), gs.lastWaveBonus > 0 ? '#ffdd33' : '#00ffff', 25);
-      ctx.font = '8px "Press Start 2P"';
+      ctx.font = gameFont(8);
       ctx.fillStyle = '#ffff66';
       ctx.fillText(`+${gs.wave * 10} MONETE`, 240, 342);
       let y = 362;
@@ -2072,7 +2072,7 @@ class GalacticGame {
         ctx.fillStyle = '#ff9944';
         ctx.fillText(`CHAIN ${gs.chain}  ×${gs.mult.toFixed(2)}`, 240, y); y += 18;
       }
-      ctx.font = '6px "Press Start 2P"';
+      ctx.font = gameFont(6);
       ctx.fillStyle = '#9aa3c8';
       ctx.fillText(`WAVE ${gs.wave + 1} TRA ${(gs.waveCountdown / 1000).toFixed(1)}s`, 240, 414);
     }
@@ -2088,10 +2088,10 @@ class GalacticGame {
     ctx.textAlign = 'center';
     this._glowText(ctx, 'GAME OVER', 240, 200, 22, '#ff2244', 22);
 
-    ctx.font = '12px "Press Start 2P"';
+    ctx.font = gameFont(12);
     ctx.fillStyle = '#ffffff';
     ctx.fillText(formatNumber(gs.score), 240, 245);
-    ctx.font = '5px "Press Start 2P"';
+    ctx.font = gameFont(5);
     ctx.fillStyle = '#6f7aa8';
     ctx.fillText('PUNTEGGIO', 240, 258);
 
@@ -2104,7 +2104,7 @@ class GalacticGame {
       ['WAVE PERFETTE', gs.perfectWaves],
       ['UPGRADE', Object.values(gs.perks).reduce((a, b) => a + b, 0)]
     ];
-    ctx.font = '7px "Press Start 2P"';
+    ctx.font = gameFont(7);
     rows.forEach(([k, v], i) => {
       const y = 290 + i * 18;
       ctx.textAlign = 'left'; ctx.fillStyle = '#9aa3c8'; ctx.fillText(k, 120, y);
@@ -2125,7 +2125,7 @@ class GalacticGame {
       y += 26;
     }
     if (gs.newAchievements && gs.newAchievements.length) {
-      ctx.font = '6px "Press Start 2P"';
+      ctx.font = gameFont(6);
       ctx.fillStyle = '#ffcc33';
       gs.newAchievements.slice(0, 3).forEach((a, i) => ctx.fillText(`★ TROFEO: ${a.name.toUpperCase()}`, 240, y + 6 + i * 13));
       if (gs.newAchievements.length > 3) {
@@ -2133,7 +2133,7 @@ class GalacticGame {
         ctx.fillText(`+${gs.newAchievements.length - 3} ALTRI TROFEI (PROFILO)`, 240, y + 6 + 3 * 13);
       }
     }
-    ctx.font = '7px "Press Start 2P"';
+    ctx.font = gameFont(7);
     ctx.fillStyle = '#00ffff';
     ctx.fillText('TOCCA / PREMI UN TASTO', 240, 560);
     ctx.restore();

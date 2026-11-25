@@ -55,7 +55,7 @@ class HUD {
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.fillRect(hpX, hpY, hpBarW * hpRatio, 2);
     ctx.fillStyle = '#ffffff';
-    ctx.font = '5px "Press Start 2P"';
+    ctx.font = gameFont(5);
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
     ctx.fillText(`HP ${Math.ceil(Math.max(0, p.hp))}`, hpX + 3, hpY + hpBarH / 2 + 1);
@@ -68,7 +68,7 @@ class HUD {
 
     // Weapon level: 6 pips + core progress to the next level
     const wy = hpY + hpBarH + 20;
-    ctx.font = '5px "Press Start 2P"';
+    ctx.font = gameFont(5);
     ctx.fillStyle = '#ffb366';
     ctx.fillText('ARMA', hpX, wy + 5);
     const lvl = p.effectiveWeaponLevel;
@@ -94,10 +94,10 @@ class HUD {
     this.shownScore += (gs.score - this.shownScore) * 0.25;
     if (Math.abs(gs.score - this.shownScore) < 1) this.shownScore = gs.score;
     ctx.textAlign = 'center';
-    ctx.font = '6px "Press Start 2P"';
+    ctx.font = gameFont(6);
     ctx.fillStyle = '#00e5ff';
     ctx.fillText(`WAVE ${gs.wave}`, W / 2, 13);
-    ctx.font = '11px "Press Start 2P"';
+    ctx.font = gameFont(11);
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = gs.odTimer > 0 ? '#ffcc33' : '#00ffff';
     ctx.shadowBlur = 0;
@@ -121,7 +121,7 @@ class HUD {
       ctx.fillRect(bx, by, bossBarW * bossRatio, bossBarH);
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
       for (let t = 0.25; t < 1; t += 0.25) ctx.fillRect(bx + bossBarW * t, by, 1, bossBarH);
-      ctx.font = '5px "Press Start 2P"';
+      ctx.font = gameFont(5);
       ctx.fillStyle = '#ffffff';
       ctx.textBaseline = 'middle';
       const bossName = typeof gs.boss._bossName === 'function' ? gs.boss._bossName() : 'MOTHERSHIP';
@@ -152,14 +152,14 @@ class HUD {
     else if (gs.mult >= 2) mColor = '#ffdd00';
     else if (gs.mult > 1) mColor = '#ccff66';
     ctx.textAlign = 'right';
-    ctx.font = `${flash ? 13 : 12}px "Press Start 2P"`;
+    ctx.font = gameFont(flash ? 13 : 12);
     ctx.fillStyle = flash ? '#ffffff' : mColor;
     ctx.shadowColor = mColor;
     ctx.shadowBlur = 0;
     if (gs.mult > 1) FX.glow(ctx, rx - 30, 18, 26, mColor, 0.35);
     ctx.fillText(`×${gs.mult.toFixed(2)}`, rx, 22);
     ctx.shadowBlur = 0;
-    ctx.font = '5px "Press Start 2P"';
+    ctx.font = gameFont(5);
     ctx.fillStyle = '#c8d0ee';
     ctx.fillText(`CHAIN ${gs.chain}`, rx, 32);
     if (gs.chain > 0) {
@@ -191,7 +191,7 @@ class HUD {
     ctx.fillRect(odX, odY, odW * odRatio, odH);
     if (odFull || gs.odTimer > 0) FX.glow(ctx, odX + odW * odRatio, odY + 3, 14, '#ffcc33', 0.7 + Math.sin(now * 0.02) * 0.3);
     ctx.textAlign = 'center';
-    ctx.font = '5px "Press Start 2P"';
+    ctx.font = gameFont(5);
     ctx.fillStyle = odFull ? (Math.sin(now * 0.015) > 0 ? '#ffffff' : '#ffcc33') : gs.odTimer > 0 ? '#ffee66' : '#9a8a5a';
     ctx.fillText(gs.odTimer > 0 ? 'OVERDRIVE ×2' : odFull ? (typeof IS_TOUCH_DEVICE !== 'undefined' && IS_TOUCH_DEVICE ? 'OVERDRIVE PRONTO · TOCCA QUI' : 'OVERDRIVE PRONTO · SPAZIO') : 'OVERDRIVE', W / 2, odY - 4);
 
@@ -238,13 +238,13 @@ class HUD {
           ctx.fill();
           ctx.restore();
           ctx.textAlign = 'center';
-          ctx.font = '9px "Press Start 2P"';
+          ctx.font = gameFont(9);
           ctx.fillStyle = '#ffffff';
           ctx.fillText(Math.ceil(ability.cooldown / 1000), slotX + slotW / 2, slotY + 25);
         }
 
         ctx.textAlign = 'center';
-        ctx.font = '4px "Press Start 2P"';
+        ctx.font = gameFont(4);
         ctx.fillStyle = '#ffffff';
         const name = ability.name.length > 10 ? ability.name.slice(0, 10) : ability.name;
         ctx.fillText(name.toUpperCase(), slotX + slotW / 2, slotY + slotH - 14);
@@ -259,14 +259,14 @@ class HUD {
         ctx.strokeRect(slotX + 0.5, slotY + 0.5, slotW - 1, slotH - 1);
         ctx.restore();
         ctx.textAlign = 'center';
-        ctx.font = '5px "Press Start 2P"';
+        ctx.font = gameFont(5);
         ctx.fillStyle = '#3a3a5c';
         ctx.fillText('VUOTO', slotX + slotW / 2, slotY + slotH / 2 + 2);
       }
 
       ctx.fillStyle = ability ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.06)';
       ctx.fillRect(slotX, slotY, 12, 11);
-      ctx.font = '6px "Press Start 2P"';
+      ctx.font = gameFont(6);
       ctx.fillStyle = ability ? '#ffffff' : '#6a6a8c';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
@@ -290,7 +290,7 @@ class HUD {
         ctx.strokeRect(bx + 0.5, by + 0.5, bonusW - 1, bonusW - 1);
         ctx.drawImage(GameAssets.drawAbilityIcon(b.id, b.rarity), bx + 9, by + 7, 22, 22);
         ctx.textAlign = 'center';
-        ctx.font = '4px "Press Start 2P"';
+        ctx.font = gameFont(4);
         ctx.fillStyle = '#ffd23a';
         ctx.fillText('×1', bx + bonusW / 2, by + bonusW - 4);
       } else {
@@ -302,13 +302,13 @@ class HUD {
         ctx.strokeRect(bx + 0.5, by + 0.5, bonusW - 1, bonusW - 1);
         ctx.restore();
         ctx.textAlign = 'center';
-        ctx.font = '4px "Press Start 2P"';
+        ctx.font = gameFont(4);
         ctx.fillStyle = 'rgba(255,210,58,0.5)';
         ctx.fillText('BONUS', bx + bonusW / 2, by + bonusW / 2 + 2);
       }
       ctx.fillStyle = b ? 'rgba(255,210,58,0.3)' : 'rgba(255,210,58,0.1)';
       ctx.fillRect(bx, by, 11, 10);
-      ctx.font = '5px "Press Start 2P"';
+      ctx.font = gameFont(5);
       ctx.fillStyle = b ? '#ffffff' : '#8a7a4a';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
@@ -320,7 +320,7 @@ class HUD {
     let effectsY = 72;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.font = '5px "Press Start 2P"';
+    ctx.font = gameFont(5);
     const effects = [];
     if (p.shielded)       effects.push({ name: 'SCUDO',     color: '#00ffff', t: p.shieldTimer });
     if (p.overcharge)     effects.push({ name: 'OVERCHARGE',color: '#ffff00', t: p.overchargeTimer });
@@ -364,7 +364,7 @@ class HUD {
         if (!def) continue;
         ctx.fillText(def.icon, px, 66);
         if (gs.perks[id] > 1) {
-          ctx.font = '4px "Press Start 2P"';
+          ctx.font = gameFont(4);
           ctx.fillStyle = '#ffffff';
           ctx.fillText(String(gs.perks[id]), px + 2, 70);
           ctx.font = '9px sans-serif';

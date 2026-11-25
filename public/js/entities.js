@@ -216,7 +216,7 @@ class Pickup {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-1.2, -3, 2.4, 2.4);
       ctx.restore();
-      ctx.font = '5px "Press Start 2P"';
+      ctx.font = gameFont(5);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ffffff';
       ctx.fillText('P', this.x, this.y + 13);
@@ -1510,7 +1510,7 @@ class CosmicBoss {
     ctx.lineWidth = 1;
     ctx.strokeRect(bx, by, bw, bh);
     ctx.fillStyle = '#ffffff';
-    ctx.font = '7px "Press Start 2P"';
+    ctx.font = gameFont(7);
     ctx.textAlign = 'center';
     ctx.fillText(this._bossName() + (this.phase === 2 ? ' [PHASE 2]' : ''), 240, 27);
   }

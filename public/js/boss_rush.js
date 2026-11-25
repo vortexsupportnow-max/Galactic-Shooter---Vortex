@@ -432,7 +432,7 @@ class BossRushGame extends GalacticGame {
       ctx.save();
       ctx.globalAlpha = Math.min(1, gs.phaseChangeWarning / 600);
       ctx.fillStyle = '#ff0000';
-      ctx.font = '12px "Press Start 2P"';
+      ctx.font = gameFont(12);
       ctx.textAlign = 'center';
       ctx.fillText('⚠ PHASE 2 ⚠', 240, 180);
       ctx.restore();
@@ -451,10 +451,10 @@ class BossRushGame extends GalacticGame {
       const alpha = Math.min(1, gs.bossAnnounce / 1000);
       ctx.globalAlpha = alpha;
       ctx.fillStyle = '#ff4400';
-      ctx.font = '11px "Press Start 2P"';
+      ctx.font = gameFont(11);
       ctx.textAlign = 'center';
       ctx.fillText('⚠ BOSS INCOMING ⚠', 240, 300);
-      ctx.font = '9px "Press Start 2P"';
+      ctx.font = gameFont(9);
       ctx.fillStyle = '#ffffff';
       ctx.fillText(gs.bossAnnounceName, 240, 325);
       ctx.restore();
@@ -477,14 +477,14 @@ class BossRushGame extends GalacticGame {
     ctx.fillRect(0, 0, 480, 700);
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#00ff88';
-    ctx.font = '10px "Press Start 2P"';
+    ctx.font = gameFont(10);
     ctx.textAlign = 'center';
     ctx.fillText('BOSS DEFEATED!', 240, 260);
     ctx.fillStyle = '#ffff00';
-    ctx.font = '8px "Press Start 2P"';
+    ctx.font = gameFont(8);
     ctx.fillText(`BOSSES: ${gs.bossesDefeated} / ${BR_BOSS_SEQUENCE_LEN}`, 240, 290);
     ctx.fillStyle = '#00ffff';
-    ctx.font = '8px "Press Start 2P"';
+    ctx.font = gameFont(8);
     if (nextIdx < BR_BOSS_SEQUENCE_LEN) {
       ctx.fillText(`NEXT BOSS IN ${secs}s`, 240, 320);
       const nextName = (new (COSMIC_BOSSES[gs.bossOrder[nextIdx]])())._bossName();
@@ -498,7 +498,7 @@ class BossRushGame extends GalacticGame {
       const def = ABILITIES[lastAbility];
       if (def) {
         ctx.fillStyle = '#ff88ff';
-        ctx.font = '7px "Press Start 2P"';
+        ctx.font = gameFont(7);
         ctx.fillText(`✦ ABILITY EARNED: ${def.name}`, 240, 375);
       }
     }
@@ -527,7 +527,7 @@ class BossRushGame extends GalacticGame {
 
   _renderBossRushHUD(ctx, gs) {
     ctx.save();
-    ctx.font = '7px "Press Start 2P"';
+    ctx.font = gameFont(7);
 
     // Score
     ctx.fillStyle = '#ffffff';
@@ -571,7 +571,7 @@ class BossRushGame extends GalacticGame {
       ctx.strokeRect(sx, sy, 36, 22);
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
-      ctx.font = '6px "Press Start 2P"';
+      ctx.font = gameFont(6);
       ctx.fillText(slotNames[s], sx+18, sy+9);
       if (ab) {
         const def = ABILITIES[ab.id];
@@ -590,19 +590,19 @@ class BossRushGame extends GalacticGame {
 
     if (gs.allBossesCleared) {
       ctx.fillStyle = '#ffff00';
-      ctx.font = '14px "Press Start 2P"';
+      ctx.font = gameFont(14);
       ctx.shadowColor = '#ffff00'; ctx.shadowBlur = 16;
       ctx.fillText('ALL CLEAR!', 240, 230);
       ctx.shadowBlur = 0;
     } else {
       ctx.fillStyle = '#ff2244';
-      ctx.font = '14px "Press Start 2P"';
+      ctx.font = gameFont(14);
       ctx.shadowColor = '#ff2244'; ctx.shadowBlur = 12;
       ctx.fillText('GAME OVER', 240, 230);
       ctx.shadowBlur = 0;
     }
 
-    ctx.font = '8px "Press Start 2P"';
+    ctx.font = gameFont(8);
     ctx.fillStyle = '#ffffff';
     ctx.fillText(`BOSSES DEFEATED: ${gs.bossesDefeated}`, 240, 268);
     ctx.fillStyle = '#ffff00';
@@ -617,7 +617,7 @@ class BossRushGame extends GalacticGame {
     ctx.fillText(`TIME: ${mm}:${ss}`, 240, 334);
 
     ctx.fillStyle = '#aaaaaa';
-    ctx.font = '7px "Press Start 2P"';
+    ctx.font = gameFont(7);
     ctx.fillText('TAP/PRESS TO RETURN', 240, 360);
     ctx.restore();
   }

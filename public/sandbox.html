@@ -62,7 +62,7 @@
           <div class="title-line2">SHOOTER</div>
         </div>
         <div class="auth-form">
-          <h2 class="form-title">LOGIN</h2>
+          <h2 class="form-title">ACCESSO</h2>
           <div class="input-group">
             <input type="text" id="login-nickname" placeholder="NICKNAME" maxlength="20" autocomplete="off">
           </div>
@@ -70,8 +70,8 @@
             <input type="password" id="login-password" placeholder="PASSWORD" maxlength="50">
           </div>
           <div id="login-error" class="error-msg"></div>
-          <button class="btn btn-cyan" id="login-btn">ENTER</button>
-          <button class="btn btn-ghost" id="goto-register">NEW PILOT</button>
+          <button class="btn btn-cyan" id="login-btn">ENTRA</button>
+          <button class="btn btn-ghost" id="goto-register">NUOVO PILOTA</button>
           <button class="btn btn-ghost btn-tiny" id="goto-recover">PASSWORD DIMENTICATA?</button>
         </div>
       </div>
@@ -86,7 +86,7 @@
           <div class="title-line2">SHOOTER</div>
         </div>
         <div class="auth-form">
-          <h2 class="form-title">NEW PILOT</h2>
+          <h2 class="form-title">NUOVO PILOTA</h2>
           <div class="input-group">
             <input type="text" id="reg-nickname" placeholder="NICKNAME (3-20)" maxlength="20" autocomplete="off">
           </div>
@@ -94,7 +94,7 @@
             <input type="password" id="reg-password" placeholder="PASSWORD (8+)" maxlength="50">
           </div>
           <div id="reg-error" class="error-msg"></div>
-          <button class="btn btn-purple" id="register-btn">CREATE</button>
+          <button class="btn btn-purple" id="register-btn">CREA</button>
           <button class="btn btn-ghost" id="goto-login">BACK</button>
         </div>
       </div>
@@ -181,7 +181,7 @@
             <button class="btn btn-purple" id="btn-collection"><svg class="i" aria-hidden="true"><use href="#i-bolt"/></svg><span>ABILITÀ</span></button>
             <button class="btn btn-pink" id="btn-skins"><svg class="i" aria-hidden="true"><use href="#i-ship"/></svg><span>AURE</span></button>
             <button class="btn btn-yellow" id="btn-crates"><svg class="i" aria-hidden="true"><use href="#i-cart"/></svg><span>NEGOZIO</span></button>
-            <button class="btn btn-green" id="btn-wheel"><svg class="i" aria-hidden="true"><use href="#i-wheel"/></svg><span>RUOTA</span><span class="menu-btn-subtitle" id="wheel-button-status">LOADING...</span></button>
+            <button class="btn btn-green" id="btn-wheel"><svg class="i" aria-hidden="true"><use href="#i-wheel"/></svg><span>RUOTA</span><span class="menu-btn-subtitle" id="wheel-button-status">CARICAMENTO…</span></button>
             <button class="btn btn-blue" id="btn-leaderboard"><svg class="i" aria-hidden="true"><use href="#i-trophy"/></svg><span>CLASSIFICA</span></button>
             <button class="btn btn-ghost" id="btn-logout"><svg class="i" aria-hidden="true"><use href="#i-logout"/></svg><span>ESCI</span></button>
           </div>
@@ -236,57 +236,43 @@
       <div class="overlay-box patchnotes-box">
         <div class="patchnotes-header">
           <span class="patchnotes-badge">NOVITÀ</span>
-          <h3 class="patchnotes-title">📋 PATCH NOTES</h3>
+          <h3 class="patchnotes-title"><svg class="i" aria-hidden="true"><use href="#i-news"/></svg> NOVITÀ DELLA VERSIONE</h3>
         </div>
-        <div class="patchnotes-version">V2.8 · Nuovi Nemici</div>
-        <div class="patchnotes-date">🗓 Agosto 2026</div>
+        <div class="patchnotes-version">V3.0 · Rinascita</div>
+        <div class="patchnotes-date">Novembre 2026</div>
         <div class="patchnotes-list">
           <div class="patchnotes-section">
-            <div class="patchnotes-section-title"><span class="it-flag"></span> STAGIONE 2: ITALIA</div>
+            <div class="patchnotes-section-title">GAMEPLAY</div>
             <ul>
-              <li>Nuovo Space Pass tricolore, 30 tier fino a 50.000 Pulsar</li>
-              <li>70 missioni in 7 settimane: dal Gladiatore al Vulcano</li>
-              <li>Intro animata di presentazione al primo accesso</li>
-              <li>La Japan Season si chiude: i suoi premi restano a chi li ha presi</li>
+              <li>Movimento libero in tutte le direzioni; SHIFT per la precisione (si viene colpiti solo al centro della nave)</li>
+              <li>Arma a livelli 1→6 con i nuclei P, missili a ricerca ai livelli alti</li>
+              <li>Le 3 abilità equipaggiate si ricaricano; le abilità extra vanno nello slot bonus F</li>
+              <li>9 potenziamenti da raccogliere e un Upgrade a scelta dopo ogni boss</li>
+              <li>Catena fino a ×10, graze, medaglie e Overdrive per punteggi enormi</li>
             </ul>
           </div>
           <div class="patchnotes-section">
-            <div class="patchnotes-section-title">👾 NUOVI NEMICI</div>
+            <div class="patchnotes-section-title">NEMICI E BOSS</div>
             <ul>
-              <li>Sfrecciante: veloce e ondeggiante, difficile da colpire (da onda 2)</li>
-              <li>Divisore: se lo abbatti si spezza in due frammenti rapidi (da onda 4)</li>
-              <li>Kamikaze: si allinea a te e carica in picchiata (da onda 5)</li>
+              <li>Formazioni in volo con picchiate, 5 nuovi nemici e varianti élite</li>
+              <li>Eventi a sorpresa: meteore, imboscate, campi minati, nidi di cecchini</li>
+              <li>6 nuovi boss: Regina dell'Alveare, Gemelli Siderali, Leviatano, Nucleo Specchio, Stella Nera, Corazzata d'Assedio</li>
             </ul>
           </div>
           <div class="patchnotes-section">
-            <div class="patchnotes-section-title">⚔ NUOVE ABILITÀ</div>
+            <div class="patchnotes-section-title">GRAFICA</div>
             <ul>
-              <li>🌿 Pesto Genovese (RARE, tier 6): impantana i nemici al 40% di velocità e rallenta anche il loro fuoco</li>
-              <li>🍕 Pizza Gigante (EPIC, tier 14): danno ad area e nemici sbalzati indietro, boss compreso</li>
+              <li>Nebulose, pianeti illuminati e soli lontani in tempo reale; bloom e onde d'urto</li>
+              <li>Ogni aura è una nave diversa; navi e nemici modellati con luci e riflessi</li>
+              <li>Nuova interfaccia in vetro con icone e font rinnovati</li>
             </ul>
           </div>
           <div class="patchnotes-section">
-            <div class="patchnotes-section-title">🌟 NUOVE AURE</div>
+            <div class="patchnotes-section-title">TELEFONO E CONTROLLI</div>
             <ul>
-              <li><span class="it-flag"></span> Tricolore (EPIC, tier 9): bande verde-bianco-rosso sulla nave, +20% score</li>
-              <li>🏛️ Colosseo (LEGENDARY, tier 30): aura dorata, scudo iniziale e vita extra</li>
-            </ul>
-          </div>
-          <div class="patchnotes-section">
-            <div class="patchnotes-section-title">🔒 ACCOUNT &amp; SICUREZZA</div>
-            <ul>
-              <li>Nickname protetti: niente caratteri usabili per attacchi</li>
-              <li>Sessione scaduta: rientro automatico alla schermata di accesso</li>
-              <li>Nuovi controlli anti-cheat sui punteggi inviati</li>
-              <li>Classifiche più pulite: le run manomesse vengono rifiutate</li>
-            </ul>
-          </div>
-          <div class="patchnotes-section">
-            <div class="patchnotes-section-title">⚙ MIGLIORAMENTI</div>
-            <ul>
-              <li>Risolto il limite di richieste che poteva bloccare più giocatori insieme</li>
-              <li>Niente più doppie spese di gemme su click ravvicinati</li>
-              <li>Messaggi di errore più chiari e meno tecnici</li>
+              <li>Trascina il dito ovunque per muovere la nave; tocca gli slot per le abilità</li>
+              <li>Grafica che si alleggerisce da sola se il telefono fatica</li>
+              <li>Supporto controller e pausa automatica</li>
             </ul>
           </div>
         </div>
@@ -361,7 +347,7 @@
         <h2 class="screen-title">PROFILO</h2>
       </div>
       <div class="profile-content" id="profile-content">
-        <div class="loading">LOADING...</div>
+        <div class="loading">CARICAMENTO…</div>
       </div>
     </div>
 
@@ -382,7 +368,7 @@
         <button class="filter-btn legendary" data-rarity="legendary">LEGENDARY</button>
       </div>
       <div class="ability-grid" id="ability-grid">
-        <div class="loading">LOADING...</div>
+        <div class="loading">CARICAMENTO…</div>
       </div>
     </div>
 
@@ -402,7 +388,7 @@
       </div>
 
       <div class="skin-grid" id="skin-grid">
-        <div class="loading">LOADING...</div>
+        <div class="loading">CARICAMENTO…</div>
       </div>
     </div>
 
@@ -521,7 +507,7 @@
             </tr>
           </thead>
           <tbody id="lb-tbody">
-            <tr><td colspan="4" class="loading">LOADING...</td></tr>
+            <tr><td colspan="4" class="loading">CARICAMENTO…</td></tr>
           </tbody>
         </table>
         <table class="lb-table hidden" id="lb-table-boss-rush">
@@ -534,7 +520,7 @@
             </tr>
           </thead>
           <tbody id="lb-tbody-boss-rush">
-            <tr><td colspan="4" class="loading">LOADING...</td></tr>
+            <tr><td colspan="4" class="loading">CARICAMENTO…</td></tr>
           </tbody>
         </table>
       </div>
@@ -581,12 +567,12 @@
     <div id="wheel-overlay" class="overlay hidden">
       <div class="wheel-box">
         <h3>&#127922; FORTUNE WHEEL</h3>
-        <div class="wheel-status" id="wheel-status">LOADING...</div>
+        <div class="wheel-status" id="wheel-status">CARICAMENTO…</div>
         <div class="fortune-wheel-wrap">
           <div class="wheel-pointer"></div>
           <div class="fortune-wheel" id="fortune-wheel"></div>
         </div>
-        <button class="btn btn-yellow" id="wheel-spin-btn">SPIN NOW</button>
+        <button class="btn btn-yellow" id="wheel-spin-btn">GIRA ORA</button>
         <div class="wheel-result hidden" id="wheel-result"></div>
         <button class="btn btn-ghost" id="wheel-close">CLOSE</button>
       </div>
@@ -649,7 +635,7 @@
         </div>
       </div>
       <div class="pass-content" id="pass-content">
-        <div class="loading">LOADING...</div>
+        <div class="loading">CARICAMENTO…</div>
       </div>
     </div>
 
@@ -663,7 +649,7 @@
         </div>
       </div>
       <div class="missions-content" id="missions-content">
-        <div class="loading">LOADING...</div>
+        <div class="loading">CARICAMENTO…</div>
       </div>
     </div>
 

@@ -2378,3 +2378,6 @@ input, button, select, textarea { font-family: var(--ui-font); font-size-adjust:
    are tapped directly, so the joystick and the extra buttons are not needed */
 #joystick-zone, #touch-right { display: none; }
 #screen-game { touch-action: none; }
+.patchnotes-badge { color: #1a1200 !important; font-weight: 700; letter-spacing: 0.12em; text-shadow: none; }
+.patchnotes-title { display: inline-flex; align-items: center; gap: 0.5rem; }
+.patchnotes-title .i { color: var(--ui-accent); }
