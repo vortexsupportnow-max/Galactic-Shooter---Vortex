@@ -10,13 +10,14 @@ A browser-based space shooter built with HTML5 Canvas + a Node.js/Express backen
 |--------|--------------|
 | Movement | Free 2D (WASD / arrows / joystick). Hold **Shift** to move precisely and show the hit-box — only the ship's core can be hit. |
 | Weapon | Enemies drop **P cores**; collecting them raises the gun from level 1 to 6 (twin, spread, quad, missiles). Losing a life drops one level. |
-| Abilities | Equipped abilities (**Q / E / R**) recharge on a cooldown instead of being single-use. Picking up an equipped ability's power-up recharges it. |
+| Abilities | The 3 equipped abilities (**Q / E / R**) stay for the whole run and recharge on a cooldown. Rarely, an owned-but-not-equipped ability drops: it goes to the **bonus slot (F)** for one use. |
+| Power-ups | Common drops that act on pickup: boosted weapon, homing or piercing shots, shield, repair, ×2 score, magnet, ability recharge, Overdrive charge (`public/js/boosters.js`). |
 | Chain | Kills within 2.5s extend the chain; every 10 links add ×0.25 (max ×10). Getting hit halves it, letting an enemy escape costs a quarter. |
 | Graze | Bullets that brush past the ship score, refresh the chain and charge Overdrive. |
 | Medals | Each medal caught in a row is worth more (100 → 10,000); missing one drops the value. |
 | Overdrive | Fill the bar, press **Space** / **OD**: 6s of double score, faster piercing shots and magnet pickups. |
 | Waves | Formations fly in and dive; reinforcements (kamikaze, sniper, shielder, minelayer, flanker) arrive during the wave; elite variants; random events (meteors, ambush, minefield…); a new sector look every 10 waves; boss every 5. |
-| Perks | After every boss pick 1 of 3 upgrades for the rest of the run (hull, damage, fire rate, magnet, cooldowns, Overdrive gain, longer chain, extra life…) — see `public/js/perks.js`. |
+| Upgrades | After every boss pick 1 of 3 upgrades for the rest of the run (hull, damage, fire rate, magnet, cooldowns, Overdrive gain, longer chain, extra life…) — see `public/js/perks.js`. |
 | Controls | Keyboard, touch joystick, or a **gamepad** (stick/d-pad move, X Y B abilities, A Overdrive, RB precise, START pause). The game pauses itself when the tab loses focus. |
 | Settings | Screen shake, reduced effects for slow devices, always-visible hit-box; account deletion lives here too. |
 | Skins | Every skin is a different ship: hull, palette, engines and animated aura (`SKIN_VISUALS` in `public/js/skins.js`). |

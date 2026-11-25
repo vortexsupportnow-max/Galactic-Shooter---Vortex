@@ -833,6 +833,7 @@ html, body {
   touch-action: none;
 }
 .touch-ability-btn:active { background: rgba(170,0,255,0.5); transform: scale(0.92); }
+.touch-bonus-btn { border-color: #ffd23a; color: #ffd23a; background: rgba(255,210,58,0.12); }
 .touch-od-btn { border-color: #ffcc33; color: #ffcc33; background: rgba(255,190,40,0.15); }
 .touch-od-btn:active { background: rgba(255,190,40,0.45); }
 

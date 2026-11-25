@@ -196,8 +196,9 @@ class HUD {
 
     // ===== ABILITY SLOTS (bottom-center) =====
     const slotW = 56, slotH = 56, gap = 8;
+    const bonusW = 40;
     const slotY = 700 - slotH - 8;
-    const totalSlotW = slotW * 3 + gap * 2;
+    const totalSlotW = slotW * 3 + gap * 3 + bonusW;
     let slotX = (W - totalSlotW) / 2;
 
     for (let i = 0; i < 3; i++) {
@@ -274,6 +275,46 @@ class HUD {
       slotX += slotW + gap;
     }
 
+    // Bonus slot (F): an extra ability picked up mid-run, single use
+    {
+      const b = gs.bonusSlot;
+      const bx = slotX, by = slotY + slotH - bonusW;
+      if (b) {
+        const col = RARITY_COLORS[b.rarity] || '#ffd23a';
+        FX.glow(ctx, bx + bonusW / 2, by + bonusW / 2, 26 + (b.flash > 0 ? 8 : 0), col, 0.35 + Math.sin(now * 0.008) * 0.15);
+        ctx.fillStyle = 'rgba(2,4,14,0.9)';
+        ctx.fillRect(bx, by, bonusW, bonusW);
+        ctx.strokeStyle = '#ffd23a';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(bx + 0.5, by + 0.5, bonusW - 1, bonusW - 1);
+        ctx.drawImage(GameAssets.drawAbilityIcon(b.id, b.rarity), bx + 9, by + 7, 22, 22);
+        ctx.textAlign = 'center';
+        ctx.font = '4px "Press Start 2P"';
+        ctx.fillStyle = '#ffd23a';
+        ctx.fillText('×1', bx + bonusW / 2, by + bonusW - 4);
+      } else {
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(bx, by, bonusW, bonusW);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,210,58,0.35)';
+        ctx.setLineDash([3, 3]);
+        ctx.strokeRect(bx + 0.5, by + 0.5, bonusW - 1, bonusW - 1);
+        ctx.restore();
+        ctx.textAlign = 'center';
+        ctx.font = '4px "Press Start 2P"';
+        ctx.fillStyle = 'rgba(255,210,58,0.5)';
+        ctx.fillText('BONUS', bx + bonusW / 2, by + bonusW / 2 + 2);
+      }
+      ctx.fillStyle = b ? 'rgba(255,210,58,0.3)' : 'rgba(255,210,58,0.1)';
+      ctx.fillRect(bx, by, 11, 10);
+      ctx.font = '5px "Press Start 2P"';
+      ctx.fillStyle = b ? '#ffffff' : '#8a7a4a';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('F', bx + 3, by + 5.5);
+      ctx.textBaseline = 'alphabetic';
+    }
+
     // ===== Active effects (left, under the weapon) =====
     let effectsY = 72;
     ctx.textAlign = 'left';
@@ -282,10 +323,14 @@ class HUD {
     const effects = [];
     if (p.shielded)       effects.push({ name: 'SCUDO',     color: '#00ffff', t: p.shieldTimer });
     if (p.overcharge)     effects.push({ name: 'OVERCHARGE',color: '#ffff00', t: p.overchargeTimer });
-    if (p.tripleShot)     effects.push({ name: 'SURGE',     color: '#ffee66', t: p.tripleShotTimer });
+    if (p.tripleShot)     effects.push({ name: 'ARMA+',     color: '#ffee66', t: p.tripleShotTimer });
     if (p.spreadShot)     effects.push({ name: 'SPREAD',    color: '#88ffff', t: p.spreadShotTimer });
     if (p.rapidFire)      effects.push({ name: 'RAPID',     color: '#ff8800', t: p.rapidFireTimer });
     if (p.laserActive)    effects.push({ name: 'LASER',     color: '#ff3366', t: p.laserTimer });
+    if (p.homingShot)     effects.push({ name: 'RICERCA',   color: '#66ffcc', t: p.homingShotTimer });
+    if (p.piercing && !p.overdrive) effects.push({ name: 'PERFORANTI', color: '#aaccff', t: p.piercingTimer });
+    if (gs.scoreBoostTimer > 0) effects.push({ name: 'PUNTI ×2', color: '#ffdd33', t: gs.scoreBoostTimer });
+    if (gs.magnetTimer > 0)     effects.push({ name: 'CALAMITA', color: '#ff66aa', t: gs.magnetTimer });
     if (p.magneticField)  effects.push({ name: 'REFLECT',   color: '#44ffff', t: p.magneticFieldTimer });
     if (p.gravityWell)    effects.push({ name: `GRAVITY ${p.gravityCharge}`, color: '#cc88ff', t: p.gravityWellTimer });
     if (gs.timeSlow)      effects.push({ name: 'SLOW',      color: '#aa44ff', t: gs.timeSlowTimer });

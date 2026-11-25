@@ -16,7 +16,9 @@
 const CHAIN_WINDOW = 2500;
 const MEDAL_VALUES = [100, 200, 300, 500, 800, 1200, 1600, 2000, 3000, 4000, 5000, 6500, 8000, 10000];
 const OVERDRIVE_DURATION = 6000;
-const SLOT_KEY_MAP = { q: 0, Q: 0, '1': 0, e: 1, E: 1, '2': 1, r: 2, R: 2, '3': 2 };
+const SLOT_KEY_MAP = { q: 0, Q: 0, '1': 0, e: 1, E: 1, '2': 1, r: 2, R: 2, '3': 2, f: 3, F: 3, '4': 3 };
+const EXTRA_ABILITY_DROP = 0.02;  // owned-but-not-equipped ability → bonus slot
+const BOOSTER_DROP = 0.07;        // power-ups are the common drop
 
 class GalacticGame {
   constructor() {
@@ -109,6 +111,7 @@ class GalacticGame {
     if (edge(2)) this._useAbility(0);
     if (edge(3)) this._useAbility(1);
     if (edge(1)) this._useAbility(2);
+    if (edge(4)) this._useAbility(3);
     if (edge(0)) this._activateOverdrive();
   }
 
@@ -269,7 +272,7 @@ class GalacticGame {
     ctx.fillRect(0, 0, 480, 700);
     ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
-    this._glowText(ctx, 'SCEGLI UN POTENZIAMENTO', 240, 205, 11, '#ffdd33', 18);
+    this._glowText(ctx, 'SCEGLI UN UPGRADE', 240, 205, 11, '#ffdd33', 18);
     ctx.font = '5px "Press Start 2P"';
     ctx.fillStyle = '#9aa3c8';
     ctx.fillText('Dura per tutta la partita · 1 2 3 / frecce + INVIO / tocca', 240, 226);
@@ -408,12 +411,16 @@ class GalacticGame {
       explosions: [],
       powerUps: [],
       pickups: [],
+      boosters: [],
+      bonusSlot: null,          // extra ability picked up mid-run (key F), single use
+      scoreBoostTimer: 0, magnetTimer: 0,
       floaters: new FloatingText(),
       lightnings: [],
       slashes: [],
       boss: null,
       abilitySlots: abilitySlots.map(a => this._makeSlot(a)),
       unlockedAbilityIds: Object.keys(abilityLevels),
+      extraAbilityIds: Object.keys(abilityLevels).filter(id => !abilitySlots.some(a => a && a.id === id) && ABILITIES[id] && !ABILITIES[id].boss_rush_only),
       abilityLevels,
       skinBoosts: boosts,
       skinTrail: skinTrail || null,
@@ -523,7 +530,7 @@ class GalacticGame {
 
   _scoreMult() {
     const gs = this.gs;
-    return (gs.skinBoosts?.score_mult || 1) * (gs.odTimer > 0 ? 2 : 1);
+    return (gs.skinBoosts?.score_mult || 1) * (gs.odTimer > 0 ? 2 : 1) * (gs.scoreBoostTimer > 0 ? 2 : 1);
   }
 
   _recalcMult() {
@@ -601,6 +608,9 @@ class GalacticGame {
       }
       if (slot && slot.readyFlash > 0) slot.readyFlash -= dt;
     }
+
+    if (gs.scoreBoostTimer > 0) gs.scoreBoostTimer = Math.max(0, gs.scoreBoostTimer - dt);
+    if (gs.magnetTimer > 0) gs.magnetTimer = Math.max(0, gs.magnetTimer - dt);
 
     // Overdrive
     if (gs.odTimer > 0) {
@@ -1144,8 +1154,11 @@ class GalacticGame {
     if (Math.random() < enemy.gemDropChance) gs.gemsCollected++;
     if (enemy.elite || Math.random() < gs.coreChance) gs.pickups.push(new Pickup('core', enemy.x, enemy.y));
     if (enemy.elite || Math.random() < 0.18) gs.pickups.push(new Pickup('medal', enemy.x + 6, enemy.y));
-    if (Math.random() < 0.04 && gs.unlockedAbilityIds.length > 0) {
-      const abilityId = gs.unlockedAbilityIds[Math.floor(Math.random() * gs.unlockedAbilityIds.length)];
+    // Power-ups are common; extra abilities (owned, not equipped) are rare
+    if (Math.random() < (enemy.elite ? 0.3 : BOOSTER_DROP)) {
+      gs.boosters.push(new Booster(enemy.x, enemy.y, rollBooster()));
+    } else if (gs.extraAbilityIds.length && Math.random() < (enemy.elite ? 0.1 : EXTRA_ABILITY_DROP)) {
+      const abilityId = gs.extraAbilityIds[Math.floor(Math.random() * gs.extraAbilityIds.length)];
       gs.powerUps.push(new PowerUp(enemy.x, enemy.y, abilityId));
     }
   }
@@ -1180,11 +1193,10 @@ class GalacticGame {
 
     for (let i = 0; i < 6; i++) gs.pickups.push(new Pickup('medal', boss.x + (Math.random() - 0.5) * 60, boss.y));
     for (let i = 0; i < 4; i++) gs.pickups.push(new Pickup('core', boss.x + (Math.random() - 0.5) * 60, boss.y));
-    if (gs.unlockedAbilityIds.length > 0) {
-      for (let i = 0; i < 3; i++) {
-        const abilityId = gs.unlockedAbilityIds[Math.floor(Math.random() * gs.unlockedAbilityIds.length)];
-        gs.powerUps.push(new PowerUp(240 + (Math.random() - 0.5) * 120, 150 + i * 25, abilityId));
-      }
+    for (let i = 0; i < 2; i++) gs.boosters.push(new Booster(200 + i * 80, 160, rollBooster()));
+    if (gs.extraAbilityIds.length > 0) {
+      const abilityId = gs.extraAbilityIds[Math.floor(Math.random() * gs.extraAbilityIds.length)];
+      gs.powerUps.push(new PowerUp(240, 200, abilityId));
     }
 
     gs.boss = null;
@@ -1253,7 +1265,7 @@ class GalacticGame {
   _updatePickups(dt) {
     const gs = this.gs;
     const p = gs.player;
-    const magnetAll = gs.odTimer > 0 || gs.vacuum;
+    const magnetAll = gs.odTimer > 0 || gs.vacuum || gs.magnetTimer > 0;
     for (let i = gs.pickups.length - 1; i >= 0; i--) {
       const pk = gs.pickups[i];
       pk.update(dt, p, magnetAll, gs.magnetRange);
@@ -1299,20 +1311,32 @@ class GalacticGame {
       gs.powerUps.splice(i, 1);
       const def = ABILITIES[pu.abilityId];
       if (!def) continue;
-      const held = gs.abilitySlots.find(s => s && s.id === pu.abilityId);
       const empty = gs.abilitySlots.indexOf(null);
-      if (held) {
-        held.cooldown = 0; held.readyFlash = 400;
-        gs.floaters.add(p.x, p.y - 40, `${def.name.toUpperCase()} PRONTA`, RARITY_COLORS[def.rarity] || '#fff', 6, 900);
-      } else if (empty !== -1) {
+      if (empty !== -1) {
+        // Started a run with fewer than 3 equipped: it joins the loadout
         gs.abilitySlots[empty] = this._makeSlot({ ...def, level: gs.abilityLevels[pu.abilityId] || 1 });
         gs.floaters.add(p.x, p.y - 40, def.name.toUpperCase(), RARITY_COLORS[def.rarity] || '#fff', 6, 900);
       } else {
-        for (const s of gs.abilitySlots) if (s) s.cooldown = Math.max(0, s.cooldown - 3000);
-        gs.floaters.add(p.x, p.y - 40, 'RICARICA -3s', '#aaddff', 6, 900);
+        // Extra ability: one use, in the bonus slot (replaces what was there)
+        gs.bonusSlot = { ...def, level: gs.abilityLevels[pu.abilityId] || 1, flash: 600 };
+        gs.floaters.add(p.x, p.y - 40, `BONUS: ${def.name.toUpperCase()} [F]`, RARITY_COLORS[def.rarity] || '#fff', 6, 1200);
       }
       Sounds.powerup();
     }
+
+    // Power-ups: act on pickup
+    for (let i = gs.boosters.length - 1; i >= 0; i--) {
+      const b = gs.boosters[i];
+      b.update(dt);
+      if (b.dead) { gs.boosters.splice(i, 1); continue; }
+      if (!b.collides(p)) continue;
+      gs.boosters.splice(i, 1);
+      b.def.apply(gs);
+      gs.floaters.add(p.x, p.y - 40, b.def.name, b.def.color, 6, 1000);
+      gs.particles.emit(b.x, b.y, 14, b.def.color, { speed: 3, decay: 0.04 });
+      Sounds.powerup();
+    }
+    if (gs.bonusSlot && gs.bonusSlot.flash > 0) gs.bonusSlot.flash -= dt;
   }
 
   _updateTrail(dt) {
@@ -1590,6 +1614,16 @@ class GalacticGame {
   _useAbility(slot) {
     const gs = this.gs;
     if (!gs || gs.gameOver || gs.paused || gs.perkChoice) return;
+    if (slot === 3) {
+      const bonus = gs.bonusSlot;
+      if (!bonus || !ABILITIES[bonus.id]) return;
+      ABILITIES[bonus.id].apply(gs, bonus.level || 1);
+      gs.bonusSlot = null;
+      gs.abilitiesUsed++;
+      gs.floaters.add(gs.player.x, gs.player.y - 46, bonus.name.toUpperCase(), RARITY_COLORS[bonus.rarity] || '#ffffff', 6, 700);
+      Sounds.abilityUse();
+      return;
+    }
     const ability = gs.abilitySlots[slot];
     if (!ability) return;
     if (ability.cooldown > 0) { playTone(180, 'square', 0.06, 0.06); return; }
@@ -1724,6 +1758,7 @@ class GalacticGame {
 
     for (const pk of gs.pickups) pk.draw(ctx);
     for (const pu of gs.powerUps) pu.draw(ctx);
+    for (const b of gs.boosters) b.draw(ctx);
     for (const e of gs.enemies) e.draw(ctx);
     if (gs.boss) gs.boss.draw(ctx);
     if (gs.pizza) this._drawPizza(ctx, gs.pizza);
@@ -1811,7 +1846,7 @@ class GalacticGame {
       ctx.fillText('PAUSA', 240, 330);
       ctx.font = '7px "Press Start 2P"';
       ctx.fillStyle = '#aab4d8';
-      const lines = ['FRECCE / WASD  muovi', 'SHIFT  precisione', 'Q E R  abilità', 'SPAZIO  overdrive', 'ESC  riprendi'];
+      const lines = ['FRECCE / WASD  muovi', 'SHIFT  precisione', 'Q E R  abilità · F bonus', 'SPAZIO  overdrive', 'ESC  riprendi'];
       lines.forEach((l, i) => ctx.fillText(l, 240, 370 + i * 18));
       ctx.restore();
     }
@@ -1912,7 +1947,7 @@ class GalacticGame {
       ['GRAZE', gs.grazes],
       ['MEDAGLIE', gs.medalsCollected],
       ['WAVE PERFETTE', gs.perfectWaves],
-      ['POTENZIAMENTI', Object.values(gs.perks).reduce((a, b) => a + b, 0)]
+      ['UPGRADE', Object.values(gs.perks).reduce((a, b) => a + b, 0)]
     ];
     ctx.font = '7px "Press Start 2P"';
     rows.forEach(([k, v], i) => {
