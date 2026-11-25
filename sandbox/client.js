@@ -85,6 +85,10 @@
     return S.handle(method, path, body, { userId, nickname: NICK });
   }
 
+  // Embedded viewers (e.g. a shared page) refuse confirm() and return false,
+  // which would make "ARRENDITI" do nothing: in a frame, treat it as accepted.
+  try { if (window.top !== window) window.confirm = () => true; } catch { window.confirm = () => true; }
+
   // eslint-disable-next-line no-global-assign
   apiFetch = sandboxFetch;
   window.apiFetch = sandboxFetch;
