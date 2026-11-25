@@ -1,0 +1,35 @@
+# Backup for the Vercel cron in vercel.json: free-tier Supabase projects are
+# paused after about a week with no activity. This pings the site's health
+# endpoint (which runs a real database query) every two days.
+#
+# Setup: Settings → Secrets and variables → Actions → Variables → add
+#   SITE_URL = https://your-site.vercel.app   (no trailing slash)
+# Without it the job just reports that it is not configured.
+name: Keep database awake
+
+on:
+  schedule:
+    - cron: '41 5 */2 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/health
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          if [ -z "$SITE_URL" ]; then
+            echo "SITE_URL repository variable is not set; nothing to ping."
+            exit 0
+          fi
+          for i in 1 2 3; do
+            body=$(curl -fsS --max-time 30 "$SITE_URL/api/health") && break
+            echo "attempt $i failed, retrying"; sleep 20
+          done
+          echo "$body"
+          echo "$body" | grep -q '"status":"ok"' || { echo "::warning::database is not reachable"; exit 1; }
