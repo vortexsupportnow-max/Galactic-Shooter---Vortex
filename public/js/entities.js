@@ -1,6 +1,23 @@
 // ===== GAME ENTITIES =====
 
 // ===== BULLET =====
+// Player bolt core, cached per colour (a gradient per bullet per frame is slow)
+const _boltCache = new Map();
+function boltSprite(color) {
+  let c = _boltCache.get(color);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = 8; c.height = 32;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 32);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.6, color);
+  g.addColorStop(1, FX.rgba(color, 0));
+  x.fillStyle = g;
+  x.fillRect(0, 0, 8, 32);
+  _boltCache.set(color, c);
+  return c;
+}
 // style: 'bolt' (player), 'missile' (player homing), 'orb' / 'needle' / 'big' (enemy)
 class Bullet {
   constructor(x, y, vx, vy, damage, owner, options = {}) {
@@ -78,12 +95,7 @@ class Bullet {
         return;
       }
       FX.glow(ctx, this.x, this.y, 10, this.color, 0.75);
-      const g = ctx.createLinearGradient(this.x, this.y - 8, this.x, this.y + 8);
-      g.addColorStop(0, '#ffffff');
-      g.addColorStop(0.6, this.color);
-      g.addColorStop(1, FX.rgba(this.color, 0));
-      ctx.fillStyle = g;
-      ctx.fillRect(this.x - 1.6, this.y - 8, 3.2, 16);
+      ctx.drawImage(boltSprite(this.color), this.x - 1.6, this.y - 8, 3.2, 16);
       return;
     }
     if (s === 'needle') {
@@ -280,6 +292,7 @@ class Player {
     // Touch/joystick input
     this.joystickVX = 0;
     this.joystickVY = 0;
+    this.dragDX = 0; this.dragDY = 0;   // finger drag, applied 1:1 next update
 
     this.invulnTimer = 0;
     this.flashTimer = 0;
@@ -355,8 +368,10 @@ class Player {
     this.focus = !!keys['Shift'];
 
     const spd = this.effectiveSpeed;
-    const nx = Math.max(this.width / 2, Math.min(this.canvasW - this.width / 2, this.x + dx * spd * dtF));
-    const ny = Math.max(70, Math.min(this.canvasH - 26, this.y + dy * spd * dtF));
+    const drag = this.focus ? 0.5 : 1;
+    const nx = Math.max(this.width / 2, Math.min(this.canvasW - this.width / 2, this.x + dx * spd * dtF + this.dragDX * drag));
+    const ny = Math.max(70, Math.min(this.canvasH - 26, this.y + dy * spd * dtF + this.dragDY * drag));
+    this.dragDX = 0; this.dragDY = 0;
     this.vx = (nx - this.x) / Math.max(0.001, dtF);
     this.vy = (ny - this.y) / Math.max(0.001, dtF);
     this.x = nx; this.y = ny;
@@ -645,7 +660,7 @@ class Enemy {
     this.slowTimer = 0; this.slowMult = 1;
     this.knockTimer = 0; this.knockVy = 0;
     this.rotation = 0;
-    this.holdFireRate = 2000 + Math.random() * 4000;
+    this.holdFireRate = 3000 + Math.random() * 5000;
 
     // Formation flight (set by the wave spawner)
     this.slot = opts.slot || null;
@@ -795,7 +810,7 @@ class Enemy {
           this.lastShot += dt * speedMult;
           if (this.lastShot >= this.holdFireRate) {
             this.lastShot = 0;
-            this.holdFireRate = 2600 + Math.random() * 3500;
+            this.holdFireRate = 4200 + Math.random() * 4500;
             this._fireAimed(bullets, player, 3.4, this.damage * 0.8);
           }
         }

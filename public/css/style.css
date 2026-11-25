@@ -2373,3 +2373,8 @@ input, button, select, textarea { font-family: var(--ui-font); font-size-adjust:
 .crate-card-label, .skin-crate-card .crate-card-label { color: var(--ui-text); }
 .lb-table th { font-family: var(--ui-display); letter-spacing: 0.12em; background: rgba(6, 10, 26, 0.7); }
 .lb-table td { border-bottom-color: rgba(150, 210, 255, 0.08); }
+
+/* Touch: the ship follows a drag anywhere and the HUD slots / Overdrive bar
+   are tapped directly, so the joystick and the extra buttons are not needed */
+#joystick-zone, #touch-right { display: none; }
+#screen-game { touch-action: none; }

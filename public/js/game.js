@@ -23,24 +23,25 @@ const BOOSTER_DROP = 0.07;        // power-ups are the common drop
 class GalacticGame {
   constructor() {
     this.canvas = document.getElementById('gameCanvas');
-    // Render at 2× the logical 480×700 playfield: everything stays crisp when the
-    // canvas is scaled up to fill the screen.
-    this.canvas.width = 480 * RES;
-    this.canvas.height = 700 * RES;
+    // Render above the logical 480×700 playfield so everything stays crisp when
+    // scaled up: 2× on desktop, 1.5× on phones (about half the pixels to fill).
+    const SR = this.sceneRes = (typeof IS_TOUCH_DEVICE !== 'undefined' && IS_TOUCH_DEVICE) ? 1.5 : RES;
+    this.canvas.width = 480 * SR;
+    this.canvas.height = 700 * SR;
     // With WebGL the 2D scene goes to an offscreen canvas and postfx.js builds
     // the final frame (shader background, bloom, shockwaves). Otherwise the
     // 2D renderer draws straight to the visible canvas.
     this.useGL = typeof PostFX !== 'undefined' && PostFX.init(this.canvas);
     if (this.useGL) {
       this.sceneCanvas = document.createElement('canvas');
-      this.sceneCanvas.width = 480 * RES;
-      this.sceneCanvas.height = 700 * RES;
+      this.sceneCanvas.width = 480 * SR;
+      this.sceneCanvas.height = 700 * SR;
       this.ctx = this.sceneCanvas.getContext('2d');
     } else {
       this.ctx = this.canvas.getContext('2d');
     }
     SpaceBackground.gpu = this.useGL;
-    this.ctx.scale(RES, RES);
+    this.ctx.scale(SR, SR);
     this._lastPresent = performance.now();
     this.hud = new HUD();
     this.animId = null;
@@ -73,6 +74,22 @@ class GalacticGame {
     };
     document.addEventListener('visibilitychange', () => { if (document.hidden) autoPause(); });
     window.addEventListener('blur', autoPause);
+  }
+
+  // ── Adaptive quality ───────────────────────────────────────────────────────
+  // If the game runs under ~40 fps for 3 seconds of play, switch to reduced
+  // effects for the rest of the session (the saved setting is untouched).
+  _adaptQuality(frameMs) {
+    const gs = this.gs;
+    if (!gs || gs.paused || gs.gameOver || document.hidden || frameMs <= 0 || frameMs > 250) return;
+    const settings = window.gameSettings || {};
+    if (settings.lowfx || this._autoLow) return;
+    this._slowMs = Math.max(0, (this._slowMs || 0) + (frameMs > 25 ? frameMs : -frameMs * 0.5));
+    if (this._slowMs > 3000) {
+      this._autoLow = true;
+      settings.lowfx = true;
+      if (gs.floaters) gs.floaters.add(240, 640, 'GRAFICA ALLEGGERITA PER LA FLUIDITÀ', '#9aa3c8', 5, 2200);
+    }
   }
 
   // ── Gamepad ────────────────────────────────────────────────────────────────
@@ -334,7 +351,70 @@ class GalacticGame {
     if (line) ctx.fillText(line, cx, y);
   }
 
+  // Touch: drag anywhere on the play area and the ship follows the finger's
+  // movement 1:1 (relative, so the finger never covers the ship). Buttons keep
+  // their own touches.
+  _setupDrag() {
+    const area = document.getElementById('screen-game');
+    if (!area) return;
+    let id = null, lx = 0, ly = 0, sx = 0, sy = 0, st = 0;
+    const isControl = el => el && el.closest && el.closest('button, .touch-ability-btn, #btn-surrender');
+    area.addEventListener('touchstart', e => {
+      if (id !== null) return;
+      for (const t of e.changedTouches) {
+        if (isControl(t.target)) continue;
+        id = t.identifier; lx = sx = t.clientX; ly = sy = t.clientY; st = performance.now();
+        if (this.gs && !this.gs.gameOver && !this.gs.perkChoice) e.preventDefault();
+        break;
+      }
+    }, { passive: false });
+    area.addEventListener('touchmove', e => {
+      for (const t of e.changedTouches) {
+        if (t.identifier !== id) continue;
+        const gs = this.gs;
+        if (gs && gs.player && !gs.paused) {
+          const k = 480 / (this.canvas.getBoundingClientRect().width || 480) * 1.2;
+          gs.player.dragDX += (t.clientX - lx) * k;
+          gs.player.dragDY += (t.clientY - ly) * k;
+        }
+        lx = t.clientX; ly = t.clientY;
+        e.preventDefault();
+      }
+    }, { passive: false });
+    const end = e => {
+      for (const t of e.changedTouches) {
+        if (t.identifier !== id) continue;
+        id = null;
+        // A short tap (not a drag) on an ability slot or the Overdrive bar fires it
+        if (Math.hypot(t.clientX - sx, t.clientY - sy) < 14 && performance.now() - st < 350) this._hudTap(t.clientX, t.clientY);
+      }
+    };
+    area.addEventListener('touchend', end);
+    area.addEventListener('touchcancel', end);
+  }
+
+  // Hit-test a tap against the HUD: Q/E/R slots, bonus slot F, Overdrive bar.
+  // Rectangles mirror the layout in hud.js.
+  _hudTap(clientX, clientY) {
+    const gs = this.gs;
+    if (!gs || gs.gameOver || gs.paused || gs.perkChoice) return;
+    const r = this.canvas.getBoundingClientRect();
+    const x = (clientX - r.left) / r.width * 480;
+    const y = (clientY - r.top) / r.height * 700;
+    const pad = 6;
+    const slotW = 56, gap = 8, bonusW = 40, slotY = 700 - 56 - 8;
+    const x0 = (480 - (slotW * 3 + gap * 3 + bonusW)) / 2;
+    for (let i = 0; i < 3; i++) {
+      const sx = x0 + i * (slotW + gap);
+      if (x >= sx - pad && x <= sx + slotW + pad && y >= slotY - pad && y <= slotY + slotW + pad) { this._useAbility(i); return; }
+    }
+    const bx = x0 + 3 * (slotW + gap);
+    if (x >= bx - pad && x <= bx + bonusW + pad && y >= slotY + slotW - bonusW - pad && y <= slotY + slotW + pad) { this._useAbility(3); return; }
+    if (x >= 130 && x <= 350 && y >= 596 && y <= 630) this._activateOverdrive();
+  }
+
   _setupJoystick() {
+    this._setupDrag();
     const zone = document.getElementById('joystick-zone');
     const stick = document.getElementById('joystick-stick');
     if (!zone || !stick) return;
@@ -526,6 +606,8 @@ class GalacticGame {
 
     if (!this.gs) return;
     this._pollGamepad();
+    this._adaptQuality(now - (this._prevFrameAt || now));
+    this._prevFrameAt = now;
     if (this.gs.perkChoice && !this.gs.gameOver) {
       this.background.update(dt);
       this.gs.particles.update(dt);
@@ -1580,9 +1662,10 @@ class GalacticGame {
     return 'basic';
   }
 
-  // Boss HP follows the player's expected damage curve: ~10–15s per boss.
+  // Boss HP follows the player's measured damage curve: ~15–20s per boss
+  // with the weapon level a player typically has at that wave.
   _bossHp(wave) {
-    return Math.round(1900 * Math.pow(wave / 5, 1.35));
+    return Math.round(900 * Math.pow(wave / 5, 1.25));
   }
 
   _spawnBoss() {

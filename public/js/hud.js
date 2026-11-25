@@ -100,7 +100,7 @@ class HUD {
     ctx.font = '11px "Press Start 2P"';
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = gs.odTimer > 0 ? '#ffcc33' : '#00ffff';
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 0;
     ctx.fillText(Math.round(this.shownScore).toLocaleString('it-IT'), W / 2, 29);
     ctx.shadowBlur = 0;
 
@@ -155,7 +155,8 @@ class HUD {
     ctx.font = `${flash ? 13 : 12}px "Press Start 2P"`;
     ctx.fillStyle = flash ? '#ffffff' : mColor;
     ctx.shadowColor = mColor;
-    ctx.shadowBlur = gs.mult > 1 ? 10 : 0;
+    ctx.shadowBlur = 0;
+    if (gs.mult > 1) FX.glow(ctx, rx - 30, 18, 26, mColor, 0.35);
     ctx.fillText(`×${gs.mult.toFixed(2)}`, rx, 22);
     ctx.shadowBlur = 0;
     ctx.font = '5px "Press Start 2P"';
@@ -192,7 +193,7 @@ class HUD {
     ctx.textAlign = 'center';
     ctx.font = '5px "Press Start 2P"';
     ctx.fillStyle = odFull ? (Math.sin(now * 0.015) > 0 ? '#ffffff' : '#ffcc33') : gs.odTimer > 0 ? '#ffee66' : '#9a8a5a';
-    ctx.fillText(gs.odTimer > 0 ? 'OVERDRIVE ×2' : odFull ? 'OVERDRIVE PRONTO · SPAZIO' : 'OVERDRIVE', W / 2, odY - 4);
+    ctx.fillText(gs.odTimer > 0 ? 'OVERDRIVE ×2' : odFull ? (typeof IS_TOUCH_DEVICE !== 'undefined' && IS_TOUCH_DEVICE ? 'OVERDRIVE PRONTO · TOCCA QUI' : 'OVERDRIVE PRONTO · SPAZIO') : 'OVERDRIVE', W / 2, odY - 4);
 
     // ===== ABILITY SLOTS (bottom-center) =====
     const slotW = 56, slotH = 56, gap = 8;

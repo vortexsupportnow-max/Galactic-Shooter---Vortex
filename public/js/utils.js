@@ -298,3 +298,27 @@ const Sounds = {
   abilityUse() { playTone(330, 'sawtooth', 0.12, 0.3); },
   die() { playTone(100, 'sawtooth', 0.6, 0.4); }
 };
+
+// Each sound plays at most once per window: with 5 gun streams and dozens of
+// hits per second, unthrottled oscillators pile up and stutter the frame rate
+// on phones, and the extra copies are inaudible anyway.
+(function throttleSounds() {
+  const gap = { shoot: 70, hit: 45, explosion: 40, coin: 30, powerup: 80 };
+  const last = {};
+  for (const name of Object.keys(Sounds)) {
+    const fn = Sounds[name];
+    const min = gap[name] || 0;
+    if (!min) continue;
+    Sounds[name] = function (...args) {
+      const now = performance.now();
+      if (now - (last[name] || 0) < min) return;
+      last[name] = now;
+      return fn.apply(this, args);
+    };
+  }
+})();
+
+// Phones and tablets (touch-first): lighter rendering defaults
+const IS_TOUCH_DEVICE = (() => {
+  try { return window.matchMedia('(pointer: coarse)').matches; } catch (e) { return false; }
+})();
