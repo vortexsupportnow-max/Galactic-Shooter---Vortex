@@ -13,13 +13,16 @@
 //
 // Without WebGL (or if anything here fails) the game keeps its 2D renderer.
 
-const PostFX = (function () {
+// createSpaceRenderer(canvas, { width, height }) builds one renderer per canvas:
+// the game uses the 480×700 playfield; the menu backdrop a full-window one.
+function createSpaceRenderer(opts = {}) {
   let gl = null;
   let ready = false;
   let canvas = null;
-  const W = 480, H = 700;              // logical playfield
-  const NEB_W = 240, NEB_H = 350;      // nebula buffer
+  let W = opts.width || 480, H = opts.height || 700;   // logical size
+  let NEB_W = Math.round(W / 2), NEB_H = Math.round(H / 2);
   const BLM_W = 240, BLM_H = 350;      // bloom buffers
+  let emptyTex = null;                 // transparent stand-in when there is no scene
 
   let progNeb, progBright, progBlur, progComp;
   let sceneTex, nebFbo, brightFbo, blurFbo;
@@ -56,7 +59,7 @@ void main(){ vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }
 
   const NEB_FRAG = COMMON + `
 uniform vec2 uRes;
-uniform float uScroll, uTime, uMix, uSeed, uPSeed;
+uniform float uScroll, uTime, uMix, uSeed, uPSeed, uAsp;
 uniform vec3 uBase, uC0, uC1, uC2, uPBase, uP0, uP1, uP2;
 vec3 nebula(vec2 q, vec3 base, vec3 c0, vec3 c1, vec3 c2, float seed){
   vec2 w = q + vec2(seed * 7.13, seed * 3.71);
@@ -76,7 +79,7 @@ vec3 nebula(vec2 q, vec3 base, vec3 c0, vec3 c1, vec3 c2, float seed){
 }
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
-  vec2 q = (uv - 0.5) * vec2(${(W / H).toFixed(4)}, 1.0) * 2.6;
+  vec2 q = (uv - 0.5) * vec2(uAsp, 1.0) * 2.6;
   q.y += uScroll;
   vec3 a = nebula(q, uBase, uC0, uC1, uC2, uSeed);
   if (uMix < 0.999) a = mix(nebula(q, uPBase, uP0, uP1, uP2, uPSeed), a, uMix);
@@ -112,7 +115,7 @@ void main(){
 
   const COMP_FRAG = COMMON + `
 uniform sampler2D uScene, uNeb, uBloom;
-uniform vec2 uRes;
+uniform vec2 uRes, uLog;
 uniform float uTime, uAberr, uBloomK, uTravel, uFx;
 uniform vec4 uWaves[8];
 uniform vec4 uPl[3];   // x, y (logical px), radius, type (0 rock, 1 gas, 2 ocean, 3 sun; <0 none)
@@ -222,7 +225,7 @@ vec4 body(vec2 px, vec4 P, vec3 A, vec3 B, vec4 X){
 
 void main(){
   vec2 uv = vUv;
-  float asp = ${(W / H).toFixed(4)};
+  float asp = uLog.x / uLog.y;
 
   // shockwaves: refract the whole frame around expanding rings
   if (uFx > 0.5) {
@@ -237,7 +240,7 @@ void main(){
     }
   }
 
-  vec2 px = vec2(uv.x * ${W}.0, (1.0 - uv.y) * ${H}.0);
+  vec2 px = vec2(uv.x * uLog.x, (1.0 - uv.y) * uLog.y);
 
   // background: nebula + two parallax star layers + planets / suns
   vec3 bg = texture2D(uNeb, uv).rgb;
@@ -262,7 +265,7 @@ void main(){
 
   vec2 vq = vUv - 0.5;
   col *= 1.0 - dot(vq, vq) * 0.85;
-  col *= 0.965 + 0.035 * sin(vUv.y * ${H}.0 * 3.14159);
+  col *= 0.965 + 0.035 * sin(vUv.y * uLog.y * 3.14159);
   col += (hash(vUv * uRes + fract(uTime * 7.0) * 100.0) - 0.5) * 0.03 * uFx;
   gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);
 }
@@ -318,6 +321,8 @@ void main(){
     if (ready) return canvas === displayCanvas;
     try {
       if (new URLSearchParams(location.search).has('nogl')) return false;
+      if (opts.width) { W = opts.width; H = opts.height; }
+      NEB_W = Math.max(64, Math.round(W / 2)); NEB_H = Math.max(64, Math.round(H / 2));
       const ctx = displayCanvas.getContext('webgl', { alpha: false, antialias: false, premultipliedAlpha: true, preserveDrawingBuffer: false })
         || displayCanvas.getContext('experimental-webgl');
       if (!ctx) return false;
@@ -328,6 +333,7 @@ void main(){
       progBlur = program(BLUR_FRAG);
       progComp = program(COMP_FRAG);
       sceneTex = texture(0, 0);
+      emptyTex = texture(1, 1);
       nebFbo = fbo(NEB_W, NEB_H);
       brightFbo = fbo(BLM_W, BLM_H);
       blurFbo = fbo(BLM_W, BLM_H);
@@ -394,12 +400,15 @@ void main(){
     for (let i = waves.length - 1; i >= 0; i--) { waves[i].t += dt; if (waves[i].t >= waves[i].dur) waves.splice(i, 1); }
     aberr = Math.max(0, aberr - dt / 350);
 
-    // 1. scene upload
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, sceneTex);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sceneCanvas);
+    // 1. scene upload (the menu backdrop has none)
+    const sTex = sceneCanvas ? sceneTex : emptyTex;
+    if (sceneCanvas) {
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, sceneTex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sceneCanvas);
+    }
 
     // 2. nebula (every other frame on reduced effects)
     if (!lowfx || frame % 3 === 0 || frame < 3) {
@@ -407,6 +416,7 @@ void main(){
       const prev = palette(bg.prevSector || bg.sector);
       draw(nebFbo, progNeb, u => {
         gl.uniform2f(u.uRes, NEB_W, NEB_H);
+        gl.uniform1f(u.uAsp, W / H);
         gl.uniform1f(u.uScroll, bg.travel / H * 0.9);
         gl.uniform1f(u.uTime, t);
         gl.uniform1f(u.uMix, bg.fade);
@@ -418,9 +428,9 @@ void main(){
     }
 
     // 3. bloom
-    const bloomK = lowfx ? 0 : 0.85;
+    const bloomK = lowfx || !sceneCanvas ? 0 : 0.85;
     if (bloomK > 0) {
-      draw(brightFbo, progBright, u => bindTex(0, sceneTex, u.uTex));
+      draw(brightFbo, progBright, u => bindTex(0, sTex, u.uTex));
       draw(blurFbo, progBlur, u => { bindTex(0, brightFbo.tex, u.uTex); gl.uniform2f(u.uDir, 1.6 / BLM_W, 0); });
       draw(brightFbo, progBlur, u => { bindTex(0, blurFbo.tex, u.uTex); gl.uniform2f(u.uDir, 0, 1.6 / BLM_H); });
     }
@@ -442,10 +452,11 @@ void main(){
       wv.set([w.x, w.y, 0.02 + k * 0.42, w.amp * (1 - k)], i * 4);
     });
     draw(null, progComp, u => {
-      bindTex(0, sceneTex, u.uScene);
+      bindTex(0, sTex, u.uScene);
       bindTex(1, nebFbo.tex, u.uNeb);
       bindTex(2, brightFbo.tex, u.uBloom);
       gl.uniform2f(u.uRes, canvas.width, canvas.height);
+      gl.uniform2f(u.uLog, W, H);
       gl.uniform1f(u.uTime, t);
       gl.uniform1f(u.uAberr, lowfx ? 0 : aberr);
       gl.uniform1f(u.uBloomK, bloomK);
@@ -460,5 +471,17 @@ void main(){
     return true;
   }
 
-  return { init, present, shock, kick, get active() { return ready; } };
-})();
+  // Logical size change (menu backdrop on window resize)
+  function resize(w, h) {
+    W = w; H = h;
+    if (!ready) return;
+    NEB_W = Math.max(64, Math.round(W / 2)); NEB_H = Math.max(64, Math.round(H / 2));
+    gl.deleteTexture(nebFbo.tex); gl.deleteFramebuffer(nebFbo.f);
+    nebFbo = fbo(NEB_W, NEB_H);
+  }
+
+  return { init, present, shock, kick, resize, get active() { return ready; } };
+}
+
+// The game's renderer (480×700 playfield)
+const PostFX = createSpaceRenderer({ width: 480, height: 700 });

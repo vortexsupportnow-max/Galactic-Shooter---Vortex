@@ -35,12 +35,12 @@ const FX = (function () {
     return `rgba(${r},${g},${b},${a})`;
   }
 
-  function makeCanvas(w, h) {
+  function makeCanvas(w, h, scale = RES) {
     const c = document.createElement('canvas');
-    c.width = Math.ceil(w * RES);
-    c.height = Math.ceil(h * RES);
+    c.width = Math.ceil(w * scale);
+    c.height = Math.ceil(h * scale);
     const ctx = c.getContext('2d');
-    ctx.scale(RES, RES);
+    ctx.scale(scale, scale);
     c.logicalW = w; c.logicalH = h;
     return { c, ctx };
   }
@@ -107,8 +107,8 @@ function sectorForWave(wave) {
 }
 
 class SpaceBackground {
-  constructor() {
-    this.W = 480; this.H = 700;
+  constructor(W = 480, H = 700) {
+    this.W = W; this.H = H;
     // With WebGL (postfx.js) the nebula, far stars and planets are drawn by
     // shaders; this class then only animates them and draws the near stars.
     this.gpu = !!SpaceBackground.gpu;
@@ -210,7 +210,7 @@ class SpaceBackground {
     else if (type === 1) { A = rgb(s.planet[0]); B = rgb(s.nebula[1]); }
     else { A = [0.42, 0.56, 0.31]; B = rgb('#1d5fa8'); }
     this.planets.push({
-      x: 40 + Math.random() * 400, y: -r * 2.4, r,
+      x: 40 + Math.random() * (this.W - 80), y: -r * 2.4, r,
       speed: sun ? 0.06 : 0.1 + Math.random() * 0.14,
       gpuType: type, gpuA: A, gpuB: B,
       seed: Math.random() * 10, spin: (0.01 + Math.random() * 0.03) * (Math.random() < 0.5 ? -1 : 1),
@@ -341,6 +341,92 @@ class SpaceBackground {
     ctx.globalAlpha = 1;
   }
 }
+
+// ── Sprite forge: flat drawing → lit, bevelled "model" ───────────────────────
+// Each sprite is drawn flat (colours, panels, lights) at 4× and then shaded as
+// a solid object: a height field from the distance to the silhouette edge (a
+// rounded bevel) plus the drawing's own luminance (panel seams become grooves),
+// normals from that height, then diffuse + metallic specular + a cool fresnel
+// rim. Bright pixels (cockpits, eyes, lights) are kept as self-lit. The light
+// comes from the same direction that lights the planets in postfx.js.
+const SpriteForge = (function () {
+  const norm = v => { const n = Math.hypot(v[0], v[1], v[2]); return v.map(x => x / n); };
+  const L = norm([-0.55, -0.45, 0.72]);           // screen space, y down
+  const HV = norm([L[0], L[1], L[2] + 1]);         // Blinn half vector (viewer on +z)
+
+  function forge(src, o = {}) {
+    const w = src.width, h = src.height, N = w * h;
+    const out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    out.logicalW = src.logicalW; out.logicalH = src.logicalH;
+    const ctx = out.getContext('2d');
+    ctx.drawImage(src, 0, 0);
+    let img;
+    try { img = ctx.getImageData(0, 0, w, h); } catch (e) { return src; }
+    const d = img.data;
+    const A = new Float32Array(N), lum = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      A[i] = d[i * 4 + 3] / 255;
+      lum[i] = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255;
+    }
+
+    // Chamfer distance from the edge, inside the silhouette
+    const D = new Float32Array(N);
+    for (let i = 0; i < N; i++) D[i] = A[i] > 0.5 ? 1e6 : 0;
+    const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : D[y * w + x];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (!D[i]) continue;
+      D[i] = Math.min(D[i], at(x - 1, y) + 1, at(x, y - 1) + 1, at(x - 1, y - 1) + 1.414, at(x + 1, y - 1) + 1.414);
+    }
+    for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) {
+      const i = y * w + x;
+      if (!D[i]) continue;
+      D[i] = Math.min(D[i], at(x + 1, y) + 1, at(x, y + 1) + 1, at(x + 1, y + 1) + 1.414, at(x - 1, y + 1) + 1.414);
+    }
+
+    const bevel = o.bevel || Math.max(3, w * 0.075);
+    const emboss = o.emboss != null ? o.emboss : 0.35;
+    const Hf = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      if (A[i] <= 0.02) continue;
+      const t = Math.min(D[i] / bevel, 1);
+      Hf[i] = Math.sqrt(1 - (1 - t) * (1 - t)) + (lum[i] - 0.5) * emboss;
+    }
+
+    const k = bevel * (o.relief || 0.9);
+    const ambient = o.ambient != null ? o.ambient : 0.36;
+    const specK = o.spec != null ? o.spec : 0.85;
+    const shine = o.shine || 26;
+    const metal = o.metal != null ? o.metal : 0.55;
+    const rim = o.rim || [0.45, 0.72, 1.0];
+    const rimK = o.rimK != null ? o.rimK : 0.5;
+    const hAt = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : Hf[y * w + x];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (A[i] <= 0.02) continue;
+      const hx = (hAt(x + 1, y) - hAt(x - 1, y)) * 0.5 * k;
+      const hy = (hAt(x, y + 1) - hAt(x, y - 1)) * 0.5 * k;
+      let nx = -hx, ny = -hy, nz = 1;
+      const nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;
+      const diff = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]);
+      const spec = Math.pow(Math.max(0, nx * HV[0] + ny * HV[1] + nz * HV[2]), shine) * specK;
+      const fres = (1 - nz) * (1 - nz) * rimK;
+      const e = Math.min(1, Math.max(0, (lum[i] - 0.8) / 0.14)) * (o.emissive === false ? 0 : 1);
+      const j = i * 4;
+      for (let c = 0; c < 3; c++) {
+        const alb = d[j + c] / 255;
+        let v = alb * (ambient + diff * 0.95) + spec * (metal * alb + (1 - metal)) + fres * rim[c];
+        v = v * (1 - e) + Math.min(1, alb * 1.08) * e;
+        d[j + c] = Math.max(0, Math.min(255, v * 255));
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return out;
+  }
+
+  return { forge };
+})();
 
 // ── Ships ────────────────────────────────────────────────────────────────────
 // A "visual" describes a ship: hull shape, palette, engine colour and aura.
@@ -473,11 +559,23 @@ const ShipRenderer = (function () {
     ctx.lineWidth = 1.2;
     ctx.strokeStyle = FX.shade(p.secondary, -0.6);
     ctx.stroke();
-    // Spine highlight
+    // Spine highlight + panel seams, vents and running lights (they turn into
+    // grooves and self-lit points once the sprite is forged)
     ctx.save();
     ctx.clip();
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
     ctx.fillRect(-1.5, -22, 3, 40);
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    for (const y of [-11, -1, 8]) { ctx.moveTo(-20, y); ctx.lineTo(20, y + 3); }
+    ctx.moveTo(-3.2, -20); ctx.lineTo(-3.2, 18);
+    ctx.moveTo(3.2, -20); ctx.lineTo(3.2, 18);
+    ctx.moveTo(-6, 2); ctx.lineTo(-17, 13);
+    ctx.moveTo(6, 2); ctx.lineTo(17, 13);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    for (const x of [-9, 7]) for (let k = 0; k < 3; k++) ctx.fillRect(x, 4 + k * 1.6, 2.2, 0.7);
     ctx.restore();
   }
 
@@ -524,12 +622,13 @@ const ShipRenderer = (function () {
     let s = cache.get(k);
     if (s) return s;
     const hull = HULLS[v.hull] || HULLS.arrow;
-    const { c, ctx } = FX.makeCanvas(SIZE, SIZE);
+    const { c, ctx } = FX.makeCanvas(SIZE, SIZE, RES * 2);
     ctx.translate(SIZE / 2, SIZE / 2);
     hull.draw(ctx, v);
     if (v.stripes && v.stripes.length) stripesOverlay(ctx, v.stripes, hull.draw, v);
-    cache.set(k, c);
-    return c;
+    const forged = SpriteForge.forge(c, { bevel: 7, metal: 0.6, shine: 30 });
+    cache.set(k, forged);
+    return forged;
   }
 
   function engines(visual) {
@@ -701,11 +800,11 @@ const ShipRenderer = (function () {
 
 // ── Enemy sprites ────────────────────────────────────────────────────────────
 const EnemySprites = (function () {
-  function mk(size, fn) {
-    const { c, ctx } = FX.makeCanvas(size, size);
+  function mk(size, fn, material) {
+    const { c, ctx } = FX.makeCanvas(size, size, RES * 2);
     ctx.translate(size / 2, size / 2);
     fn(ctx, size / 2);
-    return c;
+    return SpriteForge.forge(c, { bevel: Math.max(5, size * 0.22), ...(material || {}) });
   }
 
   function body(ctx, pts, c1, c2, outline) {
@@ -722,6 +821,17 @@ const EnemySprites = (function () {
     ctx.lineWidth = 1.1;
     ctx.strokeStyle = outline;
     ctx.stroke();
+    // armour seams (grooves once forged)
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 0.45;
+    ctx.beginPath();
+    ctx.moveTo(0, -16); ctx.lineTo(0, 16);
+    ctx.moveTo(-16, -3); ctx.lineTo(16, -3);
+    ctx.moveTo(-12, 6); ctx.lineTo(-4, 12); ctx.moveTo(12, 6); ctx.lineTo(4, 12);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function eye(ctx, x, y, r, color) {
@@ -876,7 +986,7 @@ const EnemySprites = (function () {
       ctx.arc(Math.sin(seed + i * 3) * 8, Math.cos(seed * 2 + i * 2) * 8, 2 + (i % 2) * 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
-  }));
+  }, { metal: 0, spec: 0.12, shine: 8, emissive: false, rimK: 0.25, emboss: 0.7 }));
 
   // Classic boss: a big magenta mothership
   S.boss = mk(84, (ctx) => {
