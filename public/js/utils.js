@@ -9,6 +9,16 @@ function setNickname(n) { localStorage.setItem('gs_nickname', n); }
 
 // ===== AUDIO SETTINGS =====
 window.audioVolume = parseFloat(localStorage.getItem('gs_audio_volume') || '1.0');
+
+// ── Game settings (per device) ──
+const DEFAULT_GAME_SETTINGS = { shake: true, lowfx: false, hitbox: false };
+window.gameSettings = (() => {
+  try { return { ...DEFAULT_GAME_SETTINGS, ...JSON.parse(localStorage.getItem('gs_settings') || '{}') }; }
+  catch { return { ...DEFAULT_GAME_SETTINGS }; }
+})();
+function saveGameSettings() {
+  try { localStorage.setItem('gs_settings', JSON.stringify(window.gameSettings)); } catch { /* private mode */ }
+}
 window.audioMuted  = localStorage.getItem('gs_audio_muted') === 'true';
 
 async function apiFetch(path, options = {}) {
@@ -64,12 +74,22 @@ function formatNumber(n) {
 }
 
 // ===== PARTICLE SYSTEM =====
+// Additive sparks. Time-based (callers may pass dt; without it a 60fps frame is
+// assumed) and capped so a screen-clearing ability can't tank the frame rate.
+const MAX_PARTICLES = 1400;
+
 class ParticleSystem {
   constructor() { this.particles = []; }
 
   emit(x, y, count, color, options = {}) {
+    const cap = window.gameSettings && window.gameSettings.lowfx ? 350 : MAX_PARTICLES;
+    const room = cap - this.particles.length;
+    if (room <= 0) return;
+    count = Math.min(count, room);
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
+      const angle = options.angle != null
+        ? options.angle + (Math.random() - 0.5) * (options.spread || 0.6)
+        : Math.random() * Math.PI * 2;
       const speed = (options.speed || 2) * (0.5 + Math.random());
       this.particles.push({
         x, y,
@@ -78,31 +98,41 @@ class ParticleSystem {
         life: 1,
         decay: options.decay || (0.02 + Math.random() * 0.02),
         color,
-        size: options.size || (2 + Math.random() * 3),
-        gravity: options.gravity || 0
+        size: options.size || (1.5 + Math.random() * 2.5),
+        gravity: options.gravity || 0,
+        drag: options.drag || 0.985
       });
     }
   }
 
-  update() {
+  update(dt = 16.667) {
+    const f = Math.min(3, dt / 16.667);
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += p.gravity;
-      p.life -= p.decay;
-      if (p.life <= 0) this.particles.splice(i, 1);
+      p.x += p.vx * f;
+      p.y += p.vy * f;
+      p.vx *= Math.pow(p.drag, f);
+      p.vy = p.vy * Math.pow(p.drag, f) + p.gravity * f;
+      p.life -= p.decay * f;
+      if (p.life <= 0) {
+        // swap-remove: order doesn't matter for particles
+        this.particles[i] = this.particles[this.particles.length - 1];
+        this.particles.pop();
+      }
     }
   }
 
   draw(ctx) {
+    if (!this.particles.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
     for (const p of this.particles) {
-      ctx.save();
       ctx.globalAlpha = p.life;
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-      ctx.restore();
+      const s = p.size * (0.4 + p.life * 0.6);
+      ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
     }
+    ctx.restore();
   }
 }
 
@@ -268,3 +298,27 @@ const Sounds = {
   abilityUse() { playTone(330, 'sawtooth', 0.12, 0.3); },
   die() { playTone(100, 'sawtooth', 0.6, 0.4); }
 };
+
+// Each sound plays at most once per window: with 5 gun streams and dozens of
+// hits per second, unthrottled oscillators pile up and stutter the frame rate
+// on phones, and the extra copies are inaudible anyway.
+(function throttleSounds() {
+  const gap = { shoot: 70, hit: 45, explosion: 40, coin: 30, powerup: 80 };
+  const last = {};
+  for (const name of Object.keys(Sounds)) {
+    const fn = Sounds[name];
+    const min = gap[name] || 0;
+    if (!min) continue;
+    Sounds[name] = function (...args) {
+      const now = performance.now();
+      if (now - (last[name] || 0) < min) return;
+      last[name] = now;
+      return fn.apply(this, args);
+    };
+  }
+})();
+
+// Phones and tablets (touch-first): lighter rendering defaults
+const IS_TOUCH_DEVICE = (() => {
+  try { return window.matchMedia('(pointer: coarse)').matches; } catch (e) { return false; }
+})();

@@ -15,7 +15,7 @@ class BossRushGame extends GalacticGame {
     this._brMode = true;
   }
 
-  startBossRush(skinBoosts = null, skinColor = null, skinTrail = null, skinStripes = null) {
+  startBossRush(skinBoosts = null, skinColor = null, skinTrail = null, skinStripes = null, skinVisual = null) {
     if (this.animId) cancelAnimationFrame(this.animId);
 
     const player = new Player(480, 700);
@@ -25,6 +25,7 @@ class BossRushGame extends GalacticGame {
     if (boosts.starting_shield) { player.shielded = true; player.shieldTimer = 5000; }
     player.skinColor = skinColor || null;
     player.skinStripes = skinStripes || null;
+    player.visual = skinVisual || null;
 
     // Build random boss order
     const order = _shuffleArray([0, 1, 2, 3, 4]);
@@ -121,10 +122,12 @@ class BossRushGame extends GalacticGame {
     const dt = Math.min(now - this.lastTime, 50);
     this.lastTime = now;
     if (!this.gs) return;
+    this._pollGamepad();
     if (!this.gs.paused && !this.gs.gameOver) {
       this._brUpdate(dt);
     }
     this._brRender(now);
+    this._present();
     this.animId = requestAnimationFrame(this._boundLoop);
   }
 
@@ -154,8 +157,12 @@ class BossRushGame extends GalacticGame {
     const spd = (p.speedBoost ? 5.5 : 3.5) * dt/16.667;
     if (this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A']) p.x -= spd;
     if (this.keys['ArrowRight'] || this.keys['d'] || this.keys['D']) p.x += spd;
+    if (this.keys['ArrowUp'] || this.keys['w'] || this.keys['W']) p.y -= spd;
+    if (this.keys['ArrowDown'] || this.keys['s'] || this.keys['S']) p.y += spd;
     if (p.joystickVX) p.x += p.joystickVX * spd;
+    if (p.joystickVY) p.y += p.joystickVY * spd;
     p.x = Math.max(18, Math.min(462, p.x));
+    p.y = Math.max(300, Math.min(674, p.y));
 
     // Update timers
     if (p.shieldTimer > 0) { p.shieldTimer -= dt; if (p.shieldTimer <= 0) p.shielded = false; }
@@ -425,7 +432,7 @@ class BossRushGame extends GalacticGame {
       ctx.save();
       ctx.globalAlpha = Math.min(1, gs.phaseChangeWarning / 600);
       ctx.fillStyle = '#ff0000';
-      ctx.font = '12px "Press Start 2P"';
+      ctx.font = gameFont(12);
       ctx.textAlign = 'center';
       ctx.fillText('⚠ PHASE 2 ⚠', 240, 180);
       ctx.restore();
@@ -444,10 +451,10 @@ class BossRushGame extends GalacticGame {
       const alpha = Math.min(1, gs.bossAnnounce / 1000);
       ctx.globalAlpha = alpha;
       ctx.fillStyle = '#ff4400';
-      ctx.font = '11px "Press Start 2P"';
+      ctx.font = gameFont(11);
       ctx.textAlign = 'center';
       ctx.fillText('⚠ BOSS INCOMING ⚠', 240, 300);
-      ctx.font = '9px "Press Start 2P"';
+      ctx.font = gameFont(9);
       ctx.fillStyle = '#ffffff';
       ctx.fillText(gs.bossAnnounceName, 240, 325);
       ctx.restore();
@@ -470,14 +477,14 @@ class BossRushGame extends GalacticGame {
     ctx.fillRect(0, 0, 480, 700);
     ctx.globalAlpha = 1;
     ctx.fillStyle = '#00ff88';
-    ctx.font = '10px "Press Start 2P"';
+    ctx.font = gameFont(10);
     ctx.textAlign = 'center';
     ctx.fillText('BOSS DEFEATED!', 240, 260);
     ctx.fillStyle = '#ffff00';
-    ctx.font = '8px "Press Start 2P"';
+    ctx.font = gameFont(8);
     ctx.fillText(`BOSSES: ${gs.bossesDefeated} / ${BR_BOSS_SEQUENCE_LEN}`, 240, 290);
     ctx.fillStyle = '#00ffff';
-    ctx.font = '8px "Press Start 2P"';
+    ctx.font = gameFont(8);
     if (nextIdx < BR_BOSS_SEQUENCE_LEN) {
       ctx.fillText(`NEXT BOSS IN ${secs}s`, 240, 320);
       const nextName = (new (COSMIC_BOSSES[gs.bossOrder[nextIdx]])())._bossName();
@@ -491,7 +498,7 @@ class BossRushGame extends GalacticGame {
       const def = ABILITIES[lastAbility];
       if (def) {
         ctx.fillStyle = '#ff88ff';
-        ctx.font = '7px "Press Start 2P"';
+        ctx.font = gameFont(7);
         ctx.fillText(`✦ ABILITY EARNED: ${def.name}`, 240, 375);
       }
     }
@@ -510,41 +517,17 @@ class BossRushGame extends GalacticGame {
       ctx.stroke();
       ctx.restore();
     }
-    // Draw player ship
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    if (p.skinColor) {
-      const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 14);
-      g.addColorStop(0, '#ffffff');
-      g.addColorStop(0.4, p.skinColor);
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g;
-    } else {
-      ctx.fillStyle = '#00ccff';
-    }
-    ctx.beginPath();
-    ctx.moveTo(0, -16); ctx.lineTo(12, 10); ctx.lineTo(-12, 10); ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
+    ShipRenderer.draw(ctx, p.x, p.y, p.visual, { scale: 0.8 });
   }
 
   _renderStars(ctx, dt) {
-    for (const star of this.stars) {
-      star.y += star.speed * (dt/16.667);
-      if (star.y > 700) { star.y = 0; star.x = Math.random()*480; }
-      ctx.globalAlpha = star.alpha;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(star.x, star.y, star.size, star.size);
-    }
-    ctx.globalAlpha = 1;
+    this.background.update(dt);
+    this.background.draw(ctx);
   }
 
   _renderBossRushHUD(ctx, gs) {
     ctx.save();
-    ctx.font = '7px "Press Start 2P"';
+    ctx.font = gameFont(7);
 
     // Score
     ctx.fillStyle = '#ffffff';
@@ -575,7 +558,7 @@ class BossRushGame extends GalacticGame {
     ctx.fillText(`BOSS ${gs.bossesDefeated + (gs.boss ? 1 : 0)} / ${BR_BOSS_SEQUENCE_LEN}`, 472, 18);
 
     // Ability slots
-    const slotNames = ['Q', 'W', 'E'];
+    const slotNames = ['Q', 'E', 'R'];
     const slotColors = { void_pulse: '#9900ff', phase_lock: '#00ffff', core_breach: '#ff4400' };
     for (let s = 0; s < 3; s++) {
       const ab = gs.abilitySlots[s];
@@ -588,7 +571,7 @@ class BossRushGame extends GalacticGame {
       ctx.strokeRect(sx, sy, 36, 22);
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
-      ctx.font = '6px "Press Start 2P"';
+      ctx.font = gameFont(6);
       ctx.fillText(slotNames[s], sx+18, sy+9);
       if (ab) {
         const def = ABILITIES[ab.id];
@@ -607,19 +590,19 @@ class BossRushGame extends GalacticGame {
 
     if (gs.allBossesCleared) {
       ctx.fillStyle = '#ffff00';
-      ctx.font = '14px "Press Start 2P"';
+      ctx.font = gameFont(14);
       ctx.shadowColor = '#ffff00'; ctx.shadowBlur = 16;
       ctx.fillText('ALL CLEAR!', 240, 230);
       ctx.shadowBlur = 0;
     } else {
       ctx.fillStyle = '#ff2244';
-      ctx.font = '14px "Press Start 2P"';
+      ctx.font = gameFont(14);
       ctx.shadowColor = '#ff2244'; ctx.shadowBlur = 12;
       ctx.fillText('GAME OVER', 240, 230);
       ctx.shadowBlur = 0;
     }
 
-    ctx.font = '8px "Press Start 2P"';
+    ctx.font = gameFont(8);
     ctx.fillStyle = '#ffffff';
     ctx.fillText(`BOSSES DEFEATED: ${gs.bossesDefeated}`, 240, 268);
     ctx.fillStyle = '#ffff00';
@@ -634,7 +617,7 @@ class BossRushGame extends GalacticGame {
     ctx.fillText(`TIME: ${mm}:${ss}`, 240, 334);
 
     ctx.fillStyle = '#aaaaaa';
-    ctx.font = '7px "Press Start 2P"';
+    ctx.font = gameFont(7);
     ctx.fillText('TAP/PRESS TO RETURN', 240, 360);
     ctx.restore();
   }
@@ -693,9 +676,9 @@ function _shuffleArray(arr) {
 // Global instance
 let bossRushInstance = null;
 
-function startBossRush(skinBoosts, skinColor, skinTrail, skinStripes) {
+function startBossRush(skinBoosts, skinColor, skinTrail, skinStripes, skinVisual) {
   if (!bossRushInstance) bossRushInstance = new BossRushGame();
-  bossRushInstance.startBossRush(skinBoosts || null, skinColor || null, skinTrail || null, skinStripes || null);
+  bossRushInstance.startBossRush(skinBoosts || null, skinColor || null, skinTrail || null, skinStripes || null, skinVisual || null);
 }
 
 function stopBossRush() {

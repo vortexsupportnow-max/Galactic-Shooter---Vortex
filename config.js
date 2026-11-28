@@ -15,6 +15,8 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
 const USING_SERVICE_ROLE_KEY = Boolean(SUPABASE_SERVICE_ROLE_KEY);
+// `npm run local`: JSON-file database instead of Supabase (development only)
+const LOCAL_DB = process.env.DB_MODE === 'local';
 
 // ── JWT signing secret ────────────────────────────────────────────────────────
 const DEV_JWT_SECRET = 'galactic-shooter-dev-secret-do-not-use-in-production';
@@ -53,7 +55,7 @@ if (JWT_SECRET_IS_WEAK && !isTest) {
   );
 }
 
-if (isProduction && !USING_SERVICE_ROLE_KEY) {
+if (isProduction && !USING_SERVICE_ROLE_KEY && !LOCAL_DB) {
   console.warn(
     'WARNING: running with SUPABASE_ANON_KEY. Anon keys are meant to be public — ' +
     'set SUPABASE_SERVICE_ROLE_KEY and apply db/schema_rls.sql so a leaked anon key is inert.'
@@ -78,5 +80,6 @@ module.exports = {
   SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY,
   USING_SERVICE_ROLE_KEY,
+  LOCAL_DB,
   ALLOWED_ORIGINS
 };

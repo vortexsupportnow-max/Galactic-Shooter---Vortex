@@ -4,6 +4,73 @@ A browser-based space shooter built with HTML5 Canvas + a Node.js/Express backen
 
 ---
 
+## Gameplay
+
+| System | How it works |
+|--------|--------------|
+| Movement | Free 2D (WASD / arrows / joystick). Hold **Shift** to move precisely and show the hit-box — only the ship's core can be hit. |
+| Weapon | Enemies drop **P cores**; collecting them raises the gun from level 1 to 6 (twin, spread, quad, missiles). Losing a life drops one level. |
+| Abilities | The 3 equipped abilities (**Q / E / R**) stay for the whole run and recharge on a cooldown. Rarely, an owned-but-not-equipped ability drops: it goes to the **bonus slot (F)** for one use. |
+| Power-ups | Common drops that act on pickup: boosted weapon, homing or piercing shots, shield, repair, ×2 score, magnet, ability recharge, Overdrive charge (`public/js/boosters.js`). |
+| Chain | Kills within 2.5s extend the chain; every 10 links add ×0.25 (max ×10). Getting hit halves it, letting an enemy escape costs a quarter. |
+| Graze | Bullets that brush past the ship score, refresh the chain and charge Overdrive. |
+| Medals | Each medal caught in a row is worth more (100 → 10,000); missing one drops the value. |
+| Overdrive | Fill the bar, press **Space** / **OD**: 6s of double score, faster piercing shots and magnet pickups. |
+| Waves | Formations fly in and dive; reinforcements (kamikaze, sniper, shielder, minelayer, flanker) arrive during the wave; elite variants; random events (meteors, ambush, minefield…); a new sector look every 10 waves; boss every 5. |
+| Upgrades | After every boss pick 1 of 3 upgrades for the rest of the run (hull, damage, fire rate, magnet, cooldowns, Overdrive gain, longer chain, extra life…) — see `public/js/perks.js`. |
+| Controls | Keyboard, touch joystick, or a **gamepad** (stick/d-pad move, X Y B abilities, A Overdrive, RB precise, START pause). The game pauses itself when the tab loses focus. |
+| Settings | Screen shake, reduced effects for slow devices, always-visible hit-box; account deletion lives here too. |
+| Skins | Every skin is a different ship: hull, palette, engines and animated aura (`SKIN_VISUALS` in `public/js/skins.js`). |
+
+Everything is drawn from code at 2× resolution — no image files. With WebGL,
+`public/js/postfx.js` renders the background with shaders (procedural nebulae with
+dust lanes, a galactic band, parallax stars, lit rotating planets with atmosphere
+and rings, distant suns) and post-processes the frame (bloom, shockwave distortion
+on big explosions, chromatic aberration on hits, vignette, grain). Without WebGL,
+or with `?nogl`, the 2D renderer in `public/js/visuals.js` takes over; "reduced
+effects" in Settings turns off the heavy passes.
+
+---
+
+## Sandbox (no login, everything unlocked)
+
+`/sandbox.html` is the whole game with every ability at max level, every aura,
+Boss Rush open and plenty of currency — no account and no database. The real
+server routes (`routes/game.js`, `routes/leaderboard.js`) are bundled for the
+browser and run against `db/localDb.js` persisted in `localStorage`, so crates,
+wheel, season pass, missions and leaderboards behave like the live game.
+Add `?reset` to the URL to start over.
+
+```bash
+npm run build:sandbox                          # regenerates public/sandbox.html + public/sandbox/*
+npm run build:sandbox -- --single dist/sandbox.html   # also one self-contained HTML file
+```
+
+The generated files are committed (the deployment has no build step): re-run the
+build after changing `routes/`, `db/localDb.js` or the client.
+
+---
+
+## Play on localhost (no database needed)
+
+```bash
+npm install
+npm run local        # http://localhost:3000
+```
+
+Accounts, crates, skins, season pass and leaderboards all work against a local
+JSON file (`db/local-data.json`, git-ignored) instead of Supabase.
+
+| Command | What it does |
+|---------|--------------|
+| `npm run local` | Start with the local database (data is kept between runs) |
+| `npm run local:rich` | Same, but new accounts start with 1,000,000 coins and 100,000 gems — handy for testing crates and upgrades |
+| `npm run local:reset` | Wipe the local database, then start |
+
+Local mode refuses to run with `NODE_ENV=production`. Set `PORT` to use another port.
+
+---
+
 ## Prerequisites
 
 | Tool | Version |

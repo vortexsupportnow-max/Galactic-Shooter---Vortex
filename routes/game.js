@@ -331,9 +331,11 @@ const PASS_TIERS = [
 
 const MAX_WAVE = 1000;
 const MAX_ABILITIES_USED = 500;
-// Headroom over a perfect run: ~40 enemies/wave at max combo, plus boss score.
-const MAX_SCORE_PER_WAVE = 500000;
-const MAX_ENEMIES_PER_WAVE = 60;
+// Headroom over a perfect run: ~50 enemies/wave at ×10 chain during Overdrive,
+// a full medal chain, perfect-wave and boss bonuses, with a ×1.5 skin.
+const MAX_SCORE_PER_WAVE = 2000000;
+// Formation + reinforcements + splitter fragments on the busiest waves.
+const MAX_ENEMIES_PER_WAVE = 90;
 
 function toCount(value, fallback = 0) {
   const n = Number(value);
@@ -375,6 +377,16 @@ function validateRunStats(body) {
   if (stats.abilitiesUsed > MAX_ABILITIES_USED) {
     stats.abilitiesUsed = MAX_ABILITIES_USED;
   }
+
+  // Run-detail stats only feed achievements, so an implausible value is dropped
+  // (treated as 0) instead of rejecting a run that is otherwise fine.
+  const bosses = Math.floor(stats.wave / 5);
+  const within = (value, max) => (value <= max ? value : 0);
+  stats.maxChain = within(toCount(raw.maxChain), stats.enemiesKilled * 3 + bosses * 10);
+  stats.perfectWaves = within(toCount(raw.perfectWaves), stats.wave);
+  stats.grazes = within(toCount(raw.grazes), stats.wave * 500);
+  stats.medals = within(toCount(raw.medals), stats.enemiesKilled + bosses * 6);
+  stats.weaponMax = raw.weaponMax === true && stats.enemiesKilled >= 30;
 
   return { ok: true, stats };
 }
@@ -559,6 +571,7 @@ router.post('/save-score', userLock('save-score'), async (req, res) => {
     const validation = validateRunStats(req.body);
     if (!validation.ok) return res.json({ success: false, error: validation.error });
     const { score, wave, enemiesKilled, gemsCollected, abilitiesUsed } = validation.stats;
+    const runStats = validation.stats;
 
     const supabase = getDB();
     const userId = req.user.userId;
@@ -583,7 +596,10 @@ router.post('/save-score', userLock('save-score'), async (req, res) => {
     const coinsMult = skin ? skin.boost.coins_mult : 1;
     const gemsMult  = skin ? skin.boost.gems_mult  : 1;
 
-    const coinsEarned = Math.floor(score / 100 * coinsMult);
+    // Coins follow progress (waves, kills) more than raw score: the chain
+    // multiplier and medals make score swing by 10× between runs, and paying
+    // coins on score alone would flood the upgrade economy.
+    const coinsEarned = Math.floor((wave * 40 + (enemiesKilled || 0) * 2 + score / 500) * coinsMult);
 
     let gemsEarned = Math.max(0, Math.floor(gemsCollected));
     gemsEarned += Math.floor(wave / 5);
@@ -607,7 +623,7 @@ router.post('/save-score', userLock('save-score'), async (req, res) => {
       .eq('id', userId);
     if (updateErr) throw new Error(updateErr.message);
 
-    await checkAchievements(supabase, userId, { score, wave, enemiesKilled: enemiesKilled || 0 });
+    const newAchievements = await checkAchievements(supabase, userId, runStats);
 
     const { error: trimErr } = await supabase.rpc('trim_user_scores', { p_user_id: userId, p_keep: 10 });
     if (trimErr) console.warn('trim_user_scores failed (non-fatal):', trimErr.message);
@@ -624,7 +640,7 @@ router.post('/save-score', userLock('save-score'), async (req, res) => {
       }).catch(e => console.warn('mission progress update failed (non-fatal):', e.message));
     }
 
-    res.json({ success: true, data: { coinsEarned, gemsEarned, newMaxScore, newMaxWave } });
+    res.json({ success: true, data: { coinsEarned, gemsEarned, newMaxScore, newMaxWave, newAchievements } });
   } catch (err) {
     return fail(res, err, `game${req.path}`);
   }
@@ -1621,23 +1637,43 @@ router.get('/boss-rush-stats', async (req, res) => {
   }
 });
 
-async function checkAchievements(supabase, userId, { score, wave, enemiesKilled }) {
+// Returns the ids unlocked by this run that the player did not have before.
+async function checkAchievements(supabase, userId, stats) {
+  const { score, wave } = stats;
+  const enemiesKilled = stats.enemiesKilled || 0;
   const toUnlock = [];
   if (score >= 1000) toUnlock.push('score_1k');
   if (score >= 10000) toUnlock.push('score_10k');
   if (score >= 100000) toUnlock.push('score_100k');
+  if (score >= 1000000) toUnlock.push('score_1m');
   if (wave >= 5) toUnlock.push('wave_5');
   if (wave >= 10) toUnlock.push('wave_10');
   if (wave >= 25) toUnlock.push('wave_25');
   if (wave >= 50) toUnlock.push('wave_50');
   if (enemiesKilled >= 100) toUnlock.push('kills_100');
   if (enemiesKilled >= 500) toUnlock.push('kills_500');
+  if ((stats.maxChain || 0) >= 50) toUnlock.push('chain_50');
+  if ((stats.maxChain || 0) >= 150) toUnlock.push('chain_150');
+  if ((stats.perfectWaves || 0) >= 5) toUnlock.push('perfect_5');
+  if ((stats.grazes || 0) >= 100) toUnlock.push('graze_100');
+  if ((stats.medals || 0) >= 50) toUnlock.push('medals_50');
+  if (stats.weaponMax) toUnlock.push('weapon_max');
+  if (!toUnlock.length) return [];
+
+  let owned = new Set();
+  try {
+    const { data } = await supabase.from('achievements').select('achievement_id').eq('user_id', userId);
+    if (Array.isArray(data)) owned = new Set(data.map(a => a.achievement_id));
+  } catch (e) {
+    // Non-fatal: worst case the client shows an already-owned trophy as new
+  }
 
   await Promise.all(
     toUnlock.map(achId =>
       supabase.rpc('unlock_achievement', { p_user_id: userId, p_achievement_id: achId })
     )
   );
+  return toUnlock.filter(id => !owned.has(id));
 }
 
 module.exports = router;

@@ -65,7 +65,7 @@ function showProfile() {
 
 async function loadProfile() {
   const content = document.getElementById('profile-content');
-  content.innerHTML = '<div class="loading">LOADING...</div>';
+  content.innerHTML = '<div class="loading">CARICAMENTO…</div>';
 
   const res = await apiFetch('/game/profile');
   if (!res.success) { content.innerHTML = `<div class="loading">ERROR: ${escapeHtml(res.error)}</div>`; return; }
@@ -140,18 +140,27 @@ async function regenerateRecoveryCode() {
   }
 }
 
+const ACHIEVEMENT_DEFS = [
+  { id: 'score_1k',   name: 'First Blood',   desc: 'Score 1,000' },
+  { id: 'score_10k',  name: 'Gunslinger',     desc: 'Score 10,000' },
+  { id: 'score_100k', name: 'Space Legend',   desc: 'Score 100,000' },
+  { id: 'score_1m',   name: 'Milionario',     desc: 'Score 1,000,000' },
+  { id: 'wave_5',     name: 'Survivor',       desc: 'Reach Wave 5' },
+  { id: 'wave_10',    name: 'Veteran',        desc: 'Reach Wave 10' },
+  { id: 'wave_25',    name: 'Elite Pilot',    desc: 'Reach Wave 25' },
+  { id: 'wave_50',    name: 'Galactic Hero',  desc: 'Reach Wave 50' },
+  { id: 'kills_100',  name: 'Centurion',      desc: 'Kill 100 enemies' },
+  { id: 'kills_500',  name: 'Annihilator',    desc: 'Kill 500 enemies' },
+  { id: 'chain_50',   name: 'Concatenatore',  desc: 'Chain 50 in a run' },
+  { id: 'chain_150',  name: 'Reazione a Catena', desc: 'Chain 150 in a run' },
+  { id: 'perfect_5',  name: 'Intoccabile',    desc: '5 perfect waves in a run' },
+  { id: 'graze_100',  name: 'Pelo di Cometa', desc: '100 grazes in a run' },
+  { id: 'medals_50',  name: 'Collezionista',  desc: '50 medals in a run' },
+  { id: 'weapon_max', name: 'Arsenale Completo', desc: 'Max out your weapon' }
+];
+
 function renderAchievements(unlocked) {
-  const all = [
-    { id: 'score_1k',   name: 'First Blood',   desc: 'Score 1,000' },
-    { id: 'score_10k',  name: 'Gunslinger',     desc: 'Score 10,000' },
-    { id: 'score_100k', name: 'Space Legend',   desc: 'Score 100,000' },
-    { id: 'wave_5',     name: 'Survivor',       desc: 'Reach Wave 5' },
-    { id: 'wave_10',    name: 'Veteran',        desc: 'Reach Wave 10' },
-    { id: 'wave_25',    name: 'Elite Pilot',    desc: 'Reach Wave 25' },
-    { id: 'wave_50',    name: 'Galactic Hero',  desc: 'Reach Wave 50' },
-    { id: 'kills_100',  name: 'Centurion',      desc: 'Kill 100 enemies' },
-    { id: 'kills_500',  name: 'Annihilator',    desc: 'Kill 500 enemies' }
-  ];
+  const all = ACHIEVEMENT_DEFS;
   const unlockedIds = unlocked.map(a => a.achievement_id);
   return all.map(a => {
     const done = unlockedIds.includes(a.id);
@@ -171,7 +180,7 @@ function showCollection() {
 
 async function loadCollection() {
   const grid = document.getElementById('ability-grid');
-  grid.innerHTML = '<div class="loading">LOADING...</div>';
+  grid.innerHTML = '<div class="loading">CARICAMENTO…</div>';
 
   const res = await apiFetch('/game/profile');
   if (!res.success) { grid.innerHTML = '<div class="loading">ERROR</div>'; return; }
@@ -200,16 +209,11 @@ function renderAbilityGrid(profile) {
     const card = document.createElement('div');
     card.className = `ability-card ${ability.rarity} ${owned ? '' : 'locked'}`;
 
-    const icon = GameAssets.drawAbilityIcon(ability.id, ability.rarity);
-    icon.className = 'ability-icon-canvas';
-    icon.width = 24; icon.height = 24;
-    icon.style.width = '32px'; icon.style.height = '32px';
-
+    // (innerHTML is built in one go: `+=` after appendChild would re-serialise
+    // the card and wipe a canvas icon, which is why the icons used to be blank)
     card.innerHTML = `
       <div class="ability-rarity-tag">${ability.rarity.toUpperCase()}</div>
-    `;
-    card.appendChild(icon);
-    card.innerHTML += `
+      <img class="ability-icon-img" alt="" style="width:32px;height:32px" src="${GameAssets.abilityIconURL(ability.id, ability.rarity)}">
       ${slotIdx >= 0 ? `<div class="ability-slot-badge">${SLOT_KEYS[slotIdx]}</div>` : ''}
       <div class="ability-name">${ability.name}</div>
       ${ability.season_exclusive ? `<div class="ability-season-tag">${ability.season_tag || 'SEASON PASS'}</div>` : ''}
@@ -273,7 +277,7 @@ async function upgradeAbility(abilityId, btn, profile) {
 // The abilities the player carries into a run, saved per account. Stored as ids
 // only: the definition and the current level are resolved at launch, so an
 // upgrade or a lost ability can never leave a stale copy in the loadout.
-const SLOT_KEYS = ['Q', 'W', 'E'];
+const SLOT_KEYS = ['Q', 'E', 'R'];
 
 function loadoutKey() { return `gs_loadout_${getNickname() || 'guest'}`; }
 
@@ -364,7 +368,7 @@ async function loadCrateShop() {
 
 const CRATE_DEFS = {
   mystery: {
-    icon: '📦', name: 'MYSTERY CRATE', cost: 10,
+    icon: '📦', svg: 'crate-mystery', name: 'MYSTERY CRATE', cost: 10,
     count: 1,
     odds: [
       { cls: 'common',    label: '■ COMMON: 50%' },
@@ -374,7 +378,7 @@ const CRATE_DEFS = {
     ]
   },
   galactic: {
-    icon: '🌌', name: 'GALACTIC CRATE', cost: 50,
+    icon: '🌌', svg: 'crate-galactic', name: 'GALACTIC CRATE', cost: 50,
     count: 2,
     odds: [
       { cls: 'common',    label: '■ COMMON: 20%' },
@@ -384,7 +388,7 @@ const CRATE_DEFS = {
     ]
   },
   void: {
-    icon: '🕳️', name: 'VOID CRATE', cost: 150,
+    icon: '🕳️', svg: 'crate-void', name: 'VOID CRATE', cost: 150,
     count: 3,
     odds: [
       { cls: 'rare',      label: '■ RARE: 10%' },
@@ -453,13 +457,13 @@ function updateCrateDisplay(type) {
 
   box.className = `crate-box type-${type}`;
 
-  document.getElementById('selected-crate-icon').textContent = def.icon;
+  document.getElementById('selected-crate-icon').innerHTML = `<svg class="i" aria-hidden="true"><use href="#i-${def.svg}"/></svg>`;
   document.getElementById('selected-crate-name').textContent = def.name;
   document.getElementById('selected-crate-cost').textContent = freeCrates > 0 ? `FREE x${freeCrates} · ${def.cost} 💎` : `${def.cost} 💎`;
-  document.getElementById('open-crate-btn').textContent = freeCrates > 0 ? 'OPEN FREE CRATE' : 'OPEN CRATE';
+  document.getElementById('open-crate-btn').textContent = freeCrates > 0 ? 'APRI CASSA GRATIS' : 'APRI CASSA';
 
   const info = document.getElementById('crate-info');
-  const freeLine = freeCrates > 0 ? `<div class="rarity-chance legendary">★ FREE CRATES AVAILABLE: ${freeCrates}</div>` : '';
+  const freeLine = freeCrates > 0 ? `<div class="rarity-chance legendary">★ CASSE GRATIS: ${freeCrates}</div>` : '';
   const countLine = def.count > 1 ? `<div class="rarity-chance epic">★ GIVES ${def.count} ABILITIES PER OPEN</div>` : '';
   info.innerHTML = freeLine + countLine + def.odds.map(o => `<div class="rarity-chance ${o.cls}">${o.label}</div>`).join('');
 
@@ -512,7 +516,7 @@ async function openCrate() {
   const res = await resPromise;
 
   if (!res.success) {
-    btn.textContent = 'OPEN CRATE';
+    btn.textContent = 'APRI CASSA';
     btn.disabled = false;
     alert(res.error || 'Failed to open crate');
     return;
@@ -531,17 +535,13 @@ async function openCrate() {
     const ability = ABILITIES[abilityId];
     const resultEl = document.getElementById('crate-result');
 
-    const icon = GameAssets.drawAbilityIcon(abilityId, rarity);
-    icon.style.width = '40px'; icon.style.height = '40px';
-
-    resultEl.innerHTML = `<div style="font-size:0.5rem;margin-bottom:0.5rem">${rarity.toUpperCase()}</div>`;
-    resultEl.appendChild(icon);
-    resultEl.innerHTML += `
+    resultEl.innerHTML = `<div style="font-size:0.5rem;margin-bottom:0.5rem">${rarity.toUpperCase()}</div>
+      <img class="ability-icon-img" alt="" style="width:40px;height:40px" src="${GameAssets.abilityIconURL(abilityId, rarity)}">
       <div style="font-size:0.6rem;margin-top:0.5rem">${ability ? ability.name : abilityId}</div>
       <div style="font-size:0.45rem;margin-top:0.3rem;color:#aaa">
-        ${alreadyOwned ? `UPGRADED TO LV ${level}` : 'NEW ABILITY!'}
+        ${alreadyOwned ? `POTENZIATA A LV ${level}` : 'NUOVA ABILITÀ!'}
         ${usedFreeCrate ? '<br>FREE CRATE USED' : ''}
-        ${coinsCompensation ? `<br>COMPENSATION: ${formatNumber(coinsCompensation)} COINS` : ''}
+        ${coinsCompensation ? `<br>RIMBORSO: ${formatNumber(coinsCompensation)} MONETE` : ''}
       </div>
       <div class="crate-continue-hint">[ PREMI UN TASTO O CLICCA PER CONTINUARE ]</div>
     `;
@@ -563,7 +563,7 @@ async function openCrate() {
     });
   }
 
-  btn.textContent = 'OPEN CRATE';
+  btn.textContent = 'APRI CASSA';
   btn.disabled = false;
 
   // Update gem display (also hides the result)
@@ -597,7 +597,7 @@ async function loadLeaderboard() {
   }
 
   const tbody = document.getElementById('lb-tbody');
-  tbody.innerHTML = '<tr><td colspan="4" class="loading">LOADING...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" class="loading">CARICAMENTO…</td></tr>';
 
   const endpoint = _lbType === 'scores' ? '/leaderboard/scores' : '/leaderboard/waves';
   const res = await apiFetch(`${endpoint}?filter=${_lbFilter}`);
@@ -630,7 +630,7 @@ async function loadLeaderboard() {
 
 async function loadBossRushLeaderboard() {
   const tbody = document.getElementById('lb-tbody-boss-rush');
-  tbody.innerHTML = '<tr><td colspan="4" class="loading">LOADING...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="4" class="loading">CARICAMENTO…</td></tr>';
   const res = await apiFetch('/leaderboard/boss-rush');
   if (!res.success) {
     tbody.innerHTML = '<tr><td colspan="4" class="loading">ERROR</td></tr>';
@@ -714,7 +714,7 @@ function initMenuHandlers() {
 
 // ===== PATCH NOTES =====
 // Bump this when the notes in index.html change: it re-arms the "unread" dot.
-const PATCH_NOTES_VERSION = 'v2_8';
+const PATCH_NOTES_VERSION = 'v3_0';
 
 function patchNotesSeenKey() {
   return `gs_patchnotes_seen_${PATCH_NOTES_VERSION}`;
@@ -811,8 +811,10 @@ function initModeSelectHandlers() {
     const skinColor       = SKINS[equippedSkin]?.color || null;
     const skinTrail       = getEquippedSkinTrail(equippedSkin);
     const skinStripes     = getEquippedSkinStripes(equippedSkin);
+    const skinVisual      = getSkinVisual(equippedSkin);
+    const bestScore       = res.success ? (res.data.max_score || 0) : 0;
     showScreen('game');
-    startGame(buildLoadoutSlots(ownedAbilities), ownedAbilities, skinBoosts, skinColor, skinTrail, skinStripes);
+    startGame(buildLoadoutSlots(ownedAbilities), ownedAbilities, skinBoosts, skinColor, skinTrail, skinStripes, skinVisual, { bestScore });
   });
 
   document.getElementById('mode-btn-boss-rush').addEventListener('click', async () => {
@@ -825,7 +827,7 @@ function initModeSelectHandlers() {
     const skinTrail    = getEquippedSkinTrail(equippedSkin);
     const skinStripes  = getEquippedSkinStripes(equippedSkin);
     showScreen('game');
-    startBossRush(skinBoosts, skinColor, skinTrail, skinStripes);
+    startBossRush(skinBoosts, skinColor, skinTrail, skinStripes, getSkinVisual(equippedSkin));
   });
 }
 
@@ -837,6 +839,10 @@ function openSettings() {
   const valEl = document.getElementById('settings-volume-val');
   if (valEl) valEl.textContent = `${vol}%`;
   _updateMuteBtn();
+  const gsSet = window.gameSettings || {};
+  document.getElementById('settings-shake').checked = gsSet.shake !== false;
+  document.getElementById('settings-lowfx').checked = !!gsSet.lowfx;
+  document.getElementById('settings-hitbox').checked = !!gsSet.hitbox;
 }
 
 function _updateMuteBtn() {
@@ -846,6 +852,17 @@ function _updateMuteBtn() {
 
 function initSettingsHandlers() {
   document.getElementById('settings-close').addEventListener('click', () => {
+    document.getElementById('settings-overlay').classList.add('hidden');
+  });
+
+  for (const key of ['shake', 'lowfx', 'hitbox']) {
+    document.getElementById(`settings-${key}`).addEventListener('change', e => {
+      window.gameSettings[key] = e.target.checked;
+      saveGameSettings();
+    });
+  }
+  // Account deletion lives in settings; close the panel so the dialog is on top
+  document.getElementById('btn-delete-account').addEventListener('click', () => {
     document.getElementById('settings-overlay').classList.add('hidden');
   });
 
@@ -899,34 +916,34 @@ window.showMainMenu = showMainMenu;
 const TUTORIAL_SLIDES = [
   {
     emoji: '🚀',
-    title: 'WELCOME, PILOT!',
-    body: 'Welcome to Galactic Shooter — Vortex Edition!\nYou are the last defender of the galaxy.\nSurvive endless waves of alien enemies\nand become a legend!'
+    title: 'BENVENUTO, PILOTA!',
+    body: "Sei l'ultimo difensore della galassia.\nSopravvivi a ondate infinite di nemici,\nabbatti i boss e scala la classifica!"
   },
   {
     emoji: '🕹️',
-    title: 'CONTROLS',
-    body: 'MOVE: joystick (bottom-left) or arrow keys\nSHOOT: automatic — just move!\nFIRE BUTTON: hold for rapid fire\nQ / W / E: activate equipped abilities\nOn desktop, use WASD or arrows to move.'
-  },
-  {
-    emoji: '👾',
-    title: 'ENEMIES & WAVES',
-    body: 'Enemies spawn every few seconds.\nEach wave is stronger than the last.\nEvery 10 waves a BOSS appears!\nKill enemies to earn score and currency.\nSurvive as many waves as you can!'
+    title: 'COMANDI',
+    body: 'PC: WASD o frecce per muoverti, SHIFT per la precisione.\nTELEFONO: trascina il dito ovunque, la nave lo segue.\nSi spara da soli. Ti colpiscono solo al centro della nave.'
   },
   {
     emoji: '⚡',
-    title: 'ABILITIES & CRATES',
-    body: 'Open CRATES with 💎 Gems to unlock abilities.\nAssign abilities to slots Q / W / E\nfrom your COLLECTION.\nUse abilities in battle for massive power!\nUpgrade abilities with 🪙 Coins.'
+    title: 'ABILITÀ',
+    body: "Equipaggia 3 abilità da ABILITÀ: si usano con Q / E / R\n(o toccando gli slot) e si ricaricano col tempo.\nLe abilità extra raccolte vanno nello slot F: un solo uso."
   },
   {
-    emoji: '💰',
-    title: 'CURRENCY',
-    body: '🪙 COINS: earned from score — upgrade abilities.\n💎 GEMS: dropped by enemies & bosses.\n   Earn more by reaching higher waves!\n   Use gems to open crates and unlock\n   powerful new abilities.'
+    emoji: '🔺',
+    title: 'POTENZIAMENTI',
+    body: 'Raccogli i nuclei P per potenziare l\'arma (livelli 1-6).\nI potenziamenti caduti si attivano subito.\nDopo ogni boss scegli 1 UPGRADE su 3 per tutta la partita.'
+  },
+  {
+    emoji: '🏆',
+    title: 'PUNTEGGIO',
+    body: 'Uccidi in fretta per far salire la CATENA (fino a ×10).\nSfiora i proiettili (GRAZE) e raccogli le medaglie di fila.\nBarra piena: SPAZIO o tocca la barra per l\'OVERDRIVE ×2!'
   },
   {
     emoji: '🎁',
-    title: 'STARTER GIFT!',
-    body: "You're ready to fight!\nAs a welcome gift, here's your starter pack:",
-    reward: '🪙 1,000 COINS\n💎 10 GEMS'
+    title: 'REGALO DI BENVENUTO!',
+    body: 'Sei pronto a combattere!\nEcco il tuo pacchetto iniziale:',
+    reward: '🪙 1.000 MONETE\n💎 10 GEMME'
   }
 ];
 
@@ -1069,7 +1086,7 @@ function refreshWheelStatus() {
   const spinBtn = document.getElementById('wheel-spin-btn');
 
   if (buttonStatus) {
-    buttonStatus.textContent = availability.canSpin ? 'READY NOW' : `IN ${formatWheelCountdown(availability.remainingMs)}`;
+    buttonStatus.textContent = availability.canSpin ? 'PRONTA' : `IN ${formatWheelCountdown(availability.remainingMs)}`;
   }
 
   if (status) {
@@ -1080,7 +1097,7 @@ function refreshWheelStatus() {
 
   if (spinBtn && !_wheelSpinning) {
     spinBtn.disabled = !availability.canSpin;
-    spinBtn.textContent = availability.canSpin ? 'SPIN NOW' : `WAIT ${formatWheelCountdown(availability.remainingMs)}`;
+    spinBtn.textContent = availability.canSpin ? 'GIRA ORA' : `ATTENDI ${formatWheelCountdown(availability.remainingMs)}`;
   }
 }
 
@@ -1215,7 +1232,9 @@ function openAbilityInfo(ability, ownedLevel) {
   document.getElementById('ability-info-rarity').textContent = ability.rarity.toUpperCase();
   document.getElementById('ability-info-rarity').className = `ability-info-rarity ${ability.rarity}`;
   document.getElementById('ability-info-name').textContent = ability.name;
-  document.getElementById('ability-info-desc').textContent = ability.description;
+  const cdLevel = Math.max(1, ownedLevel || 1);
+  const cdText = ability.boss_rush_only ? '' : ` · Ricarica ${(getAbilityCooldown(ability.id, cdLevel) / 1000).toFixed(1)}s`;
+  document.getElementById('ability-info-desc').textContent = ability.description + cdText;
 
   const levelEl = document.getElementById('ability-info-level');
   if (ability.season_exclusive && !ownedLevel) {
@@ -1228,9 +1247,7 @@ function openAbilityInfo(ability, ownedLevel) {
 
   const iconWrap = document.getElementById('ability-info-icon-wrap');
   iconWrap.innerHTML = '';
-  const icon = GameAssets.drawAbilityIcon(ability.id, ability.rarity);
-  icon.style.width = '56px'; icon.style.height = '56px';
-  iconWrap.appendChild(icon);
+  iconWrap.appendChild(GameAssets.abilityIconImg(ability.id, ability.rarity, 56));
 
   // Only an owned ability can be carried into a run
   const equipBtn = document.getElementById('ability-info-equip');
@@ -1302,6 +1319,12 @@ async function loadSkins() {
   renderSkinGrid();
 }
 
+const _skinPreviewCache = {};
+function _skinPreview(skinId) {
+  if (!_skinPreviewCache[skinId]) _skinPreviewCache[skinId] = ShipRenderer.previewURL(getSkinVisual(skinId), 144);
+  return _skinPreviewCache[skinId];
+}
+
 function renderSkinGrid() {
   const grid = document.getElementById('skin-grid');
   if (!grid) return;
@@ -1323,7 +1346,7 @@ function renderSkinGrid() {
     defCard.className = `skin-card common ${equipped === 'default' ? 'equipped' : ''}`;
     defCard.innerHTML = `
       <div class="skin-rarity-tag">DEFAULT</div>
-      <div class="skin-emoji">🚀</div>
+      <div class="skin-emoji"><img class="skin-ship-preview" alt="" src="${_skinPreview('default')}"></div>
       <div class="skin-name">DEFAULT</div>
       <div class="skin-desc" style="color:#555">No boost</div>
       ${equipped === 'default'
@@ -1362,7 +1385,10 @@ function renderSkinGrid() {
     }
 
     // Flag skins get the CSS tricolore: the 🇮🇹 emoji has no glyph on Windows.
-    const skinIcon = skin.stripes ? '<span class="it-flag"></span>' : skin.emoji;
+    // Real ship preview (hull, colours, engines, aura) instead of an emoji
+    const skinIcon = (typeof ShipRenderer !== 'undefined' && getSkinVisual(skin.id))
+      ? `<img class="skin-ship-preview" alt="" src="${_skinPreview(skin.id)}">`
+      : (skin.stripes ? '<span class="it-flag"></span>' : skin.emoji);
 
     card.innerHTML = `
       <div class="skin-rarity-tag">${skin.rarity.toUpperCase()}</div>
@@ -1425,7 +1451,7 @@ function updateSkinCrateDisplay(type) {
   const labelEl = document.getElementById('skin-crate-box-label');
   const costEl  = document.getElementById('skin-crate-box-cost');
 
-  if (iconEl)  iconEl.textContent  = def.icon;
+  if (iconEl)  iconEl.innerHTML = def.svg ? `<svg class="i" aria-hidden="true"><use href="#i-${def.svg}"/></svg>` : def.icon;
   if (labelEl) labelEl.textContent = def.name;
 
   const freeCrates = Number(_profileData?.free_skin_crates || 0);

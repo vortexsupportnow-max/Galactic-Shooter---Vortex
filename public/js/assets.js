@@ -329,9 +329,40 @@ const GameAssets = (function() {
   }
 
   // Ability icons - simple pixel art per ability
+  // Icons are drawn once at 3× (72px backing store, 24-unit coordinates) and
+  // cached. Callers must not resize or mutate the returned canvas — for DOM use
+  // abilityIconImg(), which hands out a fresh <img> every time.
+  const _iconCache = new Map();
+  const _iconUrlCache = new Map();
+
   function drawAbilityIcon(abilityId, rarity) {
-    const c = makeCanvas(24, 24);
+    const key = abilityId + '|' + rarity;
+    let c = _iconCache.get(key);
+    if (!c) { c = _renderAbilityIcon(abilityId, rarity); _iconCache.set(key, c); }
+    return c;
+  }
+
+  function abilityIconURL(abilityId, rarity) {
+    const key = abilityId + '|' + rarity;
+    let u = _iconUrlCache.get(key);
+    if (!u) { u = drawAbilityIcon(abilityId, rarity).toDataURL(); _iconUrlCache.set(key, u); }
+    return u;
+  }
+
+  function abilityIconImg(abilityId, rarity, px = 32) {
+    const img = document.createElement('img');
+    img.className = 'ability-icon-img';
+    img.alt = '';
+    img.src = abilityIconURL(abilityId, rarity);
+    img.style.width = px + 'px';
+    img.style.height = px + 'px';
+    return img;
+  }
+
+  function _renderAbilityIcon(abilityId, rarity) {
+    const c = makeCanvas(72, 72);
     const ctx = c.getContext('2d');
+    ctx.scale(3, 3);
     const color = RARITY_COLORS[rarity] || '#aaaaaa';
 
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -358,7 +389,7 @@ const GameAssets = (function() {
       drone:          () => { ctx.beginPath(); ctx.arc(12,12,9,0,Math.PI*2); ctx.lineWidth=2; ctx.strokeStyle=color; ctx.stroke(); ctx.fillRect(10,10,4,4); ctx.fillRect(5,10,4,4); ctx.fillRect(15,10,4,4); },
       black_hole:     () => { for(let r=8;r>1;r-=2) { ctx.globalAlpha=1-r/10; ctx.beginPath(); ctx.arc(12,12,r,0,Math.PI*2); ctx.fill(); } ctx.globalAlpha=1; },
       emp:            () => { [4,8,12,16,20].forEach(x=>{ ctx.fillRect(x,8,2,8); }); ctx.fillRect(4,6,16,2); },
-      rain_of_fire:   () => { [6,10,14,18].forEach(x=>{ ctx.fillStyle=color; ctx.fillRect(x,4+Math.random()*4,3,12); }); },
+      rain_of_fire:   () => { [6,10,14,18].forEach((x,i)=>{ ctx.fillStyle=color; ctx.fillRect(x,4+(i%2)*4,3,12); }); },
       chain_lightning:() => { ctx.beginPath(); ctx.moveTo(6,4); ctx.lineTo(14,10); ctx.lineTo(8,14); ctx.lineTo(18,20); ctx.lineWidth=2; ctx.strokeStyle='#ffff44'; ctx.stroke(); },
       vortex:         () => { ctx.beginPath(); ctx.arc(12,12,8,0,Math.PI*1.8); ctx.lineWidth=3; ctx.strokeStyle=color; ctx.stroke(); ctx.fillRect(10,4,4,4); },
       gravity_well:   () => { [6,8,10,12].forEach(r=>{ ctx.globalAlpha=0.3+r/16; ctx.beginPath(); ctx.arc(12,12,r,0,Math.PI*2); ctx.lineWidth=1; ctx.strokeStyle=color; ctx.stroke(); }); ctx.globalAlpha=1; },
@@ -371,7 +402,12 @@ const GameAssets = (function() {
       time_warp:      () => { ctx.beginPath(); ctx.arc(12,12,8,0,Math.PI*2); ctx.lineWidth=2; ctx.strokeStyle=color; ctx.stroke(); ctx.fillRect(8,10,4,2); ctx.fillRect(12,10,2,4); },
       phoenix:        () => { ctx.fillStyle='#ff8800'; ctx.beginPath(); ctx.moveTo(12,4); ctx.lineTo(20,18); ctx.lineTo(12,14); ctx.lineTo(4,18); ctx.closePath(); ctx.fill(); ctx.fillStyle='#ffff00'; ctx.fillRect(10,14,4,6); },
       singularity:    () => { ctx.fillStyle='#000'; ctx.fillRect(0,0,24,24); for(let r=10;r>0;r-=2){ ctx.globalAlpha=(10-r)/10; ctx.beginPath(); ctx.arc(12,12,r,0,Math.PI*2); ctx.fillStyle=color; ctx.fill(); } ctx.globalAlpha=1; },
-      storm:          () => { ctx.fillStyle='#ffff44'; [5,9,15,19].forEach((x,i)=>{ ctx.fillRect(x,4+i%2*4,2,16-i%2*4); }); }
+      storm:          () => { ctx.fillStyle='#ffff44'; [5,9,15,19].forEach((x,i)=>{ ctx.fillRect(x,4+i%2*4,2,16-i%2*4); }); },
+      bushido_blade:  () => { ctx.save(); ctx.translate(12,12); ctx.rotate(-Math.PI/4); ctx.fillStyle='#e8e8f0'; ctx.fillRect(-1.5,-11,3,15); ctx.fillStyle='#ff4400'; ctx.fillRect(-3.5,4,7,2); ctx.fillStyle='#552200'; ctx.fillRect(-1.5,6,3,5); ctx.restore(); },
+      sakura_storm:   () => { ctx.fillStyle='#ff88cc'; [[8,8],[16,10],[11,16],[18,18],[5,17]].forEach(([x,y])=>{ for(let k=0;k<5;k++){ const a=k*Math.PI*2/5; ctx.beginPath(); ctx.arc(x+Math.cos(a)*1.8,y+Math.sin(a)*1.8,1.4,0,Math.PI*2); ctx.fill(); } }); },
+      void_pulse:     () => { ctx.strokeStyle='#cc66ff'; ctx.lineWidth=1.5; [4,7,10].forEach(r=>{ ctx.beginPath(); ctx.arc(12,12,r,0,Math.PI*2); ctx.stroke(); }); ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(12,12,2,0,Math.PI*2); ctx.fill(); },
+      phase_lock:     () => { ctx.strokeStyle='#00ffff'; ctx.lineWidth=2; ctx.strokeRect(7,11,10,8); ctx.beginPath(); ctx.arc(12,11,4,Math.PI,0); ctx.stroke(); ctx.fillStyle='#00ffff'; ctx.fillRect(11,14,2,3); },
+      core_breach:    () => { ctx.fillStyle='#ff4400'; ctx.beginPath(); ctx.arc(12,12,5,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#ffaa66'; ctx.lineWidth=1.5; [[12,2,12,6],[12,18,12,22],[2,12,6,12],[18,12,22,12]].forEach(([a,b,c2,d])=>{ ctx.beginPath(); ctx.moveTo(a,b); ctx.lineTo(c2,d); ctx.stroke(); }); }
     };
 
     const draw = icons[abilityId];
@@ -427,6 +463,8 @@ const GameAssets = (function() {
     explosionFrames: _explosion,
     powerUp: _powerUp,
     drawAbilityIcon,
+    abilityIconURL,
+    abilityIconImg,
     drawShieldEffect
   };
 })();

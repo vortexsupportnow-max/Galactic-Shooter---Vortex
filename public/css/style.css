@@ -1,3 +1,7 @@
+.settings-section-title { font-size: 0.42rem; color: var(--cyan, #00ffff); margin: 0.9rem 0 0.4rem; letter-spacing: 0.1em; text-align: left; }
+.settings-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.42rem; margin: 0.35rem 0; cursor: pointer; text-align: left; }
+.settings-check input { width: 14px; height: 14px; accent-color: #00ffff; }
+.settings-hint { font-size: 0.34rem; line-height: 1.8; color: #8890b8; margin: 0.5rem 0 0; text-align: left; }
 .season-pause-notice {
   width: 100%; max-width: 640px; padding: 1rem; margin-bottom: 1rem;
   border: 1px solid var(--yellow); background: var(--panel); border-radius: 8px;
@@ -50,7 +54,7 @@ html, body {
   width: 100%; height: 100%;
   overflow: hidden;
   background: var(--bg);
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--ui-font);
   color: var(--white);
 }
 
@@ -143,7 +147,7 @@ html, body {
   background: rgba(0,0,40,0.8);
   border: 1px solid var(--gray);
   color: var(--white);
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--ui-font);
   font-size: 0.65rem;
   padding: 0.7rem 0.8rem;
   outline: none;
@@ -154,7 +158,7 @@ html, body {
 
 /* ===== BUTTONS ===== */
 .btn {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--ui-font);
   font-size: 0.65rem;
   padding: 0.7rem 1.2rem;
   cursor: pointer;
@@ -320,7 +324,7 @@ html, body {
   flex-shrink: 0;
 }
 .filter-btn {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--ui-font);
   font-size: 0.45rem;
   padding: 0.4rem 0.6rem;
   cursor: pointer;
@@ -363,6 +367,7 @@ html, body {
   50%      { box-shadow: 0 0 20px rgba(255,170,0,0.8); }
 }
 .ability-icon-canvas { image-rendering: pixelated; }
+.ability-icon-img { display: block; margin: 0.2rem auto; }
 .ability-name {
   font-size: 0.48rem;
   text-align: center;
@@ -376,7 +381,7 @@ html, body {
 .ability-card.epic .ability-rarity-tag      { color: var(--epic); }
 .ability-card.legendary .ability-rarity-tag { color: var(--legendary); }
 .upgrade-btn {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--ui-font);
   font-size: 0.35rem;
   padding: 0.3rem 0.5rem;
   cursor: pointer;
@@ -388,7 +393,7 @@ html, body {
 }
 .upgrade-btn:hover { background: rgba(255,255,0,0.1); }
 .slot-assign-btn {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--ui-font);
   font-size: 0.35rem;
   padding: 0.3rem 0.5rem;
   cursor: pointer;
@@ -414,7 +419,7 @@ html, body {
 }
 .crate-tab {
   flex: 1;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--ui-font);
   font-size: 0.5rem;
   padding: 0.65rem 0.5rem;
   border: 1px solid var(--gray);
@@ -591,7 +596,7 @@ html, body {
   display: flex; width: 100%; max-width: 480px; flex-shrink: 0;
 }
 .lb-tab {
-  flex: 1; font-family: 'Press Start 2P', monospace;
+  flex: 1; font-family: var(--ui-font);
   font-size: 0.6rem; padding: 0.7rem; cursor: pointer;
   border: none; border-bottom: 2px solid var(--gray);
   background: transparent; color: var(--gray);
@@ -603,7 +608,7 @@ html, body {
   max-width: 480px; width: 100%; flex-shrink: 0;
 }
 .lb-filter {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--ui-font);
   font-size: 0.45rem; padding: 0.4rem 0.7rem; cursor: pointer;
   border: 1px solid var(--gray); background: transparent; color: var(--gray);
   transition: all 0.15s;
@@ -818,7 +823,7 @@ html, body {
   display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;
 }
 .touch-ability-btn {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--ui-font);
   font-size: 0.6rem;
   width: 52px; height: 52px;
   border-radius: 8px;
@@ -828,6 +833,9 @@ html, body {
   touch-action: none;
 }
 .touch-ability-btn:active { background: rgba(170,0,255,0.5); transform: scale(0.92); }
+.touch-bonus-btn { border-color: #ffd23a; color: #ffd23a; background: rgba(255,210,58,0.12); }
+.touch-od-btn { border-color: #ffcc33; color: #ffcc33; background: rgba(255,190,40,0.15); }
+.touch-od-btn:active { background: rgba(255,190,40,0.45); }
 
 /* ===== SHOP / EXCHANGE ===== */
 .shop-scroll-list {
@@ -968,7 +976,7 @@ html, body {
   display: flex; width: 100%; max-width: 480px; flex-shrink: 0;
 }
 .skin-tab {
-  flex: 1; font-family: 'Press Start 2P', monospace;
+  flex: 1; font-family: var(--ui-font);
   font-size: 0.55rem; padding: 0.7rem; cursor: pointer;
   border: none; border-bottom: 2px solid var(--gray);
   background: transparent; color: var(--gray);
@@ -1012,12 +1020,13 @@ html, body {
 .skin-card.legendary .skin-rarity-tag { color: var(--legendary); }
 
 .skin-emoji   { font-size: 1.6rem; }
+.skin-ship-preview { width: 72px; height: 72px; display: block; margin: 0 auto; image-rendering: auto; }
 .skin-name    { font-size: 0.38rem; color: var(--white); line-height: 1.4; }
 .skin-desc    { font-size: 0.35rem; color: #ff66cc; }
 .skin-boosts  { font-size: 0.3rem; color: var(--yellow); line-height: 1.6; }
 
 .skin-equip-btn {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--ui-font);
   font-size: 0.35rem; padding: 0.3rem 0.5rem;
   cursor: pointer; border: 1px solid #ff66cc;
   background: transparent; color: #ff66cc; width: 100%;
@@ -2148,3 +2157,232 @@ html, body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 120px;
 }
+
+/* ===== SPACE BACKDROP: holographic glass over the WebGL nebula =====
+   Active only when backdrop.js managed to start WebGL (body.has-backdrop);
+   otherwise every rule below is inert and the classic look stays. */
+#space-backdrop {
+  position: fixed; inset: 0; width: 100vw; height: 100vh;
+  z-index: 0; display: block; pointer-events: none;
+}
+body.has-backdrop #app { z-index: 1; }
+body.has-backdrop {
+  --bg: transparent;
+  --panel: rgba(12, 16, 40, 0.48);
+  --dark: rgba(8, 10, 28, 0.72);
+  --glass-edge: rgba(150, 220, 255, 0.28);
+  --glass-hi: rgba(255, 255, 255, 0.07);
+}
+body.has-backdrop .stars-bg { display: none; }
+
+body.has-backdrop :is(.auth-form, .menu-topbar, .screen-header, .profile-card, .ability-card,
+  .crate-card, .crate-box, .crate-result, .overlay-box, .wheel-box, .skin-card, .skin-crate-card,
+  .skin-crate-box, .skin-crate-result, .streak-box, .pass-tier-card, .mission-card, .tutorial-box,
+  .ability-info-box, .season-panel, .season-pause-notice) {
+  -webkit-backdrop-filter: blur(10px) saturate(1.35);
+  backdrop-filter: blur(10px) saturate(1.35);
+  background-image: linear-gradient(160deg, var(--glass-hi), rgba(255,255,255,0) 45%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px rgba(0, 0, 20, 0.35);
+}
+body.has-backdrop .overlay { background: rgba(2, 3, 14, 0.55); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+body.has-backdrop .menu-topbar { border-bottom-color: var(--glass-edge); }
+body.has-backdrop .auth-form,
+body.has-backdrop .overlay-box { border-radius: 12px; border-width: 1px; }
+
+
+
+/* ===== UI v2: one sci-fi language for text, icons and buttons =====
+   Technical sans (Chakra Petch) for the interface, Orbitron for titles,
+   line icons from the SVG sprite in index.html, dark glass controls where
+   colour lives only in the icon and the hover edge; GIOCA is the one filled
+   button. The in-game HUD (canvas) keeps its own pixel font. */
+:root {
+  --ui-font: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
+  --ui-display: 'Orbitron', 'Chakra Petch', system-ui, sans-serif;
+  --ui-text: #e6f1ff;
+  --ui-dim: #8fa3c8;
+  --ui-edge: rgba(150, 210, 255, 0.22);
+  --ui-glass: rgba(10, 16, 38, 0.58);
+  --ui-accent: #3fd8ff;
+}
+html, body { font-family: var(--ui-font); }
+/* The old layout was sized for a very wide pixel font: scale the new face up
+   to the same visual size without touching any spacing. */
+body { font-size-adjust: 0.74; color: var(--ui-text); }
+input, button, select, textarea { font-family: var(--ui-font); font-size-adjust: inherit; }
+
+.i {
+  width: 1.2em; height: 1.2em; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+  vertical-align: -0.2em;
+}
+
+/* Titles */
+.title-line1, .title-line2 { font-family: var(--ui-display); font-weight: 900; }
+.title-line1 { letter-spacing: 0.22em; }
+.title-line2 { font-weight: 800; letter-spacing: 0.55em; font-size: clamp(0.9rem, 3.2vw, 1.4rem); }
+.screen-title, .form-title, .mode-select-title, .overlay-box h3 {
+  font-family: var(--ui-display); font-weight: 700; letter-spacing: 0.18em; color: var(--ui-text);
+  text-shadow: 0 0 14px rgba(63, 216, 255, 0.35);
+}
+.mode-select-title { display: flex; align-items: center; justify-content: center; gap: 0.6rem; }
+.mode-select-title .i { color: var(--ui-accent); }
+
+/* Buttons */
+.btn {
+  --acc: var(--ui-accent);
+  font-family: var(--ui-font); font-weight: 600; letter-spacing: 0.16em;
+  color: var(--ui-text); text-shadow: none;
+  border: 1px solid var(--ui-edge); border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.01)), var(--ui-glass);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+  display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.55em;
+  position: relative; overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.12s, background-color 0.2s;
+}
+.btn .i { width: 1.75em; height: 1.75em; color: var(--acc); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--acc) 70%, transparent)); }
+.btn:hover {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--acc) 75%, transparent);
+  background-color: color-mix(in srgb, var(--acc) 10%, rgba(10, 16, 38, 0.6));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 10px 26px -10px var(--acc);
+}
+.btn:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.btn::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.14) 50%, transparent 65%);
+  transform: translateX(-120%); transition: transform 0.6s ease;
+}
+.btn:hover::after { transform: translateX(120%); }
+.btn-cyan   { --acc: #3fd8ff; }
+.btn-purple { --acc: #b48cff; }
+.btn-pink   { --acc: #ff7ac8; }
+.btn-yellow { --acc: #ffcf5a; }
+.btn-green  { --acc: #4cf2a8; }
+.btn-blue   { --acc: #5aa9ff; }
+.btn-red    { --acc: #ff4d6a; }
+.btn-gray, .btn-ghost { --acc: #8fa3c8; }
+.btn-ghost  { color: var(--ui-dim); }
+.btn-season { --acc: #ff8a4c; }
+.btn-mission{ --acc: #ff7ac8; }
+.btn-streak { --acc: #ff9a3c; }
+.btn-red:not(:hover) { color: #ffd0d8; border-color: rgba(255, 77, 106, 0.45); }
+
+/* The one primary action */
+.btn.btn-primary {
+  color: #04131f; border: none; font-weight: 700; letter-spacing: 0.22em;
+  background: linear-gradient(100deg, #86f3ff 0%, #3fc3ff 50%, #6d7dff 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 12px 34px -10px rgba(63, 190, 255, 0.85);
+}
+.btn.btn-primary .i { color: #04131f; filter: none; }
+.btn.btn-primary:hover { filter: brightness(1.08) saturate(1.1); color: #04131f; }
+.btn.btn-primary::after { background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.5) 50%, transparent 65%); }
+
+.menu-btn-subtitle {
+  flex-basis: 100%; margin-top: 0.1rem;
+  font-weight: 500; letter-spacing: 0.1em; color: var(--ui-dim);
+}
+.menu-right .btn { justify-content: flex-start; padding-left: 1.1rem; }
+.menu-right .btn.btn-primary { justify-content: center; }
+.menu-left .btn { justify-content: flex-start; }
+.menu-right .btn .menu-btn-subtitle, .menu-left .btn .menu-btn-subtitle { padding-left: calc(1.75em + 0.55em); text-align: left; }
+
+/* Top bar: currency and pilot as glass chips, round icon buttons */
+.menu-topbar {
+  background: linear-gradient(180deg, rgba(6, 10, 26, 0.75), rgba(6, 10, 26, 0.35));
+  border-bottom: 1px solid var(--ui-edge);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.menu-topbar-left { gap: 0.5rem; flex-wrap: wrap; }
+.coin-display, .gem-display, .menu-topbar-pilot {
+  display: inline-flex; align-items: center; gap: 0.4em;
+  padding: 0.3rem 0.7rem; border: 1px solid var(--ui-edge); border-radius: 999px;
+  background: rgba(8, 12, 30, 0.55); color: var(--ui-text); font-weight: 600; letter-spacing: 0.06em;
+}
+.coin-display .i { color: #ffcf5a; }
+.gem-display .i { color: #5fe1ff; }
+.menu-topbar-pilot .i { color: #4cf2a8; }
+.menu-icon-btn {
+  border-radius: 50%; border: 1px solid var(--ui-edge);
+  background: rgba(8, 12, 30, 0.55); color: #cfe6ff;
+}
+.menu-icon-btn .i { width: 1.15rem; height: 1.15rem; }
+.menu-icon-btn:hover { border-color: rgba(63, 216, 255, 0.7); box-shadow: 0 0 14px -2px rgba(63, 216, 255, 0.6); background: rgba(63, 216, 255, 0.08); }
+.menu-icon-btn--news { color: #ffcf5a; border-color: rgba(255, 207, 90, 0.45); }
+.menu-icon-btn--news:hover { box-shadow: 0 0 14px -2px rgba(255, 207, 90, 0.6); background: rgba(255, 207, 90, 0.08); border-color: rgba(255, 207, 90, 0.8); }
+
+/* Cards and panels share one glass treatment */
+.season-panel {
+  border: 1px solid var(--ui-edge); border-left: 3px solid #ff8a4c; border-radius: 10px;
+  background: var(--ui-glass); box-shadow: none;
+}
+.season-panel-title { font-family: var(--ui-display); font-weight: 700; letter-spacing: 0.12em; color: #ffb07a; }
+.season-pause-notice { border: 1px solid var(--ui-edge); border-left: 3px solid #ffcf5a; border-radius: 12px; background: var(--ui-glass); }
+.season-pause-notice h2 { font-family: var(--ui-display); letter-spacing: 0.14em; }
+.screen-header { background: rgba(6, 10, 26, 0.6); border-bottom: 1px solid var(--ui-edge); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.btn-back { width: auto; padding: 0.45rem 0.8rem; letter-spacing: 0.1em; }
+.auth-form, .overlay-box { border: 1px solid var(--ui-edge); border-radius: 14px; box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255,255,255,0.08); }
+.input-group input { border-radius: 8px; border-color: var(--ui-edge); background: rgba(5, 8, 22, 0.65); letter-spacing: 0.06em; }
+.input-group input:focus { border-color: rgba(63, 216, 255, 0.8); box-shadow: 0 0 0 3px rgba(63, 216, 255, 0.18); }
+.mode-card { border-radius: 12px; }
+.mode-card-icon .i { width: 2.4rem; height: 2.4rem; stroke-width: 1.4; }
+.mode-card--normal .mode-card-icon { color: #3fd8ff; }
+.mode-card--boss-rush .mode-card-icon { color: #ff4d6a; }
+.br-lock-icon .i { width: 1.6rem; height: 1.6rem; color: var(--ui-dim); }
+.mode-card-name { font-family: var(--ui-display); letter-spacing: 0.16em; }
+
+@media (prefers-reduced-motion: reduce) {
+  body.has-backdrop .title-line1, body.has-backdrop .title-line2 { animation: none; }
+  .btn::after { display: none; }
+}
+
+.coin-display .i, .gem-display .i, .menu-topbar-pilot .i { width: 1.6em; height: 1.6em; }
+.season-pause-notice p { font-family: var(--ui-font); font-size: 0.62rem; line-height: 1.6; color: var(--ui-dim); }
+.mode-card .btn { flex-wrap: nowrap; letter-spacing: 0.1em; }
+
+/* Tabs and filters: glass pills, cyan when active */
+.crate-tab, .skin-tab, .lb-tab, .filter-btn, .lb-filter {
+  font-family: var(--ui-font); font-weight: 600; letter-spacing: 0.12em; color: var(--ui-dim);
+  background: rgba(8, 12, 30, 0.5); border: 1px solid var(--ui-edge); border-radius: 999px;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.crate-tab.active, .skin-tab.active, .lb-tab.active, .filter-btn.active, .lb-filter.active,
+.crate-tab:hover, .skin-tab:hover, .lb-tab:hover, .filter-btn:hover, .lb-filter:hover {
+  color: #fff; border-color: rgba(63, 216, 255, 0.7); background: rgba(63, 216, 255, 0.14);
+  box-shadow: 0 0 16px -4px rgba(63, 216, 255, 0.7);
+}
+
+/* Cards: rounded glass, rarity shown by a thin coloured edge */
+.ability-card, .skin-card, .crate-card, .skin-crate-card, .pass-tier-card, .mission-card, .profile-card,
+.crate-box, .skin-crate-box, .crate-result, .skin-crate-result, .streak-box, .wheel-box, .tutorial-box, .ability-info-box {
+  border-radius: 12px; border-width: 1px;
+}
+.ability-card, .skin-card, .crate-card, .skin-crate-card, .pass-tier-card, .mission-card, .profile-card {
+  background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0) 50%), var(--ui-glass);
+}
+.crate-card-icon .i, .skin-crate-icon .i { width: 2.4rem; height: 2.4rem; stroke-width: 1.4; }
+.crate-icon .i, .skin-crate-box-icon .i { width: 5rem; height: 5rem; stroke-width: 1.2; }
+.crate-card[data-crate="mystery"], .crate-box:not(.type-galactic):not(.type-void) { color: #ffcf5a; }
+.crate-card[data-crate="galactic"], .crate-box.type-galactic { color: #3fd8ff; }
+.crate-card[data-crate="void"], .crate-box.type-void { color: #b48cff; }
+.skin-crate-card[data-crate="stellar"], .skin-crate-box:not(.type-nova) { color: #ff7ac8; }
+.skin-crate-card[data-crate="nova"], .skin-crate-box.type-nova { color: #ffb347; }
+.crate-card .i, .crate-box .i, .skin-crate-card .i, .skin-crate-box .i { filter: drop-shadow(0 0 10px currentColor); }
+.crate-card-label, .skin-crate-card .crate-card-label { color: var(--ui-text); }
+.lb-table th { font-family: var(--ui-display); letter-spacing: 0.12em; background: rgba(6, 10, 26, 0.7); }
+.lb-table td { border-bottom-color: rgba(150, 210, 255, 0.08); }
+
+/* Touch: the ship follows a drag anywhere and the HUD slots / Overdrive bar
+   are tapped directly, so the joystick and the extra buttons are not needed */
+#joystick-zone, #touch-right { display: none; }
+#screen-game { touch-action: none; }
+.patchnotes-badge { color: #1a1200 !important; font-weight: 700; letter-spacing: 0.12em; text-shadow: none; }
+.patchnotes-title { display: inline-flex; align-items: center; gap: 0.5rem; }
+.patchnotes-title .i { color: var(--ui-accent); }
+/* In a run, the space beyond the playfield is the game's own, softened */
+body.has-backdrop.in-game #space-backdrop { filter: blur(5px) brightness(0.5) saturate(1.1); }
+#space-backdrop { width: 100%; height: 100%; }
+body.has-backdrop #screen-game { background: transparent; }
+body.has-backdrop #gameCanvas { box-shadow: 0 0 0 1px rgba(150, 210, 255, 0.12), 0 0 60px 10px rgba(0, 0, 0, 0.55); }
